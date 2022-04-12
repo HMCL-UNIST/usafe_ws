@@ -1,0 +1,3 @@
+use_ekf_synchronization: False
+control_freq_factor: 5
+environment: 'carla'

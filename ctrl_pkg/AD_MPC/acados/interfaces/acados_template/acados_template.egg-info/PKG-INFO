@@ -1,0 +1,12 @@
+Metadata-Version: 2.1
+Name: acados-template
+Version: 0.1.7.dev103+g91a01d4c.d20220110
+Summary: A templating framework for acados
+Home-page: http://github.com/zanellia/acados
+Author: Andrea Zanelli
+License: BSD
+Platform: UNKNOWN
+Requires-Python: >=3.5
+
+UNKNOWN
+
