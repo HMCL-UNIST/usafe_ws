@@ -62,46 +62,47 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 { 
   can_recv_status = true;
   int msg_id = acan_data->id;  
+  float a;
   switch(msg_id) {
     case 600:
       // receive AD_STR_INFO
-      acan_data->data[0]; //AD_STR_MODE_STAT 
-      acan_data->data[1:2]; //AD_STR_ACT_POS_STAT 
-      acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
-      acan_data->data[4]; //(Reserved) 
-      acan_data->data[5]; //AD_STR_ALIVE_COUNT 
+      a = acan_data->data[0]; //AD_STR_MODE_STAT 
+      // a = acan_data->data[1:2]; //AD_STR_ACT_POS_STAT 
+      a = acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
+      a = acan_data->data[4]; //(Reserved) 
+      a = acan_data->data[5]; //AD_STR_ALIVE_COUNT 
       break;
 
     case 602:
       // receive AD_SCC_INFO
-      acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
-      acan_data->data[1:2]; //AD_SCC_SPD_STAT 
-      acan_data->data[3]; //AD_SCC_WHL_SPD_STAT 
+      a = acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
+      // a = acan_data->data[1:2]; //AD_SCC_SPD_STAT 
+      a = acan_data->data[3]; //AD_SCC_WHL_SPD_STAT 
       break;
 
     case 604:
       // receive AD_SHIFT_INFO
-      acan_data->data[0]; //AD_SHIFT_ACT_POS_STAT 
-      acan_data->data[1]; //AD_SHIFT_MODE_STAT       
+      a = acan_data->data[0]; //AD_SHIFT_ACT_POS_STAT 
+      a = acan_data->data[1]; //AD_SHIFT_MODE_STAT       
       break;
 
     case 606:
       // receive AD_BTN_INFO
-      acan_data->data[0]; //AD_AUTO_BTN_STAT 
-      acan_data->data[1]; //AD_EMS_BTN_STAT 
-      acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT 
+      a = acan_data->data[0]; //AD_AUTO_BTN_STAT 
+      a = acan_data->data[1]; //AD_EMS_BTN_STAT 
+      a = acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT 
       break;
 
     case 608:
       // receive TL_INFO
-      acan_data->data[0]; //AD_HAZARD_STAT 
-      acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT       
+      a = acan_data->data[0]; //AD_HAZARD_STAT 
+      a = acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT       
       break;
 
     case 60:
-      acan_data->data[0]; //AD_WIRELESS_REMOTE_BTN_STAT_1 
-      acan_data->data[1]; //AD_WIRELESS_REMOTE_BTN_STAT_2
-      acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT_3
+      a = acan_data->data[0]; //AD_WIRELESS_REMOTE_BTN_STAT_1 
+      a = acan_data->data[1]; //AD_WIRELESS_REMOTE_BTN_STAT_2
+      a = acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT_3
       // receive AD_RTE_INFO
       break;
       

@@ -19,6 +19,7 @@
 #include <list>
 #include <queue>
 #include <mutex> 
+#include <thread> 
 #include <boost/thread/thread.hpp>
 
 #include <ros/ros.h>
@@ -50,7 +51,7 @@ class VehicleBridge
 {  
 private:
 ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
-mutex mtx_;
+std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub;
 ros::Publisher  AcanPub, CcanPub;
