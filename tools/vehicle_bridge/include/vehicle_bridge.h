@@ -54,7 +54,8 @@ ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub;
-ros::Publisher  AcanPub, CcanPub;
+ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub;
+
 // boost::mutex optimizedStateMutex_;
 bool can_recv_status;
 hmcl_msgs::VehicleStatus vehicle_status_;

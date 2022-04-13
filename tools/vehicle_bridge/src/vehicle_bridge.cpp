@@ -40,13 +40,18 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
 {
   Acan_callback_time = ros::Time::now();
   
-  AcanSub = nh_can.subscribe("a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
-  AcanPub = nh_can.advertise<can_msgs::Frame>("a_can_h2l", 1);    
+  AcanSub = nh_can.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
+  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 1);
+
+  statusPub = nh_can.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 1);    
+  sccPub    = nh_can.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 1);    
+  steerPub  = nh_can.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 1);    
+  wheelPub  = nh_can.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 1);    
   
-  SteeringCmdSub = nh_steer_.subscribe("usafe_steer", 1, &VehicleBridge::SteeringCmdCallback, this);
-  AccCmdSub = nh_acc_.subscribe("usafe_acc", 1, &VehicleBridge::AccCmdCallback, this);
-  ShiftCmdSub = nh_light_.subscribe("usafe_shift", 1, &VehicleBridge::ShiftCmdCallback, this);
-  LightCmdSub = nh_light_.subscribe("usafe_lights", 1, &VehicleBridge::LightCmdCallback, this);
+  SteeringCmdSub = nh_steer_.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
+  AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
+  ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 1, &VehicleBridge::ShiftCmdCallback, this);
+  LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 1, &VehicleBridge::LightCmdCallback, this);
 
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
@@ -62,55 +67,78 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 { 
   can_recv_status = true;
   int msg_id = acan_data->id;  
-  float a;
+  int a;
+  
   mtx_.lock();
+  Acan_callback_time = ros::Time::now();
+  mtx_.unlock();
+   
+  double steer_d;
   switch(msg_id) {    
-    case 600:
+    case 0x600:
+      mtx_.lock();
       // receive AD_STR_INFO
-      a = acan_data->data[0]; //AD_STR_MODE_STAT 
-      // a = acan_data->data[1:2]; //AD_STR_ACT_POS_STAT 
-      a = acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
-      a = acan_data->data[4]; //(Reserved) 
-      a = acan_data->data[5]; //AD_STR_ALIVE_COUNT 
+      steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
+      steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
+      steering_info_.steering_angle = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.1;      
+      // a = acan_data->data[4]; //(Reserved) 
+      // a = acan_data->data[5]; //AD_STR_ALIVE_COUNT 
+      mtx_.unlock();
       break;
 
-    case 602:
+    case 0x602:
+      mtx_.lock();
+    
       // receive AD_SCC_INFO
       a = acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
       // a = acan_data->data[1:2]; //AD_SCC_SPD_STAT 
       a = acan_data->data[3]; //AD_SCC_WHL_SPD_STAT 
+      mtx_.unlock();
       break;
 
-    case 604:
+    case 0x604:
       // receive AD_SHIFT_INFO
+    
+      mtx_.lock();
       a = acan_data->data[0]; //AD_SHIFT_ACT_POS_STAT 
       a = acan_data->data[1]; //AD_SHIFT_MODE_STAT       
+      mtx_.unlock();
       break;
 
-    case 606:
+    case 0x606:
       // receive AD_BTN_INFO
+    
+      mtx_.lock();
       a = acan_data->data[0]; //AD_AUTO_BTN_STAT 
       a = acan_data->data[1]; //AD_EMS_BTN_STAT 
       a = acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT 
+      mtx_.unlock();
       break;
 
-    case 608:
+    case 0x608:
+    
+      mtx_.lock();
       // receive TL_INFO
       a = acan_data->data[0]; //AD_HAZARD_STAT 
-      a = acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT       
+      a = acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT      
+      mtx_.unlock(); 
       break;
 
-    case 60:
+    case 0x60:
+    
+      mtx_.lock();
       a = acan_data->data[0]; //AD_WIRELESS_REMOTE_BTN_STAT_1 
       a = acan_data->data[1]; //AD_WIRELESS_REMOTE_BTN_STAT_2
       a = acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT_3
+      mtx_.unlock();
       // receive AD_RTE_INFO
       break;
       
-    default:    
+    default:  
+      
       return;        
   }  
-  mtx_.unlock();
+  
 }
 
 
@@ -131,10 +159,11 @@ void VehicleBridge::AcanSender()
 {
   
   bool icp_converged  = false;
-  ros::Rate loop_rate(1000); // rate of cmd   
+  ros::Rate loop_rate(100); // rate of cmd   
   while (ros::ok())
   {  
     if(can_recv_status){
+      steerPub.publish(steering_info_);
       
     }
     loop_rate.sleep();
@@ -142,26 +171,43 @@ void VehicleBridge::AcanSender()
 }
 
 void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
-ROS_INFO("recieved");
-mtx_.lock();
-mtx_.unlock();
+  ROS_INFO("Steering cmd recieved");
+  
+  can_msgs::Frame t; 
+  t.header.stamp = ros::Time::now();
+  t.id = 0x300;
+  t.dlc = 3;
+  t.is_error = false;
+  t.is_extended = false;
+  t.is_rtr = false;
+  short steer_value = (short)(msg->steering_angle*10) ;
+  t.data[0] = (steer_value & 0b11111111);
+	t.data[1] = ((steer_value >> 8)&0b11111111);
+  t.data[2] = (unsigned int)1 & 0b11111111;
+  AcanPub.publish(t);
+//   Header header
+// uint32 id
+// bool is_rtr
+// bool is_extended
+// bool is_error
+// uint8 dlc
+// uint8[8] data
 }
 
 void VehicleBridge::AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg){
   ROS_INFO("recieved");
-  mtx_.lock();
-  mtx_.unlock();
+
 }
 
 void VehicleBridge::ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg){
   ROS_INFO("recieved");
-  mtx_.lock();
-  mtx_.unlock();
+
+
 }
 void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
   ROS_INFO("recieved");
-  mtx_.lock();
-  mtx_.unlock();
+
+
 }
 
 
