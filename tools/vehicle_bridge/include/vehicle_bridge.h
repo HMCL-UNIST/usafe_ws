@@ -61,7 +61,12 @@ bool can_recv_status;
 hmcl_msgs::VehicleStatus vehicle_status_;
 hmcl_msgs::VehicleSCC scc_info_;
 hmcl_msgs::VehicleSteering steering_info_;
-hmcl_msgs::VehicleWheelSpeed wheel_speed_;
+hmcl_msgs::VehicleWheelSpeed wheel_info_;
+hmcl_msgs::VehicleGear gear_info_;
+
+can_msgs::Frame steering_frame, scc_frame, gear_frame, light_frame;
+
+
 ros::Time Acan_callback_time;
 public:
 VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light);
