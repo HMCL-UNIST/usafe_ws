@@ -15,7 +15,8 @@ add_message_files(
     Lane.msg
     LaneArray.msg
     Waypoint.msg
-    WaypointState.msg    
+    WaypointState.msg   
+    Gear.msg 
 )
 
 # add_service_files(

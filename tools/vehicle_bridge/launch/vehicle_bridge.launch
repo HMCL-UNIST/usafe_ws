@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+  <node name="vehicle_bridge" pkg="vehicle_bridge" type="vehicle_bridge" output="screen">      
+        <!-- <remap from="AA" to="BB"/> -->
+  </node>
+</launch>

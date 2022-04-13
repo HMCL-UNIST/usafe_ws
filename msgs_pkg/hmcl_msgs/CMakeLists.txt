@@ -15,6 +15,13 @@ add_message_files(
     Lane.msg
     LaneArray.msg
     Waypoint.msg    
+    RemoteButton.msg
+    VehicleGear.msg
+    VehicleLight.msg
+    VehicleSCC.msg
+    VehicleStatus.msg
+    VehicleSteering.msg
+    VehicleWheelSpeed.msg
 )
 
 # add_service_files(
