@@ -18,6 +18,7 @@
 #include <string>
 #include <list>
 #include <queue>
+#include <mutex> 
 #include <boost/thread/thread.hpp>
 
 #include <ros/ros.h>
@@ -37,26 +38,41 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
+#include <hmcl_msgs/VehicleStatus.h>
+#include <hmcl_msgs/VehicleSCC.h>
+#include <hmcl_msgs/VehicleSteering.h>
+#include <hmcl_msgs/VehicleWheelSpeed.h>
 
 #define PI 3.14159265358979323846264338
 
 
 class VehicleBridge 
-{
-  
+{  
 private:
-ros::NodeHandle nh_;
+ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
+mutex mtx_;
 ros::Subscriber AcanSub, CcanSub;
+ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub;
 ros::Publisher  AcanPub, CcanPub;
 // boost::mutex optimizedStateMutex_;
 bool can_recv_status;
+hmcl_msgs::VehicleStatus vehicle_status_;
+hmcl_msgs::VehicleSCC scc_info_;
+hmcl_msgs::VehicleSteering steering_info_;
+hmcl_msgs::VehicleWheelSpeed wheel_speed_;
 ros::Time Acan_callback_time;
 public:
-VehicleBridge();
+VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light);
 ~VehicleBridge();
 void AcanSender();
 void AcanWatchdog();
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
+
+// Vehicle commands Callbacks
+void SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg);
+void AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg);
+void ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg);
+void LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg);
 
 };
 

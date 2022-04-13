@@ -31,14 +31,23 @@
 #include "vehicle_bridge.h"
 
 
-VehicleBridge::VehicleBridge():  
-  nh_("~"),
+VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light):  
+  nh_can_(nh_can),
+  nh_acc_(nh_acc),
+  nh_steer_(nh_steer),
+  nh_light_(nh_light),
   can_recv_status(false) 
 {
   Acan_callback_time = ros::Time::now();
-  AcanPub = nh_.advertise<can_msgs::Frame>("acan_h2l", 1);  
-  AcanSub = nh_.subscribe("acan_l2h", 100, &VehicleBridge::AcanCallback, this);
   
+  AcanSub = nh_can.subscribe("a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
+  AcanPub = nh_can.advertise<can_msgs::Frame>("a_can_h2l", 1);    
+  
+  SteeringCmdSub = nh_steer_.subscribe("usafe_steer", 1, &VehicleBridge::SteeringCmdCallback, this);
+  AccCmdSub = nh_acc_.subscribe("usafe_acc", 1, &VehicleBridge::AccCmdCallback, this);
+  ShiftCmdSub = nh_light_.subscribe("usafe_shift", 1, &VehicleBridge::ShiftCmdCallback, this);
+  LightCmdSub = nh_light_.subscribe("usafe_lights", 1, &VehicleBridge::LightCmdCallback, this);
+
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
   boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
@@ -52,22 +61,53 @@ VehicleBridge::~VehicleBridge()
 void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 { 
   can_recv_status = true;
-  int msg_id = acan_data->id;
+  int msg_id = acan_data->id;  
   switch(msg_id) {
-    case 100:
-      // code block
-      ROS_INFO("dd");
+    case 600:
+      // receive AD_STR_INFO
+      acan_data->data[0]; //AD_STR_MODE_STAT 
+      acan_data->data[1:2]; //AD_STR_ACT_POS_STAT 
+      acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
+      acan_data->data[4]; //(Reserved) 
+      acan_data->data[5]; //AD_STR_ALIVE_COUNT 
       break;
-      
-    case 500:
-      // code block
-      ROS_INFO("dd");
+
+    case 602:
+      // receive AD_SCC_INFO
+      acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
+      acan_data->data[1:2]; //AD_SCC_SPD_STAT 
+      acan_data->data[3]; //AD_SCC_WHL_SPD_STAT 
+      break;
+
+    case 604:
+      // receive AD_SHIFT_INFO
+      acan_data->data[0]; //AD_SHIFT_ACT_POS_STAT 
+      acan_data->data[1]; //AD_SHIFT_MODE_STAT       
+      break;
+
+    case 606:
+      // receive AD_BTN_INFO
+      acan_data->data[0]; //AD_AUTO_BTN_STAT 
+      acan_data->data[1]; //AD_EMS_BTN_STAT 
+      acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT 
+      break;
+
+    case 608:
+      // receive TL_INFO
+      acan_data->data[0]; //AD_HAZARD_STAT 
+      acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT       
+      break;
+
+    case 60:
+      acan_data->data[0]; //AD_WIRELESS_REMOTE_BTN_STAT_1 
+      acan_data->data[1]; //AD_WIRELESS_REMOTE_BTN_STAT_2
+      acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT_3
+      // receive AD_RTE_INFO
       break;
       
     default:    
       return;        
-  }
-  
+  }  
 }
 
 
@@ -98,11 +138,64 @@ void VehicleBridge::AcanSender()
   }
 }
 
+void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
+ROS_INFO("recieved");
+}
+
+void VehicleBridge::AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg){
+  ROS_INFO("recieved");
+}
+
+void VehicleBridge::ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg){
+  ROS_INFO("recieved");
+}
+void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
+  ROS_INFO("recieved");
+}
+
 
 
 int main (int argc, char** argv)
 {
-ros::init(argc, argv, "VehicleBridge");
-VehicleBridge VehicleBridge_;
-ros::spin();
+  ros::init(argc, argv, "VehicleBridge");
+  ros::NodeHandle nh_can, nh_acc, nh_steer, nh_light;
+  VehicleBridge VehicleBridge_(nh_can,nh_acc,nh_steer,nh_light);
+
+  ros::CallbackQueue callback_queue_can, callback_queue_acc, callback_queue_steer, callback_queue_light;
+  nh_can.setCallbackQueue(&callback_queue_can);
+  nh_acc.setCallbackQueue(&callback_queue_acc);
+  nh_steer.setCallbackQueue(&callback_queue_steer);
+  nh_light.setCallbackQueue(&callback_queue_light);
+
+  std::thread spinner_thread_can([&callback_queue_can]() {
+    ros::SingleThreadedSpinner spinner_can;
+    spinner_can.spin(&callback_queue_can);
+  });
+
+  std::thread spinner_thread_acc([&callback_queue_acc]() {
+    ros::SingleThreadedSpinner spinner_acc;
+    spinner_acc.spin(&callback_queue_acc);
+  });
+
+  std::thread spinner_thread_steer([&callback_queue_steer]() {
+    ros::SingleThreadedSpinner spinner_steer;
+    spinner_steer.spin(&callback_queue_steer);
+  });
+
+  std::thread spinner_thread_light([&callback_queue_light]() {
+    ros::SingleThreadedSpinner spinner_light;
+    spinner_light.spin(&callback_queue_light);
+  });
+
+
+    ros::spin();
+
+    spinner_thread_can.join();
+    spinner_thread_acc.join();
+    spinner_thread_steer.join();
+    spinner_thread_light.join();
+
+
+  return 0;
+
 }
