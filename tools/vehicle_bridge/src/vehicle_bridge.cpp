@@ -63,7 +63,8 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
   can_recv_status = true;
   int msg_id = acan_data->id;  
   float a;
-  switch(msg_id) {
+  mtx_.lock();
+  switch(msg_id) {    
     case 600:
       // receive AD_STR_INFO
       a = acan_data->data[0]; //AD_STR_MODE_STAT 
@@ -109,6 +110,7 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
     default:    
       return;        
   }  
+  mtx_.unlock();
 }
 
 
@@ -141,17 +143,25 @@ void VehicleBridge::AcanSender()
 
 void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
 ROS_INFO("recieved");
+mtx_.lock();
+mtx_.unlock();
 }
 
 void VehicleBridge::AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg){
   ROS_INFO("recieved");
+  mtx_.lock();
+  mtx_.unlock();
 }
 
 void VehicleBridge::ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg){
   ROS_INFO("recieved");
+  mtx_.lock();
+  mtx_.unlock();
 }
 void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
   ROS_INFO("recieved");
+  mtx_.lock();
+  mtx_.unlock();
 }
 
 
