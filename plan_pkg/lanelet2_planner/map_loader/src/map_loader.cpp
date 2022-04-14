@@ -34,15 +34,16 @@
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
 
-MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :  
-  nh_(nh), nh_p_(nh_p)  
+MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path) :  
+  nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path)  
 {
   // using namespace lanelet;
   way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 1, true);
   g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 1, true);
-  g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_pub,this);    
+  g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   
-  pose_init = false;
+  pose_init = false; 
+  goal_available = false;
   pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
   goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
 
@@ -76,17 +77,27 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :
   construct_lanelets_with_viz();
   rp_.setMap(map);
   
- 
+  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_pub,this);    
   
 }
 
 MapLoader::~MapLoader()
 {}
 
-void MapLoader::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg){
-  cur_goal = msg->pose;
-  ROS_INFO("goal received");
-  global_lane_array.lanes.clear();
+void MapLoader::global_traj_handler(const ros::TimerEvent& time){
+  if(goal_available){
+    compute_global_path();
+  }  
+
+  if(global_traj_available){
+    way_pub.publish(global_lane_array);  
+  }  
+
+}
+
+void MapLoader::compute_global_path(){
+  ROS_INFO("goal received");  
+  global_lane_array.lanes.clear();  
   if(pose_init && road_lanelets_const.size() > 0){
       int start_closest_lane_idx = get_closest_lanelet(road_lanelets_const,cur_pose);      
       int goal_closest_lane_idx = get_closest_lanelet(road_lanelets_const,cur_goal);
@@ -243,8 +254,9 @@ void MapLoader::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &ms
                 
             }   
           global_traj_available = true;
-          // way_pub.publish(global_lane_array);
-          
+          // way_pub.publish(global_lane_array);          
+          global_lane_array_for_local = global_lane_array;
+
           if(visualize_path){
               // Construct Traj_lanelet_marker 
               traj_lanelet_marker_array.markers.clear();            
@@ -286,7 +298,18 @@ void MapLoader::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &ms
   }
   else{
     ROS_WARN("[MAP_LOADER] = Current pose is not initialized or map is not loaded");
-  }       
+  }   
+
+}
+
+
+void MapLoader::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg){
+  cur_goal = msg->pose;
+  goal_available = true;
+  ROS_INFO("goal received");    
+  compute_global_path();
+  goal_available = true;
+  
 }
 
 unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_){
@@ -360,11 +383,8 @@ void MapLoader::construct_lanelets_with_viz(){
 
 
 
-void MapLoader::global_traj_pub(const ros::TimerEvent& time){  
-  if(global_traj_available){
-    way_pub.publish(global_lane_array);  
-  }  
-}
+ 
+
 
 void MapLoader::viz_pub(const ros::TimerEvent& time){  
     g_map_pub.publish(map_marker_array);
@@ -393,7 +413,10 @@ double MapLoader::get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::Co
     }
   return _angle;
 }
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void MapLoader::fix_and_save_osm(){  
   
    for (auto li = map->laneletLayer.begin(); li != map->laneletLayer.end(); li++)
@@ -490,11 +513,50 @@ void MapLoader::fix_and_save_osm(){
   ROS_INFO("map svae complete");
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+void MapLoader::local_traj_pub(const ros::TimerEvent& time){  
+    if(global_traj_available){
+      ROS_INFO("ss");
+    }    
+}
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
 int main (int argc, char** argv)
 {
 ros::init(argc, argv, "MapLoader");
-ros::NodeHandle nh_;
+ros::NodeHandle nh_, nh_local_path;
 ros::NodeHandle nh_private("~");
-MapLoader MapLoader_(nh_,nh_private);
-ros::spin();
+MapLoader MapLoader_(nh_,nh_private,nh_local_path);
+
+  ros::CallbackQueue callback_queue_nh, callback_queue_nh_local_path;
+  nh_.setCallbackQueue(&callback_queue_nh);
+  nh_local_path.setCallbackQueue(&callback_queue_nh_local_path);
+
+   std::thread spinner_thread_nh([&callback_queue_nh]() {
+    ros::SingleThreadedSpinner spinner_nh;
+    spinner_nh.spin(&callback_queue_nh);
+  });
+
+  std::thread spinner_thread_nh_local_path([&callback_queue_nh_local_path]() {
+    ros::SingleThreadedSpinner spinner_nh_local_path;
+    spinner_nh_local_path.spin(&callback_queue_nh_local_path);
+  });
+
+  ros::spin();
+
+  spinner_thread_nh.join();
+  spinner_thread_nh_local_path.join();
+
 }

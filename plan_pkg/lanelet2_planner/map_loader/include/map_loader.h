@@ -43,6 +43,9 @@
 #include <GeographicLib/LocalCartesian.hpp>
 #include "BlockingQueue.h"
 #include <eigen3/Eigen/Geometry>
+#include <mutex> 
+#include <thread>
+#include <boost/thread/thread.hpp>
 
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
@@ -67,21 +70,23 @@
 #include <amathutils.hpp>
 #include <route_planner.h>
 
+
 #define PI 3.14159265358979323846264338
 
 class MapLoader 
 {
   
 private:
-ros::NodeHandle nh_, nh_p_;
+ros::NodeHandle nh_, nh_p_, nh_local_path_;
 ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub;
 
 ros::Publisher way_pub;
 
 ros::Subscriber pose_sub, goal_sub;
 
-ros::Timer viz_timer, g_traj_timer;
+ros::Timer viz_timer, g_traj_timer, local_traj_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array;
+
 
 bool visualize_path;
 
@@ -94,7 +99,8 @@ double origin_lat;
 double origin_lon;
 double origin_att;
 bool global_traj_available;
-hmcl_msgs::LaneArray global_lane_array;
+bool goal_available;
+hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local;
 
 std::string osm_file_name;
 double map_road_resolution;
@@ -113,19 +119,23 @@ lanelet::ConstLanelets road_lanelets_const;
 
 
 public:
-MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p);
+MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path);
 ~MapLoader();
 
 void load_map();
 void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
-void global_traj_pub(const ros::TimerEvent& time);
+void global_traj_handler(const ros::TimerEvent& time);
+void local_traj_pub(const ros::TimerEvent& time);
 void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 
 double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
 unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_);
 void fix_and_save_osm();
+
+void compute_global_path();
+void local_path_handler();
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
 
 

@@ -1,8 +1,0 @@
-LICENSE
-README.md
-setup.py
-Data_Driven_MPC_for_AD_based_on_Data_Driven_MPC_for_Quadcopter.egg-info/PKG-INFO
-Data_Driven_MPC_for_AD_based_on_Data_Driven_MPC_for_Quadcopter.egg-info/SOURCES.txt
-Data_Driven_MPC_for_AD_based_on_Data_Driven_MPC_for_Quadcopter.egg-info/dependency_links.txt
-Data_Driven_MPC_for_AD_based_on_Data_Driven_MPC_for_Quadcopter.egg-info/requires.txt
-Data_Driven_MPC_for_AD_based_on_Data_Driven_MPC_for_Quadcopter.egg-info/top_level.txt
