@@ -7,6 +7,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   sensor_msgs
   geometry_msgs
+  hmcl_msgs
   nav_msgs  
   autorally_msgs
   tf  
@@ -32,6 +33,7 @@ include_directories(SYSTEM ${catkin_INCLUDE_DIRS})
 include_directories(include)
 add_subdirectory(src/Diagnostics)
 add_subdirectory(src/StateEstimator)
+add_subdirectory(src/WheelOdometry)
 
 
 install(DIRECTORY include/${PROJECT_NAME}/

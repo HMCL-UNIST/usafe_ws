@@ -77,7 +77,7 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
   switch(msg_id) {    
     case 0x600:
       mtx_.lock();
-      // receive AD_STR_INFO
+      // receive AD_STR_INFO      
       steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
       steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
       steering_info_.steering_angle = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.1;      
@@ -89,10 +89,12 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 
     case 0x602:
       mtx_.lock();
-      // receive AD_SCC_INFO
+      // receive AD_SCC_INFO      
+      vehicle_status_.header = acan_data->header;
+      wheel_info_.header = acan_data->header;
       scc_info_.scc_mode = (unsigned int)acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
       scc_info_.acceleration = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.01; 
-      wheel_info_.wheel_speed = (unsigned int)acan_data->data[3]; //AD_SCC_WHL_SPD_STAT 
+      wheel_info_.wheel_speed = ((unsigned int)acan_data->data[3])* 3.6; //AD_SCC_WHL_SPD_STAT  convert to m/s
       vehicle_status_.scc_info = scc_info_;
       vehicle_status_.wheelspeed = wheel_info_;
       mtx_.unlock();
