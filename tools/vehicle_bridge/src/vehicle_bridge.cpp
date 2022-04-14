@@ -94,7 +94,7 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
       wheel_info_.header = acan_data->header;
       scc_info_.scc_mode = (unsigned int)acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
       scc_info_.acceleration = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.01; 
-      wheel_info_.wheel_speed = ((unsigned int)acan_data->data[3])* 3.6; //AD_SCC_WHL_SPD_STAT  convert to m/s
+      wheel_info_.wheel_speed = ((unsigned int)acan_data->data[3]) / 3.6; //AD_SCC_WHL_SPD_STAT  convert to m/s
       vehicle_status_.scc_info = scc_info_;
       vehicle_status_.wheelspeed = wheel_info_;
       mtx_.unlock();

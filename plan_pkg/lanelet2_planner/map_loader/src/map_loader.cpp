@@ -39,6 +39,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 {
   // using namespace lanelet;
   way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 1, true);
+  local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 1, true);
   g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 1, true);
   g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   
@@ -54,6 +55,9 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_p_.param<double>("map_origin_att", origin_att, 0.0);
   nh_p_.param<bool>("visualize_path", visualize_path, true);
   nh_p_.param<double>("map_road_resolution", map_road_resolution, 1.0);
+  nh_p_.param<float>("local_path_length", local_path_length, 20.0);
+  nh_p_.param<float>("weight_decay_rate", weight_decay_rate, 0.85);
+  
   
   
 
@@ -77,7 +81,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   construct_lanelets_with_viz();
   rp_.setMap(map);
   
-  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_pub,this);    
+  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_handler,this);    
   
 }
 
@@ -518,10 +522,108 @@ void MapLoader::fix_and_save_osm(){
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void MapLoader::findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx)
+{  //input is usually the center line
+ 
+  double min_dist_ = std::numeric_limits<double>::max();  
+  for(int i=0; i < lanes.lanes.size(); i++){                
+      for (int j = 0 ; lanes.lanes[i].waypoints.size(); j++){
+      double dist_= sqrt(pow((lanes.lanes[i].waypoints[j].pose.pose.position.x-point_.position.x),2) + pow((lanes.lanes[i].waypoints[j].pose.pose.position.y-point_.position.y),2));      
+      if(min_dist_ >= dist_){
+          closest_lane_idx = i;
+          closest_point_idx = j;
+          min_dist_ =  dist_;        
+        }  
+    }
+  }
+ 
+  return;
+}
 
-void MapLoader::local_traj_pub(const ros::TimerEvent& time){  
+
+void MapLoader::compute_local_path(){
+
+    // extract local trajectory from "global_lane_array_for_local" to -- >  "local_traj"
+    // If we found lane change, we add linstrtings upto the next of the lane which has lane change signal
+    int init_lane_idx, init_point_idx;  
+    findnearest_lane_and_point_idx(global_lane_array_for_local, cur_pose , init_lane_idx, init_point_idx);
+    prev_pose = cur_pose;
+    hmcl_msgs::Lane local_traj_msg;
+    local_traj_msg.header = global_lane_array_for_local.header;
+    local_traj_msg.speed_limit  = global_lane_array_for_local.lanes[init_lane_idx].speed_limit;
+    local_traj_msg.lane_id = global_lane_array_for_local.lanes[init_lane_idx].lane_id;
+    local_traj_msg.lane_change_flag = global_lane_array_for_local.lanes[init_lane_idx].lane_change_flag;
+    local_traj_msg.trafficlights = global_lane_array_for_local.lanes[init_lane_idx].trafficlights;
+    local_traj_msg.speedbumps = global_lane_array_for_local.lanes[init_lane_idx].speedbumps;
+    double lane_weight =1.0;
+    float lane_dist_cumulative = 0;   
+    bool lane_change_found = false;
+    bool lane_change_init = false;
+    int nearest_point_to_prev_lane = 0;
+    for(int i=init_lane_idx; i < global_lane_array_for_local.lanes.size(); i++){
+          if(global_lane_array_for_local.lanes[i].lane_change_flag){
+                lane_change_found = true;            
+                // compute the nearest index to the preious lane                 
+                float min_dist_ = std::numeric_limits<float>::max();  
+                for(int k=0; global_lane_array_for_local.lanes[i].waypoints.size();k++){
+                  double dist_= sqrt(pow((global_lane_array_for_local.lanes[i+1].waypoints[0].pose.pose.position.x-global_lane_array_for_local.lanes[i].waypoints[k].pose.pose.position.x),2) 
+                                    + pow((global_lane_array_for_local.lanes[i+1].waypoints[0].pose.pose.position.y-global_lane_array_for_local.lanes[i].waypoints[k].pose.pose.position.y),2));      
+                  if(min_dist_ >= dist_){
+                    nearest_point_to_prev_lane = k;
+                    min_dist_ =  dist_;  }  
+                }
+          }    
+          for(int j = 0 ; global_lane_array_for_local.lanes[i].waypoints.size(); j++){
+              if ( i == init_lane_idx &&  j < init_point_idx){
+                  continue;
+                }
+                hmcl_msgs::Waypoint waypoint_tmp =  global_lane_array_for_local.lanes[i].waypoints[j];
+                if(lane_change_found){ 
+                  if(j >= nearest_point_to_prev_lane){             
+                  // initialize lane_weight 
+                      if(!lane_change_init){
+                          if(i == init_lane_idx){
+                        double dist_nextlane, dist_curlane; 
+                        dist_curlane= sqrt(pow((global_lane_array_for_local.lanes[i].waypoints[j].pose.pose.position.x-cur_pose.position.x),2) 
+                                          + pow((global_lane_array_for_local.lanes[i].waypoints[j].pose.pose.position.y-cur_pose.position.y),2));      
+                        dist_nextlane= sqrt(pow((global_lane_array_for_local.lanes[i+1].waypoints[j].pose.pose.position.x-cur_pose.position.x),2) 
+                                          + pow((global_lane_array_for_local.lanes[i+1].waypoints[j].pose.pose.position.y-cur_pose.position.y),2));                                      
+                        lane_weight =dist_nextlane/(dist_curlane+dist_nextlane);                                
+                        }else{ 
+                          lane_weight= 1;
+                        }
+                          lane_change_init = true;
+                      }else{ 
+                          lane_weight = lane_weight*weight_decay_rate;  
+                      }
+                  
+                  lane_weight = std::min(std::max(0.0,lane_weight),1.0);
+                  waypoint_tmp.pose.pose.position.x =  global_lane_array_for_local.lanes[i].waypoints[j].pose.pose.position.x*lane_weight+ global_lane_array_for_local.lanes[i+1].waypoints[j].pose.pose.position.x*(1-lane_weight);
+                  waypoint_tmp.pose.pose.position.y =  global_lane_array_for_local.lanes[i].waypoints[j].pose.pose.position.y*lane_weight+ global_lane_array_for_local.lanes[i+1].waypoints[j].pose.pose.position.y*(1-lane_weight);
+                  }
+                }
+                local_traj_msg.waypoints.push_back(waypoint_tmp);
+                double lane_dist_= sqrt(pow((prev_pose.position.x - waypoint_tmp.pose.pose.position.x),2) + pow((prev_pose.position.y - waypoint_tmp.pose.pose.position.y),2));      
+                lane_dist_cumulative = lane_dist_cumulative + lane_dist_;
+                prev_pose.position.x = waypoint_tmp.pose.pose.position.x;
+                prev_pose.position.y = waypoint_tmp.pose.pose.position.y;
+              if(lane_dist_cumulative > local_path_length){
+                break;
+              }             
+          } 
+            
+        if(lane_change_found)
+          {break;}
+      
+          
+    }
+       
+  local_traj_pub.publish(local_traj_msg);
+}
+
+void MapLoader::local_traj_handler(const ros::TimerEvent& time){  
     if(global_traj_available){
-      ROS_INFO("ss");
+      compute_local_path();
     }    
 }
 

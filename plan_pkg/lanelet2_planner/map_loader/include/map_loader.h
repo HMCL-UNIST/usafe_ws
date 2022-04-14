@@ -78,7 +78,7 @@ class MapLoader
   
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
-ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub;
+ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub;
 
 ros::Publisher way_pub;
 
@@ -94,7 +94,7 @@ RoutePlanner rp_;
 lanelet::LaneletMapPtr map;
 lanelet::routing::RoutingGraphUPtr routingGraph;
 
-
+float local_path_length;
 double origin_lat;
 double origin_lon;
 double origin_att;
@@ -108,10 +108,10 @@ double map_road_resolution;
 // transform from local sensor frame to global sensor frame
 tf::StampedTransform l_sensor_to_g_sensor;
 tf::TransformListener local_transform_listener;
-
+float weight_decay_rate;
 double pose_x,pose_y,pose_z;
 bool pose_init;
-geometry_msgs::Pose cur_pose;
+geometry_msgs::Pose cur_pose, prev_pose;
 geometry_msgs::Pose cur_goal;
 
 lanelet::Lanelets road_lanelets;
@@ -126,16 +126,18 @@ void load_map();
 void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
-void local_traj_pub(const ros::TimerEvent& time);
+void local_traj_handler(const ros::TimerEvent& time);
 void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 
 double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
 unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_);
+void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx);
 void fix_and_save_osm();
 
 void compute_global_path();
-void local_path_handler();
+void compute_local_path();
+
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
 
 

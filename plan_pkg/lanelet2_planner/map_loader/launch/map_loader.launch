@@ -21,9 +21,9 @@
       <param name="visualize_path" value="True"/> 
       <param name="map_fix" value="True"/> 
       <param name="map_road_resolution" value="5.0"/> 
-
+      <param name="local_path_length" value="20.0"/> 
+      <param name="weight_decay_rate" value="0.85"/> 
       
-     
   </node>
 
 
