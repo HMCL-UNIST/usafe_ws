@@ -88,7 +88,7 @@ ros::Timer viz_timer, g_traj_timer, local_traj_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary;
 
 
-bool visualize_path;
+bool visualize_path, continuious_global_replan;
 
 RoutePlanner rp_;
 lanelet::LaneletMapPtr map;

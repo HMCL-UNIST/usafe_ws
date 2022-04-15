@@ -42,7 +42,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 1, true);
   local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 1, true);
   g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 1, true);  
-  g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
+  
   
   pose_init = false; 
   goal_available = false;
@@ -58,6 +58,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_p_.param<double>("map_road_resolution", map_road_resolution, 1.0);
   nh_p_.param<float>("local_path_length", local_path_length, 20.0);
   nh_p_.param<float>("weight_decay_rate", weight_decay_rate, 0.85);
+  nh_p_.param<bool>("continuious_global_replan", continuious_global_replan, false);
   
   
   
@@ -84,6 +85,10 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   rp_.setMap(map);
   
   local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_handler,this);    
+  if(continuious_global_replan){
+    g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
+  }
+  
   
 }
 

@@ -23,6 +23,7 @@
       <param name="map_road_resolution" value="5.0"/> 
       <param name="local_path_length" value="40.0"/> 
       <param name="weight_decay_rate" value="0.85"/> 
+      <param name="continuious_global_replan" value="False"/> 
       
   </node>
 
