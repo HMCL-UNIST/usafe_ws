@@ -1,0 +1,4 @@
+[submodule "ctrl_pkg/AD_MPC"]
+	path = ctrl_pkg/AD_MPC
+	url = https://github.com/HMCL-UNIST/AD_MPC.git
+	branch = HM-73-nonlinear-dynamical-model-in-global-coordinate-framework
