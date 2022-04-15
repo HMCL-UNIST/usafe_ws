@@ -102,7 +102,7 @@ void MapLoader::global_traj_handler(const ros::TimerEvent& time){
 }
 
 void MapLoader::compute_global_path(){
-  ROS_INFO("goal received");  
+  
   global_lane_array.lanes.clear();  
   if(pose_init && road_lanelets_const.size() > 0){
       int start_closest_lane_idx = get_closest_lanelet(road_lanelets_const,cur_pose);      
@@ -179,6 +179,7 @@ void MapLoader::compute_global_path(){
                     wp_.pose.pose.orientation.y = cur_pose.orientation.y;
                     wp_.pose.pose.orientation.z = cur_pose.orientation.z;
                     wp_.pose.pose.orientation.w = cur_pose.orientation.w;
+                    wp_.twist.twist.linear.x = ll_.speed_limit;
                     ll_.waypoints.push_back(wp_);
                 }                
                 if(ll_.lane_change_flag){_lane_idx++;}               
@@ -211,7 +212,7 @@ void MapLoader::compute_global_path(){
                 wp_.pose.pose.orientation.y = q[1];
                 wp_.pose.pose.orientation.z = q[2];
                 wp_.pose.pose.orientation.w = q[3];
-
+                wp_.twist.twist.linear.x = ll_.speed_limit;
                 ll_.waypoints.push_back(wp_);
               }
                // terminal lanelet , add terminal position as the waypoint
@@ -225,6 +226,7 @@ void MapLoader::compute_global_path(){
                 wp_.pose.pose.orientation.y = cur_goal.orientation.y;
                 wp_.pose.pose.orientation.z = cur_goal.orientation.z;
                 wp_.pose.pose.orientation.w = cur_goal.orientation.w;
+                wp_.twist.twist.linear.x = ll_.speed_limit;
                 ll_.waypoints.push_back(wp_);
               }
               
