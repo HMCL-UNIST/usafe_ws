@@ -78,14 +78,14 @@ class MapLoader
   
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
-ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub;
+ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
 
 ros::Publisher way_pub;
 
 ros::Subscriber pose_sub, goal_sub;
 
 ros::Timer viz_timer, g_traj_timer, local_traj_timer;
-visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array;
+visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary;
 
 
 bool visualize_path;
@@ -137,6 +137,8 @@ void fix_and_save_osm();
 
 void compute_global_path();
 void compute_local_path();
+
+void viz_local_path(hmcl_msgs::Lane &lane_);
 
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
 
