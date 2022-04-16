@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Standalone example launch file for 3DM-GX5-25 -->
+
+  <!-- Microstain sensor node -->
+   <node name="microstrain_3dm_gx5_25_node"
+         pkg="microstrain_3dm_gx5_45"
+         type="microstrain_3dm_gx5_25_node"
+         output="screen">
+
+      <param name="port" value="/dev/ttyACM0" type="str" />
+      <param name="baudrate" value="115200" type="int" />
+      <param name="device_setup" value="true" type="bool" />
+
+      <!-- General Settings -->
+      <param name="readback_settings" value="true" type="bool" />
+      <param name="save_settings" value="true" type="bool" />
+      <param name="tf_ned_to_enu" value="true" type="bool" />
+
+      <!-- Additional data settings -->
+      <param name="publish_rpy" value="true" type="bool" />
+      <param name="publish_mag" value="true" type="bool" />
+
+      <!-- Complementary Filter Settings-->
+      <param name="publish_cf" value="false" type="bool" />
+      <param name="cf_rate" value="100" type="int" />
+
+      <!-- EKF Settings-->
+      <param name="auto_init" value="true" type="bool" />
+      <param name="imu_frame_id" value="imu_link" type="str" />
+
+      <!-- Declination source 1=None, 2=magnetic, 3=manual -->
+      <param name="declination_source" value="1" type="int" />
+
+      <!--<param name="declination" value="0.23" type="double" />-->
+      <param name="ekf_rate" value="100" type="int" />
+      <param name="dynamics_mode" value="1" type="int" />
+
+      <remap from="imu/data" to="imu" />
+   </node>
+
+</launch>
