@@ -112,7 +112,7 @@ namespace localization_core
 
     std::list<sensor_msgs::ImuConstPtr> imuMeasurements_, imuGrav_;
     
-    geometry_msgs::PoseStampedConstPtr ip;
+    sensor_msgs::ImuConstPtr ip;
     imu_3dm_gx4::FilterOutput initialPose_;
     gtsam::Pose3 bodyPSensor_, carENUPcarNED_;
     gtsam::Pose3 imuPgps_;

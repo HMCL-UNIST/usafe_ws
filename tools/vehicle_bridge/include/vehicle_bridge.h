@@ -57,6 +57,9 @@ ros::Subscriber AcanSub, CcanSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub;
 ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub;
 
+dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
+dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
+
 // boost::mutex optimizedStateMutex_;
 bool can_recv_status;
 hmcl_msgs::VehicleStatus vehicle_status_;
@@ -67,6 +70,12 @@ hmcl_msgs::VehicleGear gear_info_;
 
 can_msgs::Frame steering_frame, scc_frame, gear_frame, light_frame;
 
+// variables for dynamic configure 
+bool Master_Switch, AD_STR_MODE_CMD, AD_SCC_TAKEOVER_CMD, AD_LEFT_TURNLAMP_STAT;
+bool AD_RIGHT_TURNLAMP_STAT, AD_HAZARD_STAT;
+int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;       
+    
+
 
 ros::Time Acan_callback_time;
 public:
@@ -74,7 +83,9 @@ VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& 
 ~VehicleBridge();
 void AcanSender();
 void AcanWatchdog();
+
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
+void dyn_callback(vehicle_bridge::testConfig& config, uint32_t level);
 
 // Vehicle commands Callbacks
 void SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg);

@@ -186,13 +186,14 @@ namespace localization_core
       while (!ip)
       {
         ROS_WARN("Waiting for valid initial orientation");
-        // ip = ros::topic::waitForMessage<imu_3dm_gx4::FilterOutput>("filter", nh_, ros::Duration(15));
-        ip = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/current_pose", nh_, ros::Duration(15));
+        ip = ros::topic::waitForMessage<sensor_msgs::Imu>("/imu_correct2", nh_, ros::Duration(15));
+        // ip = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/current_pose", nh_, ros::Duration(15));
+        
       }
-      initialPose_.orientation.w = ip->pose.orientation.w;
-      initialPose_.orientation.x = ip->pose.orientation.x;
-      initialPose_.orientation.y = ip->pose.orientation.y;
-      initialPose_.orientation.z = ip->pose.orientation.z;
+      initialPose_.orientation.w = ip->orientation.w;
+      initialPose_.orientation.x = ip->orientation.x;
+      initialPose_.orientation.y = ip->orientation.y;
+      initialPose_.orientation.z = ip->orientation.z;
       initialPose_.bias.x = 0.0;
       initialPose_.bias.y = 0.0;
       initialPose_.bias.z = 0.0;
@@ -352,9 +353,9 @@ namespace localization_core
         {
           enu_.Reset(fix->latitude, fix->longitude, fix->altitude);
           E = 0; N = 0; U = 0; // we're choosing this as the origin
-          E = ip->pose.position.x;
-          N = ip->pose.position.y;
-          U = ip->pose.position.z;
+          // E = ip->pose.position.x;
+          // N = ip->pose.position.y;
+          // U = ip->pose.position.z;
         }
         else
         {
@@ -451,11 +452,11 @@ namespace localization_core
           sensor_msgs::NavSatFixConstPtr fix = gpsOptQ_.popBlocking();
           double timeDiff = (TIME(fix) - startTime) / 0.1; // 
           int key = round(timeDiff); 
-          ROS_WARN("timeDiff = %f", timeDiff);
-          ROS_WARN("key = %d", key);
+          // ROS_WARN("timeDiff = %f", timeDiff);
+          // ROS_WARN("key = %d", key);
           if (std::abs(timeDiff - key) < 1e-1)
           { 
-            ROS_WARN("gps updated");
+            // ROS_WARN("gps updated");
             // this is a gps message for a factor
             latestGPSKey = key;
             double E,N,U;

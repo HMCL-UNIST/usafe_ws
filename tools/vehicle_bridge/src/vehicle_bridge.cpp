@@ -57,7 +57,10 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
   boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
-  
+ 
+
+  f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
+	srv.setCallback(f);
 }
 
 VehicleBridge::~VehicleBridge()
@@ -247,37 +250,65 @@ void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
   light_frame.data[2] = (unsigned int)msg->hazard_light & 0b11111111;  
 }
 
-// void callback(vehicle_bridge::testConfig &config, uint32_t level)
-// {
-//   ROS_INFO("Reconfigure Request: \n AD_STR_MODE_CMD: %s,\n AD_STR_POS_CMD: %d,\n AD_SCC_ACCEL_CMD: %d,\n AD_SCC_TAKEOVER_CMD: %s,\n AD_LEFT_TURNLAMP_STAT: %s,\n AD_RIGHT_TURNLAMP_STAT: %s,\n AD_HAZARD_STAT: %s,\n AD_GEAR_POS_CMD: %d,\n AD_SCC_MODE_CMD: %d,\n",
-//   config.AD_STR_MODE_CMD?"True":"False", 
-//   config.AD_STR_POS_CMD,
-//   config.AD_SCC_ACCEL_CMD, 
-//   config.AD_SCC_TAKEOVER_CMD?"True":"False",
-//   config.AD_LEFT_TURNLAMP_STAT?"True":"False",
-//   config.AD_RIGHT_TURNLAMP_STAT?"True":"False",
-//   config.AD_HAZARD_STAT?"True":"False",
-//   config.AD_GEAR_POS_CMD,
-//   config.AD_SCC_MODE_CMD);
-//   AD_STR_MODE_CMD = config.AD_STR_MODE_CMD;
-//   AD_STR_POS_CMD = config.AD_STR_POS_CMD;
-//   AD_SCC_ACCEL_CMD = config.AD_SCC_ACCEL_CMD;
-//   AD_SCC_TAKEOVER_CMD = config.AD_SCC_TAKEOVER_CMD;
-//   AD_LEFT_TURNLAMP_STAT = config.AD_LEFT_TURNLAMP_STAT;
-//   AD_RIGHT_TURNLAMP_STAT = config.AD_RIGHT_TURNLAMP_STAT;
-//   AD_HAZARD_STAT = config.AD_HAZARD_STAT;
-//   AD_GEAR_POS_CMD = config.AD_GEAR_POS_CMD;
-//   AD_SCC_MODE_CMD = config.AD_SCC_MODE_CMD;
-//   // cout << AD_STR_MODE_CMD << endl;
-// }
+
+
+void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t level)
+{
+  // ROS_INFO("Reconfigure Request: \n AD_STR_MODE_CMD: %s,\n AD_STR_POS_CMD: %d,\n AD_SCC_ACCEL_CMD: %d,\n AD_SCC_TAKEOVER_CMD: %s,\n AD_LEFT_TURNLAMP_STAT: %s,\n AD_RIGHT_TURNLAMP_STAT: %s,\n AD_HAZARD_STAT: %s,\n AD_GEAR_POS_CMD: %d,\n AD_SCC_MODE_CMD: %d,\n",
+  // config.AD_STR_MODE_CMD?"True":"False", 
+  // config.AD_STR_POS_CMD,
+  // config.AD_SCC_ACCEL_CMD, 
+  // config.AD_SCC_TAKEOVER_CMD?"True":"False",
+  // config.AD_LEFT_TURNLAMP_STAT?"True":"False",
+  // config.AD_RIGHT_TURNLAMP_STAT?"True":"False",
+  // config.AD_HAZARD_STAT?"True":"False",
+  // config.AD_GEAR_POS_CMD,
+  // config.AD_SCC_MODE_CMD);
+  Master_Switch         = config.Master_Switch;
+  
+  AD_STR_MODE_CMD       = config.AD_STR_MODE_CMD;
+  AD_STR_POS_CMD        = config.AD_STR_POS_CMD;
+  AD_SCC_ACCEL_CMD      = config.AD_SCC_ACCEL_CMD;
+  AD_SCC_TAKEOVER_CMD   = config.AD_SCC_TAKEOVER_CMD;
+  AD_LEFT_TURNLAMP_STAT = config.AD_LEFT_TURNLAMP_STAT;
+  AD_RIGHT_TURNLAMP_STAT= config.AD_RIGHT_TURNLAMP_STAT;
+  AD_HAZARD_STAT        = config.AD_HAZARD_STAT;
+  AD_GEAR_POS_CMD       = config.AD_GEAR_POS_CMD;
+  AD_SCC_MODE_CMD       = config.AD_SCC_MODE_CMD;
+
+  if(Master_Switch){
+  steering_frame.header.stamp = ros::Time::now();
+  steering_frame.id = 0x300;
+  steering_frame.dlc = 3;
+  short steer_value = (short)(AD_STR_POS_CMD*10) ; // input  in radian, convert into degree
+  steering_frame.data[0] = (steer_value & 0b11111111);
+	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+  steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
+
+  scc_frame.header.stamp = ros::Time::now();
+  scc_frame.id = 0x303;
+  scc_frame.dlc = 4;
+  short accel_value = (short)(AD_SCC_ACCEL_CMD*100);
+  scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+  scc_frame.data[1] = (accel_value & 0b11111111);
+	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+  scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+
+  gear_frame.header.stamp = ros::Time::now();
+  gear_frame.id = 0x304;
+  gear_frame.dlc = 1;
+  gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111; 
+
+  }
+  // cout << AD_STR_MODE_CMD << endl;
+}
 
 int main (int argc, char** argv)
 {
   ros::init(argc, argv, "VehicleBridge");
-  // dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
-  // dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
-  // f = boost::bind(&callback, _1, _2);
-  // srv.setCallback(f);
+  
+  
+
   ros::NodeHandle nh_can, nh_acc, nh_steer, nh_light;
   VehicleBridge VehicleBridge_(nh_can,nh_acc,nh_steer,nh_light);
 
