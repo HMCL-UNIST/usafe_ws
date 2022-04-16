@@ -40,13 +40,19 @@ namespace autorally_core
 WheelOdometry::WheelOdometry()
 {
   ros::NodeHandle n;
+  ros::NodeHandle n_h("~");
 
-  n.getParam("vehicle_wheelbase", length_);
-  n.getParam("vehicle_width", width_);
-  n.getParam("using_sim", using_sim_);
-  n.getParam("time_delay", time_delay_);
+  n_h.getParam("vehicle_wheelbase", length_);
+  ROS_INFO("length = %f", length_);
+  
+  n_h.getParam("vehicle_width", width_);
+  ROS_INFO("width_= %f", width_);
+  
+  
+  n_h.getParam("using_sim", using_sim_);
+  n_h.getParam("time_delay", time_delay_);
   // debug mode publishes a different message and subscribes to state estimator for easy visualization
-  n.getParam("debug", debug_);
+  n_h.getParam("debug", debug_);
 
   servo_sub_ = n.subscribe("chassisState", 1, &WheelOdometry::steerCallback, this);
   wheel_speeds_sub_ = n.subscribe("wheelSpeeds", 1, &WheelOdometry::speedCallback, this);
@@ -101,7 +107,7 @@ void WheelOdometry::stateEstimatorCallback(const nav_msgs::OdometryConstPtr& sta
 void WheelOdometry::steerCallback(const hmcl_msgs::VehicleSteeringConstPtr& steer)
 {
   // steering angle is positive for left turns
-  steering_angle_ = steer->steering_angle;
+  steering_angle_ = steer->steering_angle*180.0/PI;
 }
 
 
@@ -113,7 +119,7 @@ void WheelOdometry::speedCallback(const hmcl_msgs::VehicleWheelSpeedConstPtr& sp
   else
     delta_t_ = speed->header.stamp.toSec() - prev_;
   prev_ = speed->header.stamp.toSec();
-
+  
   speed_FL_ = speed->wheel_speed;
   speed_FR_ = speed->wheel_speed;
   speed_BL_ = speed->wheel_speed;
@@ -130,8 +136,11 @@ void WheelOdometry::speedCallback(const hmcl_msgs::VehicleWheelSpeedConstPtr& sp
   else
   {
     turn_radius_ = length_ / sin(std::abs(steering_angle_) * PI / 180.0);
+    
     double turning_phi = avg_speed_ * delta_t_ / turn_radius_;
+    
     delta_x_ = turn_radius_ * sin(turning_phi);
+    
     if (steering_angle_ > 0)
     {
       delta_y_ = turn_radius_ - turn_radius_ * cos(turning_phi);
@@ -140,7 +149,9 @@ void WheelOdometry::speedCallback(const hmcl_msgs::VehicleWheelSpeedConstPtr& sp
     {
       delta_y_ = -(turn_radius_ - turn_radius_ * cos(turning_phi));
     }
+     
     delta_theta_ = avg_speed_ / length_ * sin(steering_angle_ * PI / 180.0) * 180 / PI * delta_t_;
+     
   }
 
 
