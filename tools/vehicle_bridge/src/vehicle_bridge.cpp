@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <cmath>
 
+
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
 #include <vector>
@@ -242,11 +243,37 @@ void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
   light_frame.data[2] = (unsigned int)msg->hazard_light & 0b11111111;  
 }
 
-
+// void callback(vehicle_bridge::testConfig &config, uint32_t level)
+// {
+//   ROS_INFO("Reconfigure Request: \n AD_STR_MODE_CMD: %s,\n AD_STR_POS_CMD: %d,\n AD_SCC_ACCEL_CMD: %d,\n AD_SCC_TAKEOVER_CMD: %s,\n AD_LEFT_TURNLAMP_STAT: %s,\n AD_RIGHT_TURNLAMP_STAT: %s,\n AD_HAZARD_STAT: %s,\n AD_GEAR_POS_CMD: %d,\n AD_SCC_MODE_CMD: %d,\n",
+//   config.AD_STR_MODE_CMD?"True":"False", 
+//   config.AD_STR_POS_CMD,
+//   config.AD_SCC_ACCEL_CMD, 
+//   config.AD_SCC_TAKEOVER_CMD?"True":"False",
+//   config.AD_LEFT_TURNLAMP_STAT?"True":"False",
+//   config.AD_RIGHT_TURNLAMP_STAT?"True":"False",
+//   config.AD_HAZARD_STAT?"True":"False",
+//   config.AD_GEAR_POS_CMD,
+//   config.AD_SCC_MODE_CMD);
+//   AD_STR_MODE_CMD = config.AD_STR_MODE_CMD;
+//   AD_STR_POS_CMD = config.AD_STR_POS_CMD;
+//   AD_SCC_ACCEL_CMD = config.AD_SCC_ACCEL_CMD;
+//   AD_SCC_TAKEOVER_CMD = config.AD_SCC_TAKEOVER_CMD;
+//   AD_LEFT_TURNLAMP_STAT = config.AD_LEFT_TURNLAMP_STAT;
+//   AD_RIGHT_TURNLAMP_STAT = config.AD_RIGHT_TURNLAMP_STAT;
+//   AD_HAZARD_STAT = config.AD_HAZARD_STAT;
+//   AD_GEAR_POS_CMD = config.AD_GEAR_POS_CMD;
+//   AD_SCC_MODE_CMD = config.AD_SCC_MODE_CMD;
+//   // cout << AD_STR_MODE_CMD << endl;
+// }
 
 int main (int argc, char** argv)
 {
   ros::init(argc, argv, "VehicleBridge");
+  // dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
+  // dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
+  // f = boost::bind(&callback, _1, _2);
+  // srv.setCallback(f);
   ros::NodeHandle nh_can, nh_acc, nh_steer, nh_light;
   VehicleBridge VehicleBridge_(nh_can,nh_acc,nh_steer,nh_light);
 

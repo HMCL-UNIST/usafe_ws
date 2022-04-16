@@ -83,11 +83,12 @@ ros::Publisher path_viz_pub;
 ros::Subscriber pose_sub, gpsSub_, save_map_sub;
 ros::Timer viz_timer;
 
+geometry_msgs::Pose pre_gnss_pos, gnss_pos, pre_local_pos;
 GeographicLib::LocalCartesian enu_;   /// Object to put lat/lon coordinates into local cartesian
 bool gnss_init, pose_init;
 bool path_record_with_gnss;
 
-double line_resolution;
+double line_resolution, point_resolution;
 
 lanelet::LineString3d l3s_, l3s_pose_;
 lanelet::LineStrings3d lines_, lines_pose_;

@@ -4,7 +4,7 @@ project(map_loader)
 
 find_package(GeographicLib REQUIRED)
 
-find_package(PCL REQUIRED)
+# find_package(PCL REQUIRED)
 find_package(Eigen3 REQUIRED)
 
 if(NOT EIGEN3_FOUND)

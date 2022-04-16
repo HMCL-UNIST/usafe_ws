@@ -43,7 +43,8 @@
 #include <hmcl_msgs/VehicleSCC.h>
 #include <hmcl_msgs/VehicleSteering.h>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
-
+#include <dynamic_reconfigure/server.h>
+#include <vehicle_bridge/testConfig.h>
 #define PI 3.14159265358979323846264338
 
 
@@ -80,7 +81,6 @@ void SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg);
 void AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg);
 void ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg);
 void LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg);
-
 };
 
 
