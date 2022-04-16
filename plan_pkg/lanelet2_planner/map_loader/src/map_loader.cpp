@@ -363,8 +363,8 @@ void MapLoader::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){
   }
   cur_pose = msg->pose;
   pose_x = msg->pose.position.x;
-  pose_y = msg->pose.position.x;
-  pose_x = msg->pose.position.x;
+  pose_y = msg->pose.position.y;
+  pose_z = msg->pose.position.z;
 }
 
 void MapLoader::construct_lanelets_with_viz(){
