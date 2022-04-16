@@ -159,28 +159,28 @@ if __name__ == '__main__':
            
             
 
-            # fix_viz_msg.header = fix_msg.header
-            # pose_tmp = PoseStamped()
-            # pose_tmp.header = fix_msg.header
-            # pose_tmp.pose.position.x = longitude
-            # pose_tmp.pose.position.y = latitude
-            # pose_tmp.pose.position.z = altitude
-            # quat = quaternion_from_euler (0.0, 0.0,heading)            
-            # pose_tmp.pose.orientation.x = quat[0]
-            # pose_tmp.pose.orientation.y = quat[1]
-            # pose_tmp.pose.orientation.z = quat[2]
-            # pose_tmp.pose.orientation.w = quat[3]
-            # dist_tmp = math.sqrt((prev_x - pose_tmp.pose.position.x)**2+(prev_y - pose_tmp.pose.position.y)**2)
-            # if init_update:                
-            #     prev_x = pose_tmp.pose.position.x
-            #     prev_y = pose_tmp.pose.position.y    
-            #     fix_viz_msg.poses.append(pose_tmp)
-            #     init_update = False
-            # if(dist_tmp > 0.2):
-            #     prev_x = pose_tmp.pose.position.x
-            #     prev_y = pose_tmp.pose.position.y    
-            #     fix_viz_msg.poses.append(pose_tmp)
-            # viz_fix_pub.publish(fix_viz_msg)
+            fix_viz_msg.header = fix_msg.header
+            pose_tmp = PoseStamped()
+            pose_tmp.header = fix_msg.header
+            pose_tmp.pose.position.x = longitude
+            pose_tmp.pose.position.y = latitude
+            pose_tmp.pose.position.z = altitude
+            quat = quaternion_from_euler (0.0, 0.0,heading)            
+            pose_tmp.pose.orientation.x = quat[0]
+            pose_tmp.pose.orientation.y = quat[1]
+            pose_tmp.pose.orientation.z = quat[2]
+            pose_tmp.pose.orientation.w = quat[3]
+            dist_tmp = math.sqrt((prev_x - pose_tmp.pose.position.x)**2+(prev_y - pose_tmp.pose.position.y)**2)
+            if init_update:                
+                prev_x = pose_tmp.pose.position.x
+                prev_y = pose_tmp.pose.position.y    
+                fix_viz_msg.poses.append(pose_tmp)
+                init_update = False
+            if(dist_tmp > 0.2):
+                prev_x = pose_tmp.pose.position.x
+                prev_y = pose_tmp.pose.position.y    
+                fix_viz_msg.poses.append(pose_tmp)
+            viz_fix_pub.publish(fix_viz_msg)
 
             
          

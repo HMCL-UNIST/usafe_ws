@@ -81,7 +81,7 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
       // receive AD_STR_INFO      
       steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
       steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
-      steering_info_.steering_angle = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.1;      
+      steering_info_.steering_angle = ((short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.1)*PI/180.0;      
       vehicle_status_.steering_info = steering_info_; 
       // a = acan_data->data[4]; //(Reserved) 
       // a = acan_data->data[5]; //AD_STR_ALIVE_COUNT 
@@ -183,6 +183,10 @@ void VehicleBridge::AcanSender()
     if(can_recv_status){
       // publish vehicle info 
       steerPub.publish(steering_info_);
+      statusPub.publish(vehicle_status_); 
+      sccPub.publish(scc_info_);    
+      wheelPub.publish(wheel_info_);  
+
 
       // publish vehicle command 
       AcanPub.publish(steering_frame);
@@ -201,7 +205,7 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.is_error = false;
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
-  short steer_value = (short)(msg->steering_angle*10) ;
+  short steer_value = (short)(msg->steering_angle*10*180/PI) ; // input  in radian, convert into degree
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
