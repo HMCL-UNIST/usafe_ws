@@ -53,8 +53,10 @@ PathRecorder::PathRecorder(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p
   nh_p_.param<double>("map_origin_lat", origin_lat, 0.0);
   nh_p_.param<double>("map_origin_lon", origin_lon, 0.0);
   nh_p_.param<double>("map_origin_att", origin_att, 0.0);
-  nh_p_.param<double>("line_resolution", line_resolution, 1.0);
+  nh_p_.param<double>("line_resolution", line_resolution, 20.0);
+  nh_p_.param<double>("point_resolution", point_resolution, 1.0);
   nh_p_.param<bool>("path_record_with_gnss", path_record_with_gnss, true);
+  
   
    
 
@@ -101,21 +103,33 @@ void PathRecorder::GpsCallback(sensor_msgs::NavSatFixConstPtr fix){
   
   double E, N, U;
   enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+  
   if(!gnss_init){
     lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
     lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
     l3s_ = l3s;
     gnss_init = true;
   }else{
-    if(lanelet::geometry::length(l3s_) > line_resolution){
+    double dist_tmp = std::sqrt(std::pow(E-pre_gnss_pos.position.x,2)+std::pow(N-pre_gnss_pos.position.y,2));
+    if(dist_tmp > point_resolution){
+      if(lanelet::geometry::length(l3s_) > line_resolution){
       lines_.push_back(l3s_);
       lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
       lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
       l3s_ = l3s;
+        }
+    
+      l3s_.push_back(lanelet::Point3d(lanelet::utils::getId(), E,N,U));
+
+        pre_gnss_pos.position.x = E;
+        pre_gnss_pos.position.y = N;
+        pre_gnss_pos.position.z = U;
     }
     
-    l3s_.push_back(lanelet::Point3d(lanelet::utils::getId(), E,N,U));
   }
+
+
+
 }
 
 
@@ -124,6 +138,8 @@ void PathRecorder::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){
   double pose_x = msg->pose.position.x;
   double pose_y = msg->pose.position.y;
   double pose_z = msg->pose.position.z;
+
+  
   if(!pose_init){
     lanelet::Point3d p3d_(lanelet::utils::getId(), pose_x, pose_y, pose_z); 
     
@@ -137,10 +153,14 @@ void PathRecorder::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){
       lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
       l3s_pose_ = l3s;
     }else{
+
       l3s_pose_.push_back(lanelet::Point3d(lanelet::utils::getId(), pose_x, pose_y, pose_z));
     }
     
   }
+  pre_local_pos.position.x = msg->pose.position.x;
+  pre_local_pos.position.y = msg->pose.position.y;
+  pre_local_pos.position.z = msg->pose.position.z;
 
 }
 
