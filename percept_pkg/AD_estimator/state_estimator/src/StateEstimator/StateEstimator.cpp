@@ -486,8 +486,10 @@ namespace localization_core
               point.header.frame_id = "map";
               point.pose.pose.position.x = E;
               point.pose.pose.position.y = N;
+              point.pose.pose.position.z = U;
               point.pose.covariance[0] = fix->position_covariance[0];
               point.pose.covariance[7] = fix->position_covariance[4];
+              point.pose.covariance[14] = fix->position_covariance[8];
               gpsPosPub_.publish(point);
 
               SharedDiagonal gpsNoise = noiseModel::Diagonal::Sigmas(Vector3(gpsSigma_, gpsSigma_, 3.0 * gpsSigma_));

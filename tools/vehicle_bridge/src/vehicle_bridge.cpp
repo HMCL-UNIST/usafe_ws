@@ -90,10 +90,11 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
   switch(msg_id) {    
     case 0x600:
       mtx_.lock();
-      // receive AD_STR_INFO
+      // receive AD_STR_INFO      
       steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
       steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
       steering_info_.steering_angle = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.1;      
+      vehicle_status_.steering_info = steering_info_; 
       // a = acan_data->data[4]; //(Reserved) 
       // a = acan_data->data[5]; //AD_STR_ALIVE_COUNT 
       mtx_.unlock();
@@ -101,26 +102,31 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 
     case 0x602:
       mtx_.lock();
-    
+
+     vehicle_status_.header = acan_data->header;
       // receive AD_SCC_INFO
       scc_info_.scc_mode = (unsigned int)acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
       scc_info_.acceleration = (int)(acan_data->data[1] + (acan_data->data[2] << 8))*0.01; //AD_SCC_SPD_STAT 
       scc_info_.kph = (unsigned int)acan_data->data[3]; //AD_SCC_WHL_SPD_STAT 
+      wheel_info_.header = acan_data->header;
+      wheel_info_.wheel_speed = ((unsigned int)acan_data->data[3]) / 3.6; //AD_SCC_WHL_SPD_STAT  convert to m/s
+      vehicle_status_.scc_info = scc_info_;
+      vehicle_status_.wheelspeed = wheel_info_;
+
       mtx_.unlock();
       break;
 
     case 0x604:
       // receive AD_SHIFT_INFO
-    
       mtx_.lock();
-      a = acan_data->data[0]; //AD_SHIFT_ACT_POS_STAT 
-      a = acan_data->data[1]; //AD_SHIFT_MODE_STAT       
+      vehicle_status_.auto_mode = (unsigned int)acan_data->data[0]; //AD_SHIFT_ACT_POS_STAT 
+      gear_info_.gear = (unsigned int)acan_data->data[1]; //AD_SHIFT_MODE_STAT       
+      vehicle_status_.gear_info = gear_info_;
       mtx_.unlock();
       break;
 
     case 0x606:
       // receive AD_BTN_INFO
-    
       mtx_.lock();
       a = acan_data->data[0]; //AD_AUTO_BTN_STAT 
       a = acan_data->data[1]; //AD_EMS_BTN_STAT 
@@ -138,7 +144,6 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
       break;
 
     case 0x60:
-    
       mtx_.lock();
       a = acan_data->data[0]; //AD_WIRELESS_REMOTE_BTN_STAT_1 
       a = acan_data->data[1]; //AD_WIRELESS_REMOTE_BTN_STAT_2
@@ -157,62 +162,48 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 
 void VehicleBridge::AcanWatchdog()
 {
-    ros::Rate loop_rate(10); // rate of GPS   
+    ros::Rate loop_rate(10); // rate  
     while (ros::ok())
     { ros::Duration duration = ros::Time::now() - Acan_callback_time;
-      if(duration.toSec() > 0.2){
-        // if no can msg received in 0.2 sec
-        ROS_INFO("Acan is empty for %lf ms", duration.toSec()*1000);
+      // ros::Duration duration_steering = ros::Time::now() - steering_frame.header.stamp;
+      ros::Duration duration_accl = ros::Time::now() - scc_frame.header.stamp;
+      
+      // if no can msg received in 0.2 sec
+      if(duration.toSec() > 0.2){        
+        ROS_WARN("Acan is empty for %lf secs", duration.toSec());
+        mtx_.lock();
         can_recv_status = false;
+        mtx_.unlock();
       }
+
+      // If no accerlation command for more than 0.5 sec, slow down vehicle
+       if(duration_accl.toSec() > 0.5){        
+        ROS_WARN("acceleration command is not arrived for %lf secs", duration_accl.toSec());
+        mtx_.lock();
+        short accel_value = (short)(-1*100);
+        scc_frame.data[1] = (accel_value & 0b11111111);
+	      scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+        mtx_.unlock();
+      }
+
+     loop_rate.sleep();
     }
 }
 
 void VehicleBridge::AcanSender()
 {
-  
-  bool icp_converged  = false;
   ros::Rate loop_rate(100); // rate of cmd   
   while (ros::ok())
   {  
     if(can_recv_status){
+      // publish vehicle info 
       steerPub.publish(steering_info_);
-      sccPub.publish(scc_info_);
-    }
-    can_msgs::Frame steer; 
-    can_msgs::Frame shift; 
-    can_msgs::Frame light; 
-    can_msgs::Frame scc; 
 
-    if (AD_STR_MODE_CMD)
-    {
-      steer.header.stamp = ros::Time::now();
-      steer.id = 0x300;
-      steer.dlc = 3;
-      steer.is_error = false;
-      steer.is_extended = false;
-      steer.is_rtr = false;
-      short steer_value = (short)AD_STR_POS_CMD;
-      steer.data[0] = (steer_value & 0b11111111);
-      steer.data[1] = ((steer_value >> 8)&0b11111111);
-      steer.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
-      AcanPub.publish(steer);
-    }
-    
-    if (AD_SCC_MODE_CMD)
-    {
-      scc.header.stamp = ros::Time::now();
-      scc.id = 0x303;
-      scc.dlc = 4;
-      scc.is_error = false;
-      scc.is_extended = false;
-      scc.is_rtr = false;
-      scc.data[0] = (AD_SCC_MODE_CMD & 0b11111111);
-      scc.data[1] = AD_SCC_ACCEL_CMD & 0b11111111;
-      scc.data[2] = ((AD_SCC_ACCEL_CMD >> 8)&0b11111111);
-      scc.data[3] = (AD_SCC_TAKEOVER_CMD & 0b11111111);
-      AcanPub.publish(scc);
-      // ROS_INFO("AD_SCC_MODE_CMD : %d", AD_SCC_MODE_CMD);
+      // publish vehicle command 
+      AcanPub.publish(steering_frame);
+      AcanPub.publish(scc_frame);
+      AcanPub.publish(gear_frame);
+      AcanPub.publish(light_frame);      
     }
     
     shift.header.stamp = ros::Time::now();
@@ -241,73 +232,52 @@ void VehicleBridge::AcanSender()
 }
 
 void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
-  ROS_INFO("Steering cmd recieved");
-  
-  // can_msgs::Frame t; 
-  // t.header.stamp = ros::Time::now();
-  // t.id = 0x300;
-  // t.dlc = 3;
-  // t.is_error = false;
-  // t.is_extended = false;
-  // t.is_rtr = false;
-  // short steer_value = (short)(msg->steering_angle*10);
-  // t.data[0] = (steer_value & 0b11111111);
-	// t.data[1] = ((steer_value >> 8)&0b11111111);
-  // t.data[2] = (unsigned int)1 & 0b11111111;
-  // AcanPub.publish(t);
-//   Header header
-// uint32 id
-// bool is_rtr
-// bool is_extended
-// bool is_error
-// uint8 dlc
-// uint8[8] data
+  steering_frame.header.stamp = ros::Time::now();
+  steering_frame.id = 0x300;
+  steering_frame.dlc = 3;
+  steering_frame.is_error = false;
+  steering_frame.is_extended = false;
+  steering_frame.is_rtr = false;
+  short steer_value = (short)(msg->steering_angle*10) ;
+  steering_frame.data[0] = (steer_value & 0b11111111);
+	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+  steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
 }
 
 void VehicleBridge::AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg){
-  ROS_INFO("recieved");
-  can_msgs::Frame t; 
-  t.header.stamp = ros::Time::now();
-  t.id = 0x303;
-  t.dlc = 4;
-  t.is_error = false;
-  t.is_extended = false;
-  t.is_rtr = false;
-  // short acc_value = (short)(msg->steering_angle*10); //have to change
-  // t.data[0] = (AD_SCC_MODE_CMD & 0b11111111);
-	// t.data[1] = AD_SCC_ACCEL_CMD & 0b11111111;
-  // t.data[2] = ((AD_SCC_ACCEL_CMD >> 8)&0b11111111);
-  // t.data[3] = (AD_SCC_TAKEOVER_CMD & 0b11111111);
-  // AcanPub.publish(t);
+  scc_frame.header.stamp = ros::Time::now();
+  scc_frame.id = 0x303;
+  scc_frame.dlc = 4;
+  scc_frame.is_error = false;
+  scc_frame.is_extended = false;
+  scc_frame.is_rtr = false;
+  short accel_value = (short)(msg->acceleration*100);
+  scc_frame.data[0] = (unsigned int)msg->scc_mode & 0b11111111;
+  scc_frame.data[1] = (accel_value & 0b11111111);
+	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+  scc_frame.data[3] = (unsigned int)msg->scc_takeover & 0b11111111;
+  
 }
 
 void VehicleBridge::ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg){
-  ROS_INFO("recieved");
-  can_msgs::Frame t; 
-  t.header.stamp = ros::Time::now();
-  t.id = 0x304;
-  t.dlc = 1;
-  t.is_error = false;
-  t.is_extended = false;
-  t.is_rtr = false;
-  // t.data[0] = (AD_GEAR_POS_CMD & 0b11111111); // have to modify
-  // AcanPub.publish(t);
-
+  gear_frame.header.stamp = ros::Time::now();
+  gear_frame.id = 0x304;
+  gear_frame.dlc = 1;
+  gear_frame.is_error = false;
+  gear_frame.is_extended = false;
+  gear_frame.is_rtr = false;
+  gear_frame.data[0] = (unsigned int)msg->gear & 0b11111111;  
 }
 void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
-  ROS_INFO("recieved");
-  can_msgs::Frame t; 
-  t.header.stamp = ros::Time::now();
-  t.id = 0x306;
-  t.dlc = 3;
-  t.is_error = false;
-  t.is_extended = false;
-  t.is_rtr = false;
-  // t.data[0] = (AD_LEFT_TURNLAMP_STAT & 0b11111111); // have to modify
-  // t.data[1] = (AD_RIGHT_TURNLAMP_STAT & 0b11111111);
-  // t.data[2] = (AD_HAZARD_STAT & 0b11111111);
-  // AcanPub.publish(t);
-
+  light_frame.header.stamp = ros::Time::now();
+  light_frame.id = 0x306;
+  light_frame.dlc = 3;
+  light_frame.is_error = false;
+  light_frame.is_extended = false;
+  light_frame.is_rtr = false;
+  light_frame.data[0] = (unsigned int)msg->left_light & 0b11111111;  
+  light_frame.data[1] = (unsigned int)msg->right_light & 0b11111111;  
+  light_frame.data[2] = (unsigned int)msg->hazard_light & 0b11111111;  
 }
 void callback(vehicle_bridge::testConfig &config, uint32_t level)
 {
