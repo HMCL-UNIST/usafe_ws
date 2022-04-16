@@ -4,5 +4,5 @@
 uint8 scc_mode
 # scc takeover -> off       = 0
 # scc takeover -> n      = 1
-uint8 scc_takeover
-float64 acceleration
+uint8 acceleration
+uint8 kph
