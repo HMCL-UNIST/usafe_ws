@@ -28,11 +28,13 @@
 #include <ros/package.h>
 
 #include <std_msgs/Float64.h>
+#include <std_msgs/Bool.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/LaneArray.h>
 #include <hmcl_msgs/Waypoint.h>
 #include <hmcl_msgs/Trafficlight.h>
+
 
 
 #include <nav_msgs/Odometry.h>
@@ -41,7 +43,6 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <GeographicLib/LocalCartesian.hpp>
-#include "BlockingQueue.h"
 #include <eigen3/Eigen/Geometry>
 #include <mutex> 
 #include <thread>
@@ -83,7 +84,7 @@ ros::Subscriber pose_sub, gpsSub_, save_map_sub;
 ros::Timer viz_timer;
 
 GeographicLib::LocalCartesian enu_;   /// Object to put lat/lon coordinates into local cartesian
-bool gnss_init;
+bool gnss_init, pose_init;
 bool path_record_with_gnss;
 
 double line_resolution;

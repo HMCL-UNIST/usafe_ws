@@ -56,7 +56,7 @@ PathRecorder::PathRecorder(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p
   nh_p_.param<double>("line_resolution", line_resolution, 1.0);
   nh_p_.param<bool>("path_record_with_gnss", path_record_with_gnss, true);
   
-  global_traj_available = false;    
+   
 
   // we are given an origin
   enu_.Reset(origin_lat,origin_lon,origin_att);
@@ -99,45 +99,45 @@ void PathRecorder::saveMapCallback(std_msgs::BoolConstPtr data){
 
 void PathRecorder::GpsCallback(sensor_msgs::NavSatFixConstPtr fix){
   
-  double E, N, Y;
+  double E, N, U;
   enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
   if(!gnss_init){
     lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
-    lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d});
+    lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
     l3s_ = l3s;
     gnss_init = true;
   }else{
-    if(lanelent::geometry::length(l3s_) > line_resolution){
+    if(lanelet::geometry::length(l3s_) > line_resolution){
       lines_.push_back(l3s_);
       lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
-      lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d});
+      lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
       l3s_ = l3s;
     }
     
-    l3s_.push_back(lanelet::Point3d(lanelet::utils::getId(), E,N,U))
+    l3s_.push_back(lanelet::Point3d(lanelet::utils::getId(), E,N,U));
   }
 }
 
 
 void PathRecorder::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){  
-    cur_pose = msg->pose;
-  pose_x = msg->pose.position.x;
-  pose_y = msg->pose.position.y;
-  pose_z = msg->pose.position.z;
+   
+  double pose_x = msg->pose.position.x;
+  double pose_y = msg->pose.position.y;
+  double pose_z = msg->pose.position.z;
   if(!pose_init){
     lanelet::Point3d p3d_(lanelet::utils::getId(), pose_x, pose_y, pose_z); 
     
-    lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d});
+    lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
     l3s_pose_ = l3s;
     pose_init = true;
   }else{
-    if(lanelent::geometry::length(l3s_pose_) > line_resolution){
+    if(lanelet::geometry::length(l3s_pose_) > line_resolution){
       lines_pose_.push_back(l3s_pose_);
       lanelet::Point3d p3d_(lanelet::utils::getId(), pose_x, pose_y, pose_z); 
-      lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d});
+      lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
       l3s_pose_ = l3s;
     }else{
-      l3s_pose_.push_back(lanelet::Point3d(lanelet::utils::getId(), pose_x, pose_y, pose_z))
+      l3s_pose_.push_back(lanelet::Point3d(lanelet::utils::getId(), pose_x, pose_y, pose_z));
     }
     
   }
@@ -155,19 +155,19 @@ void PathRecorder::viz_pub(const ros::TimerEvent& time){
   std_msgs::ColorRGBA path_color;
   setColor(&path_color, 0.0, 1.0, 1.0, 0.5);
   if(path_record_with_gnss){
-        for (auto li = lines_.begin(); li != lines_.end(); li++)
+        for (int i=0; i < lines_.size(); i++)
         {
           visualization_msgs::Marker line_strip;
-          lineString2Marker(li, &line_strip, "map", "path_centerline", path_color, lss,false);
+          lineString2Marker(lines_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
           path_marker_array.markers.push_back(line_strip);
         }
   }else{  
-      for (auto li = lines_pose_.begin(); li != lines_pose_.end(); li++)
-      {
-        visualization_msgs::Marker line_strip;
-        lineString2Marker(li, &line_strip, "map", "path_centerline", path_color, lss,false);
-        path_marker_array.markers.push_back(line_strip);
-      }
+    for (int i=0; i < lines_pose_.size(); i++)
+        {
+          visualization_msgs::Marker line_strip;
+          lineString2Marker(lines_pose_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
+          path_marker_array.markers.push_back(line_strip);
+        }
       }
     path_viz_pub.publish(path_marker_array);
 }
