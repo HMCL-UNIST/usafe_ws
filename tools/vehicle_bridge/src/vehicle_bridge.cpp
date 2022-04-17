@@ -41,9 +41,8 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
 {
   Acan_callback_time = ros::Time::now();
   
-  AcanSub = nh_can.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
+  AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
   AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 1);
-
   statusPub = nh_can.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 1);    
   sccPub    = nh_can.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 1);    
   steerPub  = nh_can.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 1);    
@@ -58,7 +57,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
   boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
  
-
+  
   f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
 	srv.setCallback(f);
 }
@@ -180,7 +179,7 @@ void VehicleBridge::AcanWatchdog()
 
 void VehicleBridge::AcanSender()
 {
-  ros::Rate loop_rate(100); // rate of cmd   
+  ros::Rate loop_rate(50); // rate of cmd   
   while (ros::ok())
   {  
     if(can_recv_status){

@@ -67,7 +67,7 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   enu_gnss_.Forward(pose->pose.position.x, pose->pose.position.y, pose->pose.position.z, gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z);
   geometry_msgs::PoseStamped global_gnss_pose;
   global_gnss_pose = *pose;
-  global_gnss_pose.header.frame_id = "gnss";
+  global_gnss_pose.header.frame_id = pose->header.frame_id;
   global_gnss_pose.pose.position.x = gnss_pose_global_x;
   global_gnss_pose.pose.position.y = gnss_pose_global_y;
   global_gnss_pose.pose.position.z = gnss_pose_global_z;

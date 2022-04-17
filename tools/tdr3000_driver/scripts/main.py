@@ -139,7 +139,7 @@ if __name__ == '__main__':
             activity_status, gnss_health, latitude, longitude, altitude, heading = MyTcpCommunicator.getGNSSData()                        
             fix_msg.header = Header()
             fix_msg.header.stamp = rospy.Time.now()
-            fix_msg.header.frame_id = "gnss"            
+            fix_msg.header.frame_id = "gnss_link"            
             fix_msg.latitude = latitude
             fix_msg.longitude = longitude
             fix_msg.altitude = altitude
