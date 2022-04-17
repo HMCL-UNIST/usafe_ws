@@ -100,8 +100,10 @@ class TcpCommunicator(threading.Thread):
                     self.num_gnss = int(item_list[7])
                     self.altitude = float(item_list[9])  
                 elif item_list[0] == '$GNHDT':
-                    self.heading = float(item_list[1])*math.pi/180
-                    
+                    if not item_list[1] == 0 or item_list[1] == '':
+                        self.heading = float(item_list[1])*math.pi/180                        
+                    else: 
+                        self.heading = 0.0 
                     while self.heading > math.pi:
                         self.heading -= 2.0 * math.pi                        
                     while self.heading < -math.pi:
@@ -154,11 +156,12 @@ if __name__ == '__main__':
             
             if activity_status !='A':
                 fix_msg.position_covariance = [1000] * 9
+            
 
             fix_pub.publish(fix_msg)
             
 
-            if heading == 0.0:
+            if heading == 0.0 or activity_status !='A':
                 continue
 
             

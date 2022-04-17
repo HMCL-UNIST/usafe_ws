@@ -302,7 +302,7 @@ void Localtoworld::LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose)
 
 void Localtoworld::compute_transform()
 {
-  ros::Rate loop_rate(10); // rate of GPS   
+  ros::Rate loop_rate(20); // rate of GPS   
   bool icp_converged  = false;
   while (ros::ok())
   {    

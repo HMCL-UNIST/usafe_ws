@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+
+<launch>
+<!-- 
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_ins" args="0 0 0.5 0 0 0 1 base_link ins 10" />
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_lidar" args="0 0 2.3 0 0 0 1 base_link lidar 10" /> -->
+
+  <node name="fix2pose" pkg="fix2pose" type="fix2pose" output="screen">      
+        <!-- <remap from="AA" to="BB"/> -->
+      <remap from="/gps" to="/fix"/>
+      <remap from="/pose" to="/current_pose"/>
+
+
+        <param name="latOrigin" value="35.575307085"/> 
+      <param name="lonOrigin" value="129.190738787"/>  
+      <param name="altOrigin" value="36.918"/> 
+      
+  
+    
+  </node>
+</launch>
