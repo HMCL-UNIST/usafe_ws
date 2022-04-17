@@ -57,6 +57,9 @@ private:
 ros::NodeHandle nh_;
 ros::Subscriber fixgnssPoseSub;
 ros::Publisher  worldGnssPosePub;
+tf::TransformBroadcaster gnss_to_map_br;
+
+
 
 GeographicLib::LocalCartesian enu_gnss_;   /// Object to put lat/lon coordinates into local cartesian
 

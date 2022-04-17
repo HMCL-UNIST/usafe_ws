@@ -17,7 +17,7 @@ from sensor_msgs.msg import NavSatFix
 import numpy as np
 from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
-from tf.transformations import euler_from_quaternion, quaternion_from_euler
+from tf.transformations import euler_from_quaternion, quaternion_from_euler, unit_vector
 import time
 from geographiclib.geodesic import Geodesic
 import math
@@ -101,13 +101,15 @@ class TcpCommunicator(threading.Thread):
                     self.altitude = float(item_list[9])  
                 elif item_list[0] == '$GNHDT':
                     if not item_list[1] == 0 or item_list[1] == '':
-                        self.heading = float(item_list[1])*math.pi/180                        
+                        self.heading = (90.0-float(item_list[1]))*math.pi/180                        
+                        
                     else: 
                         self.heading = 0.0 
                     while self.heading > math.pi:
                         self.heading -= 2.0 * math.pi                        
                     while self.heading < -math.pi:
                         self.heading += 2.0 * math.pi
+                    
 
             except (ValueError, IndexError):
                 pass
@@ -128,7 +130,7 @@ if __name__ == '__main__':
     viz_fix_pub = rospy.Publisher('viz_fix', Path, queue_size=1)
     heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
     rospy.init_node('tdr3000', anonymous=True)
-    rate = rospy.Rate(20) # 100hz
+    rate = rospy.Rate(20) # 20hz
     fix_msg = NavSatFix()
     fix_viz_msg = Path()
     init_update = True
@@ -172,7 +174,8 @@ if __name__ == '__main__':
             pose_tmp.pose.position.x = latitude
             pose_tmp.pose.position.y = longitude
             pose_tmp.pose.position.z = altitude
-            quat = quaternion_from_euler (0.0, 0.0,heading)            
+            quat = quaternion_from_euler (0.0, 0.0,heading)    
+            quat = unit_vector(quat)
             pose_tmp.pose.orientation.x = quat[0]
             pose_tmp.pose.orientation.y = quat[1]
             pose_tmp.pose.orientation.z = quat[2]

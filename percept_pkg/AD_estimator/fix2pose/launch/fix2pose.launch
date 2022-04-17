@@ -11,7 +11,7 @@
       <remap from="/pose" to="/current_pose"/>
 
 
-        <param name="latOrigin" value="35.575307085"/> 
+      <param name="latOrigin" value="35.575307085"/> 
       <param name="lonOrigin" value="129.190738787"/>  
       <param name="altOrigin" value="36.918"/> 
       

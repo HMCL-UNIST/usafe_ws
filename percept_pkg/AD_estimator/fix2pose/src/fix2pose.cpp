@@ -76,6 +76,16 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   global_gnss_pose.pose.orientation.z = pose->pose.orientation.z;
   global_gnss_pose.pose.orientation.w = pose->pose.orientation.w;
   worldGnssPosePub.publish(global_gnss_pose);    
+   
+  // tf::Transform transform;
+  // // transform.setOrigin( tf::Vector3(gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z) );
+  // // tf::Quaternion q(pose->pose.orientation.x,pose->pose.orientation.y,pose->pose.orientation.z,pose->pose.orientation.w);
+  // transform.setOrigin( tf::Vector3(0,0,0) );
+  // tf::Quaternion q(0,0,0,1);
+
+  // transform.setRotation(q);
+  // gnss_to_map_br.sendTransform(tf::StampedTransform(transform, pose->header.stamp, "map", "gnss_link"));
+
 }
 
 
