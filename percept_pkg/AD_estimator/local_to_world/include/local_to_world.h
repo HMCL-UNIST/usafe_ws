@@ -65,8 +65,8 @@ class Localtoworld
   
 private:
 ros::NodeHandle nh_;
-ros::Subscriber worldGpsSub, localPoseSub;
-ros::Publisher  worldPosePub, localGpsPub, localFixPub;
+ros::Subscriber worldGpsSub, localPoseSub, fixgnssPoseSub;
+ros::Publisher  worldPosePub, localGpsPub, localFixPub, worldGnssPosePub;
 
 BlockingQueue<sensor_msgs::NavSatFixConstPtr> gpsPoseQ_;
 BlockingQueue<sensor_msgs::NavSatFixConstPtr> gpsPoseQ_tmp;
@@ -81,7 +81,7 @@ geometry_msgs::PoseStampedConstPtr gpsPose, localPose;
 geometry_msgs::PoseStampedConstPtr prev_localPose;
 
 bool fixedOrigin_;
-GeographicLib::LocalCartesian enu_;   /// Object to put lat/lon coordinates into local cartesian
+GeographicLib::LocalCartesian enu_, enu_gnss_;   /// Object to put lat/lon coordinates into local cartesian
 bool gotFirstFix_, gotFirstLocal_;
 bool record_transform;
 double maxGPS_dist_Error_;
@@ -110,7 +110,7 @@ Localtoworld();
 ~Localtoworld();
 void GpsCallback(sensor_msgs::NavSatFixConstPtr fix);
 void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
-
+void fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose);
 void compute_transform();
 
 

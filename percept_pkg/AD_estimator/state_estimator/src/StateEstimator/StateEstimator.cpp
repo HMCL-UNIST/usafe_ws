@@ -186,14 +186,14 @@ namespace localization_core
       while (!ip)
       {
         ROS_WARN("Waiting for valid initial orientation");
-        ip = ros::topic::waitForMessage<sensor_msgs::Imu>("/imu_correct2", nh_, ros::Duration(15));
-        // ip = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/current_pose", nh_, ros::Duration(15));
+        // ip = ros::topic::waitForMessage<nav_msgs::Imu>("/imu_correct2", nh_, ros::Duration(15));
+        ip = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/gnss_pose_world", nh_, ros::Duration(15));
         
       }
-      initialPose_.orientation.w = ip->orientation.w;
-      initialPose_.orientation.x = ip->orientation.x;
-      initialPose_.orientation.y = ip->orientation.y;
-      initialPose_.orientation.z = ip->orientation.z;
+      initialPose_.orientation.w = ip->pose.orientation.w;
+      initialPose_.orientation.x = ip->pose.orientation.x;
+      initialPose_.orientation.y = ip->pose.orientation.y;
+      initialPose_.orientation.z = ip->pose.orientation.z;
       initialPose_.bias.x = 0.0;
       initialPose_.bias.y = 0.0;
       initialPose_.bias.z = 0.0;

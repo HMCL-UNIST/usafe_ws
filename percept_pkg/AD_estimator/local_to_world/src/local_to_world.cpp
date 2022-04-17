@@ -54,7 +54,8 @@ Localtoworld::Localtoworld() :
   nh_.param<double>("lonOrigin", lonOrigin, 0.0);
   nh_.param<double>("altOrigin", altOrigin, 0.0);
   enu_.Reset(latOrigin,lonOrigin,altOrigin);
-
+  enu_gnss_.Reset(latOrigin,lonOrigin,altOrigin);
+  
   nh_.param<double>("gnss_skip_distance", gnss_skip_distance, 0.5);
 
   nh_.param<int>("num_of_gpsPose_for_icp", num_of_gpsPose_for_icp, 10);
@@ -162,12 +163,14 @@ Localtoworld::Localtoworld() :
   }
   
 
-  worldPosePub = nh_.advertise<geometry_msgs::PoseStamped>("gps_pose_local", 1);
-  localFixPub = nh_.advertise<sensor_msgs::NavSatFix>("local_fix", 1);
-  localGpsPub = nh_.advertise<geometry_msgs::PoseStamped>("local_pose_in_global", 1);  
+  worldPosePub = nh_.advertise<geometry_msgs::PoseStamped>("/gps_pose_local", 1);
+  localFixPub = nh_.advertise<sensor_msgs::NavSatFix>("/local_fix", 1);
+  localGpsPub = nh_.advertise<geometry_msgs::PoseStamped>("/local_pose_in_global", 1);  
+  worldGnssPosePub = nh_.advertise<geometry_msgs::PoseStamped>("/gnss_pose_world", 1);  
 
-  worldGpsSub = nh_.subscribe("gps", 100, &Localtoworld::GpsCallback, this);
-  localPoseSub = nh_.subscribe("pose", 100, &Localtoworld::LocalCallback, this);  
+  worldGpsSub = nh_.subscribe("/gps", 100, &Localtoworld::GpsCallback, this);
+  localPoseSub = nh_.subscribe("/pose", 100, &Localtoworld::LocalCallback, this);  
+  fixgnssPoseSub = nh_.subscribe("/gnss_h_pose", 100, &Localtoworld::fixgnssPoseSubCallback, this);  
 
   
 }
@@ -175,6 +178,21 @@ Localtoworld::Localtoworld() :
 Localtoworld::~Localtoworld()
 {}
 
+void Localtoworld::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
+  double gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z;  
+  enu_gnss_.Forward(pose->pose.position.x, pose->pose.position.y, pose->pose.position.z, gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z);
+  geometry_msgs::PoseStamped global_gnss_pose;
+  global_gnss_pose = *pose;
+  global_gnss_pose.header.frame_id = "gnss";
+  global_gnss_pose.pose.position.x = gnss_pose_global_x;
+  global_gnss_pose.pose.position.y = gnss_pose_global_y;
+  global_gnss_pose.pose.position.z = gnss_pose_global_z;
+  global_gnss_pose.pose.orientation.x = pose->pose.orientation.x;
+  global_gnss_pose.pose.orientation.y = pose->pose.orientation.y;
+  global_gnss_pose.pose.orientation.z = pose->pose.orientation.z;
+  global_gnss_pose.pose.orientation.w = pose->pose.orientation.w;
+  worldGnssPosePub.publish(global_gnss_pose);    
+}
 
 void Localtoworld::GpsCallback(sensor_msgs::NavSatFixConstPtr fix)
 { 
@@ -288,7 +306,7 @@ void Localtoworld::compute_transform()
   bool icp_converged  = false;
   while (ros::ok())
   {    
-    ROS_INFO("gpsPoseQ_size = %d", gpsPoseQ_.size());      
+    // ROS_INFO("gpsPoseQ_size = %d", gpsPoseQ_.size());      
     
     if( gpsPoseQ_.size() > num_of_gpsPose_for_icp){
       pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in_global (new pcl::PointCloud<pcl::PointXYZ>(gpsPoseQ_.size()-1,1));

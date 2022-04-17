@@ -19,6 +19,9 @@ from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler
 import time
+from geographiclib.geodesic import Geodesic
+import math
+
 IP_ADDRS = '192.168.0.3'
 PORT = 4000 
 
@@ -98,6 +101,7 @@ class TcpCommunicator(threading.Thread):
                     self.altitude = float(item_list[9])  
                 elif item_list[0] == '$GNHDT':
                     self.heading = float(item_list[1])*math.pi/180
+                    
                     while self.heading > math.pi:
                         self.heading -= 2.0 * math.pi                        
                     while self.heading < -math.pi:
@@ -120,6 +124,7 @@ class TcpCommunicator(threading.Thread):
 if __name__ == '__main__':
     fix_pub = rospy.Publisher('fix', NavSatFix, queue_size=10)
     viz_fix_pub = rospy.Publisher('viz_fix', Path, queue_size=1)
+    heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
     rospy.init_node('tdr3000', anonymous=True)
     rate = rospy.Rate(20) # 100hz
     fix_msg = NavSatFix()
@@ -137,9 +142,9 @@ if __name__ == '__main__':
             fix_msg.longitude = longitude
             fix_msg.altitude = altitude
             if gnss_health == 0:
-                fix_msg.position_covariance = [10] * 9
+                fix_msg.position_covariance = [2] * 9
             elif gnss_health == 1:
-                fix_msg.position_covariance = [1] * 9
+                fix_msg.position_covariance = [0.2] * 9
             elif gnss_health == 2:
                 fix_msg.position_covariance = [0.5] * 9
             elif gnss_health == 3:
@@ -152,24 +157,23 @@ if __name__ == '__main__':
 
             fix_pub.publish(fix_msg)
             
+
             if heading == 0.0:
                 continue
 
             
-           
-            
 
-            # fix_viz_msg.header = fix_msg.header
-            # pose_tmp = PoseStamped()
-            # pose_tmp.header = fix_msg.header
-            # pose_tmp.pose.position.x = longitude
-            # pose_tmp.pose.position.y = latitude
-            # pose_tmp.pose.position.z = altitude
-            # quat = quaternion_from_euler (0.0, 0.0,heading)            
-            # pose_tmp.pose.orientation.x = quat[0]
-            # pose_tmp.pose.orientation.y = quat[1]
-            # pose_tmp.pose.orientation.z = quat[2]
-            # pose_tmp.pose.orientation.w = quat[3]
+            fix_viz_msg.header = fix_msg.header
+            pose_tmp = PoseStamped()
+            pose_tmp.header = fix_msg.header
+            pose_tmp.pose.position.x = latitude
+            pose_tmp.pose.position.y = longitude
+            pose_tmp.pose.position.z = altitude
+            quat = quaternion_from_euler (0.0, 0.0,heading)            
+            pose_tmp.pose.orientation.x = quat[0]
+            pose_tmp.pose.orientation.y = quat[1]
+            pose_tmp.pose.orientation.z = quat[2]
+            pose_tmp.pose.orientation.w = quat[3]
             # dist_tmp = math.sqrt((prev_x - pose_tmp.pose.position.x)**2+(prev_y - pose_tmp.pose.position.y)**2)
             # if init_update:                
             #     prev_x = pose_tmp.pose.position.x
@@ -181,6 +185,7 @@ if __name__ == '__main__':
             #     prev_y = pose_tmp.pose.position.y    
             #     fix_viz_msg.poses.append(pose_tmp)
             # viz_fix_pub.publish(fix_viz_msg)
+            heading_pose_pub.publish(pose_tmp)
 
             
          
