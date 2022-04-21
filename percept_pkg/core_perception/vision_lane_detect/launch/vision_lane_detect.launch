@@ -1,0 +1,7 @@
+<launch>
+    <arg name='image_raw_topic' default='/carla/ego_vehicle/camera/rgb/front/image_color' />
+
+    <node pkg='vision_lane_detect' type='vision_lane_detect' name='vision_lane_detect' output='screen'>
+        <param name='image_raw_topic' type="str" value='$(arg image_raw_topic)'/>
+    </node>
+</launch>

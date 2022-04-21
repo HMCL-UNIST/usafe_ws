@@ -1,0 +1,63 @@
+<launch>
+
+  <!-- 
+    # Ray ground filter #
+    filter points below ground
+    In:  /points_raw [sensor_msgs::PointCloud2]
+    Out: /points_no_ground (points above ground) [sensor_msgs::PointCloud2]
+    Out: /points_ground [sensor_msgs::PointCloud2]
+  -->
+  
+  <arg name="input_topics" default="[/carla/ego_vehicle/lidar/lidar1/point_cloud, 
+                                    /carla/ego_vehicle/lidar/lidar2/point_cloud,
+                                    /carla/ego_vehicle/lidar/lidar3/point_cloud ]" />
+  <arg name="concat_output_topic" default="points_concat" />
+  <arg name="clipped_output_topic" default="/points_clipped" />
+  <arg name="output_frame_id" default="velodyne" />
+
+  <include file='$(find points_preprocessor)/launch/points_concat_filter.launch'>
+    <arg name="input_topics" value="$(arg input_topics)" />
+    <arg name="output_topic" value="$(arg concat_output_topic)" />
+    <arg name="output_frame_id" value="$(arg output_frame_id)" />
+  </include>
+
+  <include file='$(find points_preprocessor)/launch/space_filter.launch'>
+    <arg name="subscribe_topic" value="$(arg concat_output_topic)" />
+    <arg name="output_topic" value="$(arg clipped_output_topic)" />
+    <arg name="ego_vehicle_removal" value="true" />
+    <arg name="ego_vehicle_front" value="2.5" />
+    <arg name="ego_vehicle_back" value="2.5" />
+    <arg name="ego_vehicle_left" value="1.6" />
+    <arg name="ego_vehicle_right" value="1.6" />
+  </include>
+
+  <include file='$(find points_preprocessor)/launch/ray_ground_filter.launch'>
+    <arg name='input_point_topic' value='$(arg clipped_output_topic)'/> 
+
+    <arg name='clipping_height' value='3.5'/> <!-- Remove points above this height value -->
+    <arg name='min_point_distance' value='0.50'/> <!-- Removes points closer than this distance from the sensor origin -->
+    <arg name='radial_divider_angle' value='0.1'/> Angle of each radial division on the XY plane
+    <arg name='concentric_divider_distance' value='0.0'/> <!-- Distance of each concentric division on the XY plane -->
+    <arg name='local_max_slope' value='5.0'/> <!-- Max slope of the ground between points -->
+    <arg name='general_max_slope' value='3.0'/> <!-- Max slope of the ground in the entire pointCloud, used when reclassification occurs -->
+    <arg name='min_height_threshold' value='0.05'/> <!-- Minimum height threshold between points -->
+    <arg name='reclass_distance_threshold' value='0.2'/> <!-- Distance between points at which re classification will occur -->
+
+    <arg name='no_ground_point_topic' value='/points_no_ground'/>
+    <arg name='ground_point_topic' value='/points_ground'/>
+
+  </include>
+
+  <include file='$(find points_preprocessor)/launch/compare_map_filter.launch'>
+    <arg name="input_point_topic" value="$(arg clipped_output_topic)" />
+    <arg name="input_map_topic" value="/points_map" />
+    <arg name="output_match_topic" value="/points_without_dyna" />
+    <arg name="output_unmatch_topic" value="/points_without_map" />
+    <arg name="distance_threshold" value="0.3" />
+    <arg name="min_clipping_height" value="-2.0" />
+    <arg name="max_clipping_height" value="0.5" />
+  </include>
+
+
+
+</launch>

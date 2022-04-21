@@ -1,0 +1,38 @@
+<!-- Launch file for Space Filter -->
+<launch>
+  <arg name="subscribe_topic" default="/points_raw" />
+  <arg name="output_topic" default="/points_clipped" />
+  <arg name="vertical_removal" default="false" />
+  <arg name="below_distance" default="-1.3" />
+  <arg name="above_distance" default="0.5" />
+  
+  <arg name="lateral_removal" default="false" />
+  <arg name="left_distance" default="5" />
+  <arg name="right_distance" default="5" />
+
+  <arg name="ego_vehicle_removal" default="true" />
+  <arg name="ego_vehicle_front" default="2.5" />
+  <arg name="ego_vehicle_back" default="2.5" />
+  <arg name="ego_vehicle_left" default="1.6" />
+  <arg name="ego_vehicle_right" default="1.6" />
+
+  <!-- rosrun lidar_tracker space_filter -->
+  <node pkg="points_preprocessor" type="space_filter" name="space_filter">
+    <param name="subscribe_topic" value="$(arg subscribe_topic)" />
+    <param name="output_topic" value="$(arg output_topic)" />
+    <param name="vertical_removal" value="$(arg vertical_removal)" />
+    <param name="below_distance" value="$(arg below_distance)" />
+    <param name="above_distance" value="$(arg above_distance)" />
+
+    <param name="lateral_removal" value="$(arg lateral_removal)" />
+    <param name="left_distance" value="$(arg left_distance)" />
+    <param name="right_distance" value="$(arg right_distance)" />
+
+    <param name="ego_vehicle_removal"  value="$(arg ego_vehicle_removal)" />
+    <param name="ego_vehicle_front" value="$(arg ego_vehicle_front)" />
+    <param name="ego_vehicle_back" value="$(arg ego_vehicle_back)" />
+    <param name="ego_vehicle_left" value="$(arg ego_vehicle_left)" />
+    <param name="ego_vehicle_right" value="$(arg ego_vehicle_right)" />
+  </node>
+
+</launch>
