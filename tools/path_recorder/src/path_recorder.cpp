@@ -44,9 +44,8 @@ PathRecorder::PathRecorder(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p
   
   pose_init = false; 
   gnss_init = false;
-  gpsSub_ = nh_.subscribe("/fix", 300, &PathRecorder::GpsCallback, this);
-  save_map_sub = nh_.subscribe("/save_map", 1, &PathRecorder::saveMapCallback, this);
-  pose_sub = nh_.subscribe("/current_pose",1,&PathRecorder::poseCallback,this);
+  
+  
 
   nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
   nh_p_.getParam("osm_file_name", osm_file_name);
@@ -55,15 +54,25 @@ PathRecorder::PathRecorder(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p
   nh_p_.param<double>("map_origin_att", origin_att, 0.0);
   nh_p_.param<double>("line_resolution", line_resolution, 20.0);
   nh_p_.param<double>("point_resolution", point_resolution, 1.0);
+  nh_p_.param<double>("road_length_half", road_length_half, 1.5);
+  
   nh_p_.param<bool>("path_record_with_gnss", path_record_with_gnss, true);
   
   
-   
+  if(path_record_with_gnss){
+    // gpsSub_ = nh_.subscribe("/fix", 300, &PathRecorder::GpsCallback, this);
+  }
+  else{
+    pose_sub = nh_.subscribe("/current_pose",1,&PathRecorder::poseCallback,this);   
+  }
+  
+  save_map_sub = nh_.subscribe("/save_map", 1, &PathRecorder::saveMapCallback, this);
+  
 
   // we are given an origin
   enu_.Reset(origin_lat,origin_lon,origin_att);
  
-  viz_timer = nh_.createTimer(ros::Duration(0.1), &PathRecorder::viz_pub,this);    
+  // viz_timer = nh_.createTimer(ros::Duration(0.1), &PathRecorder::viz_pub,this);    
 
 }
 
@@ -76,7 +85,7 @@ PathRecorder::~PathRecorder()
 void PathRecorder::saveMapCallback(std_msgs::BoolConstPtr data){
   if(data->data){
     if(path_record_with_gnss){
-      lanelet::LaneletMapUPtr map = lanelet::utils::createMap(lines_);
+      lanelet::LaneletMapUPtr map = lanelet::utils::createMap({lines_l, lines_r});
       ROS_INFO("map save init ...");
       lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));  
       std::string delimiter = ".osm";
@@ -86,7 +95,7 @@ void PathRecorder::saveMapCallback(std_msgs::BoolConstPtr data){
       write(osm_file_name_fixed, *map,projector);
       ROS_INFO("path based on gnss has been saved");
     }else{
-      lanelet::LaneletMapUPtr map = lanelet::utils::createMap(lines_pose_);
+      lanelet::LaneletMapUPtr map = lanelet::utils::createMap({lines_l, lines_r});
       ROS_INFO("map save init ...");
       lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));  
       std::string delimiter = ".osm";
@@ -99,98 +108,136 @@ void PathRecorder::saveMapCallback(std_msgs::BoolConstPtr data){
   }
 }
 
-void PathRecorder::GpsCallback(sensor_msgs::NavSatFixConstPtr fix){
+// void PathRecorder::GpsCallback(sensor_msgs::NavSatFixConstPtr fix){
   
-  double E, N, U;
-  enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
-  
-  if(!gnss_init){
-    lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
-    lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
-    l3s_ = l3s;
-    gnss_init = true;
-  }else{
-    double dist_tmp = std::sqrt(std::pow(E-pre_gnss_pos.position.x,2)+std::pow(N-pre_gnss_pos.position.y,2));
-    if(dist_tmp > point_resolution){
-      if(lanelet::geometry::length(l3s_) > line_resolution){
-      lines_.push_back(l3s_);
-      lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
-      lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
-      l3s_ = l3s;
-        }
+//   double E, N, U;
+//   enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+
+
+//   if(!gnss_init){
+//     lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
+//     lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
+//     l3s_ = l3s;
+//     gnss_init = true;
+//   }else{
+//     double dist_tmp = std::sqrt(std::pow(E-pre_gnss_pos.position.x,2)+std::pow(N-pre_gnss_pos.position.y,2));
+//     if(dist_tmp > point_resolution){
+//       if(lanelet::geometry::length(l3s_) > line_resolution){
+//       lines_.push_back(l3s_);
+//       lanelet::Point3d p3d_(lanelet::utils::getId(), E, N, U); 
+//       lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
+//       l3s_ = l3s;
+//         }
     
-      l3s_.push_back(lanelet::Point3d(lanelet::utils::getId(), E,N,U));
+//       l3s_.push_back(lanelet::Point3d(lanelet::utils::getId(), E,N,U));
 
-        pre_gnss_pos.position.x = E;
-        pre_gnss_pos.position.y = N;
-        pre_gnss_pos.position.z = U;
-    }
+//         pre_gnss_pos.position.x = E;
+//         pre_gnss_pos.position.y = N;
+//         pre_gnss_pos.position.z = U;
+//     }
     
-  }
+//   }
 
 
 
-}
+// }
 
 
-void PathRecorder::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){  
+void PathRecorder::poseCallback(const nav_msgs::OdometryConstPtr& msg){  
    
-  double pose_x = msg->pose.position.x;
-  double pose_y = msg->pose.position.y;
-  double pose_z = msg->pose.position.z;
-
+// create boundaries as well 
+  double pose_x = msg->pose.pose.position.x;
+  double pose_y = msg->pose.pose.position.y;
+  double pose_z = msg->pose.pose.position.z;
   
-  if(!pose_init){
-    lanelet::Point3d p3d_(lanelet::utils::getId(), pose_x, pose_y, pose_z); 
-    
-    lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
-    l3s_pose_ = l3s;
-    pose_init = true;
-  }else{
-    if(lanelet::geometry::length(l3s_pose_) > line_resolution){
-      lines_pose_.push_back(l3s_pose_);
-      lanelet::Point3d p3d_(lanelet::utils::getId(), pose_x, pose_y, pose_z); 
-      lanelet::LineString3d l3s(lanelet::utils::getId(), {p3d_});
-      l3s_pose_ = l3s;
-    }else{
+  // tf2::Quaternion q(msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
+  // q=q.normalize();
+  // double roll_,pitch_,yaw_; 
+  // q.getRPY(roll_,pitch_,yaw_);
 
-      l3s_pose_.push_back(lanelet::Point3d(lanelet::utils::getId(), pose_x, pose_y, pose_z));
+
+    tf::Quaternion q(msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
+    tf::Matrix3x3 m(q);
+    double roll_, pitch_, yaw_;
+    m.getRPY(roll_, pitch_, yaw_);
+
+
+    
+  double  delt_x_r = -road_length_half * sin(yaw_-PI/2);
+  double  delt_y_r = road_length_half * cos(yaw_-PI/2);
+  double  delt_x_l = -road_length_half * sin(yaw_+PI/2);
+  double  delt_y_l = road_length_half * cos(yaw_+PI/2);
+  
+  double pose_x_l = pose_x + delt_x_l;
+  double pose_x_r = pose_x + delt_x_r;
+
+  double pose_y_l = pose_y + delt_y_l;
+  double pose_y_r = pose_y + delt_y_r;
+
+  if(!pose_init){
+    lanelet::Point3d p3d_l(lanelet::utils::getId(), pose_x_l, pose_y_l, pose_z); 
+    lanelet::Point3d p3d_r(lanelet::utils::getId(), pose_x_r, pose_y_r, pose_z); 
+    lanelet::LineString3d l3s_l(lanelet::utils::getId(), {p3d_l});
+    lanelet::LineString3d l3s_r(lanelet::utils::getId(), {p3d_r});
+    l3s_l_ = l3s_l;
+    l3s_r_ = l3s_r;
+   pose_init = true;
+  }else{
+    double dist_tmp = std::sqrt(std::pow(pose_x-pre_local_pos.position.x,2)+std::pow(pose_y-pre_local_pos.position.y,2));
+    if(dist_tmp > point_resolution){
+      if(lanelet::geometry::length(l3s_l_) > line_resolution){
+      lines_l.push_back(l3s_l_);
+      lines_l.push_back(l3s_r_);
+      lanelet::Point3d p3d_l(lanelet::utils::getId(), pose_x_l, pose_y_l, pose_z); 
+    lanelet::Point3d p3d_r(lanelet::utils::getId(), pose_x_r, pose_y_r, pose_z); 
+    lanelet::LineString3d l3s_l(lanelet::utils::getId(), {p3d_l});
+    lanelet::LineString3d l3s_r(lanelet::utils::getId(), {p3d_r});
+    l3s_l_ = l3s_l;
+    l3s_r_ = l3s_r;
+        }
+    
+      l3s_l_.push_back(lanelet::Point3d(lanelet::utils::getId(),  pose_x_l, pose_y_l, pose_z));
+      l3s_r_.push_back(lanelet::Point3d(lanelet::utils::getId(), pose_x_r, pose_y_r, pose_z));
+
+      pre_local_pos.position.x = pose_x;
+      pre_local_pos.position.y = pose_y;
+      pre_local_pos.position.z = pose_z;
     }
     
   }
-  pre_local_pos.position.x = msg->pose.position.x;
-  pre_local_pos.position.y = msg->pose.position.y;
-  pre_local_pos.position.z = msg->pose.position.z;
+
+
+  
 
 }
 
 
-void PathRecorder::viz_pub(const ros::TimerEvent& time){
-  if(lines_.size() < 1 && lines_pose_.size() < 1){
-    return; 
-  }
+// void PathRecorder::viz_pub(const ros::TimerEvent& time){
+//   if(lines_.size() < 1 && lines_pose_.size() < 1){
+//     return; 
+//   }
 
-  double lss = 0.2;  // line string size  
-  visualization_msgs::MarkerArray path_marker_array;
-  std_msgs::ColorRGBA path_color;
-  setColor(&path_color, 0.0, 1.0, 1.0, 0.5);
-  if(path_record_with_gnss){
-        for (int i=0; i < lines_.size(); i++)
-        {
-          visualization_msgs::Marker line_strip;
-          lineString2Marker(lines_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
-          path_marker_array.markers.push_back(line_strip);
-        }
-  }else{  
-    for (int i=0; i < lines_pose_.size(); i++)
-        {
-          visualization_msgs::Marker line_strip;
-          lineString2Marker(lines_pose_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
-          path_marker_array.markers.push_back(line_strip);
-        }
-      }
-    path_viz_pub.publish(path_marker_array);
-}
+//   double lss = 0.2;  // line string size  
+//   visualization_msgs::MarkerArray path_marker_array;
+//   std_msgs::ColorRGBA path_color;
+//   setColor(&path_color, 0.0, 1.0, 1.0, 0.5);
+//   if(path_record_with_gnss){
+//         for (int i=0; i < lines_.size(); i++)
+//         {
+//           visualization_msgs::Marker line_strip;
+//           lineString2Marker(lines_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
+//           path_marker_array.markers.push_back(line_strip);
+//         }
+//   }else{  
+//     for (int i=0; i < lines_pose_.size(); i++)
+//         {
+//           visualization_msgs::Marker line_strip;
+//           lineString2Marker(lines_pose_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
+//           path_marker_array.markers.push_back(line_strip);
+//         }
+//       }
+//     path_viz_pub.publish(path_marker_array);
+// }
 
 int main (int argc, char** argv)
 {

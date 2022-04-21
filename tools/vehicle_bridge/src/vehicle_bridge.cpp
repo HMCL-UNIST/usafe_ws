@@ -45,12 +45,12 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   InitCanmsg();
 
   AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
-  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 200);
+  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 100);
   statusPub = nh_can.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 100);    
   sccPub    = nh_can.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 100);    
   steerPub  = nh_can.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 100);    
   wheelPub  = nh_can.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 100);    
-  debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
+  // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
   SteeringCmdSub = nh_steer_.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
   // AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
   ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 1, &VehicleBridge::ShiftCmdCallback, this);
@@ -63,8 +63,8 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
  
   
-  // f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
-	// srv.setCallback(f);
+  f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
+	srv.setCallback(f);
 }
 
 VehicleBridge::~VehicleBridge()
@@ -156,7 +156,7 @@ void VehicleBridge::InitCanmsg(){
   steering_frame.id = 0x300;
   steering_frame.dlc = 3;
   steering_frame.is_error = false;
-  steering_frame.is_extended = true;
+  steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
   short steer_value = (short)(0.0) ; // input  in radian, convert into degree
   steering_frame.data[0] = (steer_value & 0b11111111);
@@ -167,7 +167,7 @@ void VehicleBridge::InitCanmsg(){
   scc_frame.id = 0x303;
   scc_frame.dlc = 4;
   scc_frame.is_error = false;
-  scc_frame.is_extended = true;
+  scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
   short accel_value = (short)(0.0*100);
   scc_frame.data[0] = (unsigned int)0 & 0b11111111;
@@ -179,7 +179,7 @@ void VehicleBridge::InitCanmsg(){
   gear_frame.id = 0x304;
   gear_frame.dlc = 1;
   gear_frame.is_error = false;
-  gear_frame.is_extended = true;
+  gear_frame.is_extended = false;
   gear_frame.is_rtr = false;
   gear_frame.data[0] = (unsigned int)0 & 0b11111111;  
 
@@ -187,7 +187,7 @@ void VehicleBridge::InitCanmsg(){
   light_frame.id = 0x306;
   light_frame.dlc = 3;
   light_frame.is_error = false;
-  light_frame.is_extended = true;
+  light_frame.is_extended = false;
   light_frame.is_rtr = false;
   light_frame.data[0] = (unsigned int)0 & 0b11111111;  
   light_frame.data[1] = (unsigned int)0 & 0b11111111;  
@@ -229,7 +229,7 @@ void VehicleBridge::AcanSender()
   ros::Rate loop_rate(50); // rate of cmd   
   while (ros::ok())
   {  
-    // if(can_recv_status){
+    if(can_recv_status){
       // publish vehicle info 
       steerPub.publish(steering_info_);
       statusPub.publish(vehicle_status_); 
@@ -245,11 +245,10 @@ void VehicleBridge::AcanSender()
       
       // debug_pub.publish(debug_msg);
       AcanPub.publish(steering_frame);
-      
-      // AcanPub.publish(scc_frame);
-      // AcanPub.publish(gear_frame);
-      // AcanPub.publish(light_frame);      
-    // }
+      AcanPub.publish(scc_frame);
+      AcanPub.publish(gear_frame);
+      AcanPub.publish(light_frame);      
+    }
     loop_rate.sleep();
   }
 }
@@ -262,7 +261,7 @@ void VehicleBridge::controlEffortCallback(const std_msgs::Float64& control_effor
   scc_frame.id = 0x303;
   scc_frame.dlc = 4;
   scc_frame.is_error = false;
-  scc_frame.is_extended = true;
+  scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
   short accel_value = (short)(control_effort*100);
   scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
@@ -325,16 +324,16 @@ void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
 
 void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t level)
 {
-  // ROS_INFO("Reconfigure Request: \n AD_STR_MODE_CMD: %s,\n AD_STR_POS_CMD: %d,\n AD_SCC_ACCEL_CMD: %d,\n AD_SCC_TAKEOVER_CMD: %s,\n AD_LEFT_TURNLAMP_STAT: %s,\n AD_RIGHT_TURNLAMP_STAT: %s,\n AD_HAZARD_STAT: %s,\n AD_GEAR_POS_CMD: %d,\n AD_SCC_MODE_CMD: %d,\n",
-  // config.AD_STR_MODE_CMD?"True":"False", 
-  // config.AD_STR_POS_CMD,
-  // config.AD_SCC_ACCEL_CMD, 
-  // config.AD_SCC_TAKEOVER_CMD?"True":"False",
-  //c config.AD_LEFT_TURNLAMP_STAT?"True":"False",
-  // config.AD_RIGHT_TURNLAMP_STAT?"True":"False",
-  // config.AD_HAZARD_STAT?"True":"False",
-  // config.AD_GEAR_POS_CMD,
-  // config.AD_SCC_MODE_CMD);
+  ROS_INFO("Reconfigure Request: \n AD_STR_MODE_CMD: %s,\n AD_STR_POS_CMD: %d,\n AD_SCC_ACCEL_CMD: %d,\n AD_SCC_TAKEOVER_CMD: %s,\n AD_LEFT_TURNLAMP_STAT: %s,\n AD_RIGHT_TURNLAMP_STAT: %s,\n AD_HAZARD_STAT: %s,\n AD_GEAR_POS_CMD: %d,\n AD_SCC_MODE_CMD: %d,\n",
+  config.AD_STR_MODE_CMD?"True":"False", 
+  config.AD_STR_POS_CMD,
+  config.AD_SCC_ACCEL_CMD, 
+  config.AD_SCC_TAKEOVER_CMD?"True":"False",
+  config.AD_LEFT_TURNLAMP_STAT?"True":"False",
+  config.AD_RIGHT_TURNLAMP_STAT?"True":"False",
+  config.AD_HAZARD_STAT?"True":"False",
+  config.AD_GEAR_POS_CMD,
+  config.AD_SCC_MODE_CMD);
   Master_Switch         = config.Master_Switch;
   
   AD_STR_MODE_CMD       = config.AD_STR_MODE_CMD;

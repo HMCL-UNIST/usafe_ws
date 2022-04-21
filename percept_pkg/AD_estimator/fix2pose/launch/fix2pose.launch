@@ -10,12 +10,11 @@
       <remap from="/gps" to="/fix"/>
       <remap from="/pose" to="/current_pose"/>
 
+      <param name="latOrigin" value="35.57083743"/> 
+      <param name="lonOrigin" value="129.188112768"/>  
+      <param name="altOrigin" value="55.494"/> 
 
-      <param name="latOrigin" value="35.575307085"/> 
-      <param name="lonOrigin" value="129.190738787"/>  
-      <param name="altOrigin" value="36.918"/> 
-      
-  
+
     
   </node>
 </launch>

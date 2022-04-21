@@ -41,13 +41,14 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <GeographicLib/LocalCartesian.hpp>
 #include <eigen3/Eigen/Geometry>
 #include <mutex> 
 #include <thread>
 #include <boost/thread/thread.hpp>
-
+#include <math.h>
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
@@ -88,10 +89,12 @@ GeographicLib::LocalCartesian enu_;   /// Object to put lat/lon coordinates into
 bool gnss_init, pose_init;
 bool path_record_with_gnss;
 
+double road_length_half;
 double line_resolution, point_resolution;
 
 lanelet::LineString3d l3s_, l3s_pose_;
-lanelet::LineStrings3d lines_, lines_pose_;
+lanelet::LineString3d l3s_l_, l3s_r_;
+lanelet::LineStrings3d lines_l, lines_r, lines_pose_;
 
 double origin_lat;
 double origin_lon;
@@ -107,7 +110,7 @@ PathRecorder(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p);
 void GpsCallback(sensor_msgs::NavSatFixConstPtr fix);
 void saveMapCallback(std_msgs::BoolConstPtr data); 
 void viz_pub(const ros::TimerEvent& time);
-void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+void poseCallback(const nav_msgs::OdometryConstPtr& msg);
 
 
 };
