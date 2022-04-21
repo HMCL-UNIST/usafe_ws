@@ -269,7 +269,10 @@ namespace localization_core
   {}
   
   void StateEstimator::localPoseCallback(geometry_msgs::PoseStampedConstPtr pose){
-    if (!localPoseOptQ_.pushNonBlocking(pose) && usingLocalPose_)
+    if(!usingLocalPose_){
+      return; 
+    }
+    if (!localPoseOptQ_.pushNonBlocking(pose))
       ROS_WARN("Dropping a LocalPose measurement due to full queue!!");
   }
 
@@ -304,7 +307,7 @@ namespace localization_core
 
   void StateEstimator::GpsHelper()
   {
-    ros::Rate loop_rate(10); // rate of GPS 
+    ros::Rate loop_rate(20); // rate of GPS 
     bool gotFirstFix = false;
     double startTime;
     int odomKey = 1;
@@ -530,9 +533,7 @@ namespace localization_core
             else
               expectedState_ = isam_->calculateEstimate<Pose3>(X(key_));            
             double dist_ = std::sqrt( std::pow(expectedState_.x() - local_pose_->pose.position.x, 2) + std::pow(expectedState_.y() - local_pose_->pose.position.y, 2) );
-            ROS_WARN("local error dist = %f", dist_);
-            ROS_WARN("key_ = %d", key_);
-            ROS_WARN("imuKey = %d", imuKey);
+            
             if (dist_ < maxLocalPoseError_ || key_ < imuKey-2)
             {
               SharedDiagonal LocalPoseNoise = noiseModel::Diagonal::Sigmas(
@@ -568,6 +569,7 @@ namespace localization_core
 
 
         // if we processed imu - then we can optimize the state
+        
         if (optimize)
         {
           try

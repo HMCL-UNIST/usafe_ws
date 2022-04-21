@@ -12,7 +12,8 @@ import threading
 import socket
 import math 
 import rospy
-from std_msgs.msg import String, Header
+from std_msgs.msg import String, Header, Float64 
+
 from sensor_msgs.msg import NavSatFix 
 import numpy as np
 from nav_msgs.msg import Path
@@ -22,7 +23,7 @@ import time
 from geographiclib.geodesic import Geodesic
 import math
 
-IP_ADDRS = '192.168.0.3'
+IP_ADDRS = '192.168.10.118'
 PORT = 4000 
 
 class TcpCommunicator(threading.Thread):
@@ -97,12 +98,15 @@ class TcpCommunicator(threading.Thread):
                     self.latitude = int(self.latitude/100) + (self.latitude/100 - int(self.latitude/100))/0.6
                     self.longitude = int(self.longitude/100) + (self.longitude/100 - int(self.longitude/100))/0.6
                     self.gnss_health = int(item_list[6])   # 0 - fix not available, 1 - GPS fix, 2 - Differential GPS fix, 
+                    
                     self.num_gnss = int(item_list[7])
+                    
                     self.altitude = float(item_list[9])  
                 elif item_list[0] == '$GNHDT':
                     if not item_list[1] == 0 or item_list[1] == '':
                         self.heading = (90.0-float(item_list[1]))*math.pi/180                        
-                        
+                    
+
                     else: 
                         self.heading = 0.0 
                     while self.heading > math.pi:
@@ -129,6 +133,7 @@ if __name__ == '__main__':
     fix_pub = rospy.Publisher('fix', NavSatFix, queue_size=10)
     viz_fix_pub = rospy.Publisher('viz_fix', Path, queue_size=1)
     heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
+    heading_raw_pub = rospy.Publisher('heading_ned', Float64, queue_size=1)
     rospy.init_node('tdr3000', anonymous=True)
     rate = rospy.Rate(20) # 20hz
     fix_msg = NavSatFix()
@@ -166,7 +171,11 @@ if __name__ == '__main__':
             if heading == 0.0 or activity_status !='A':
                 continue
 
+            heading_raw_msg = Float64()
+            heading_raw_msg.data = heading*180/3.14195
+            heading_raw_pub.publish(heading_raw_msg)
             
+
 
             fix_viz_msg.header = fix_msg.header
             pose_tmp = PoseStamped()

@@ -7,7 +7,7 @@
       <!-- subscribe topics  -->
       <remap from="state_estimator/gps" to="/fix"/>
       <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/>
-      <remap from="state_estimator/local_pose" to="/gnss_pose_worlds"/>      
+      <remap from="state_estimator/local_pose" to="/gnss_pose_world"/>      
       <remap from="state_estimator/wheel_odom" to="/wheel_odom"/>
 
       <!-- publish topics-->
@@ -69,7 +69,7 @@
       <!-- flag for whether to use the wheel odometry messages -->
       <param name="UseOdom" value="false"/>
 
-      <param name="UseLocalPose" value="false"/>
+      <param name="UseLocalPose" value="true"/>
 
       <!-- if a GPS measurement is more than this threshold from the expected reading given
            the previous estimate, it will be disgarded (in meters) -->

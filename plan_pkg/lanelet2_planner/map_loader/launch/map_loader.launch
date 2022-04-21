@@ -9,7 +9,7 @@
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
       <param name="osm_file_name" value="$(find map_loader)/maps/unist_path_0416.osm"/> 
-      <!-- <param name="osm_file_name" value="$(find map_loader)/maps/map_save.osm"/>  -->
+      <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_path_0416.osm"/>  -->
       
       <!-- <param name="map_origin_lat" value="0.002330359333808985"/> 
       <param name="map_origin_lon" value="4.5103238454623815"/>   -->
