@@ -51,6 +51,7 @@ class TcpCommunicator(threading.Thread):
         self.UTC_date = 0
         self.magnetic_variation = None
         self.magnetic_variation_EW_indicator = None
+        self.valid_heading = False
         
     def run(self):
         self._readData(self.client_soc)
@@ -63,7 +64,7 @@ class TcpCommunicator(threading.Thread):
                 line = str(data)
                 #line = line[2:] # discard b' at start and ' at end
                 item_list = line.split(',')
-                
+                # print(item_list)
                 if item_list[0] == '$GNRMC': # for GNSS   or   '$INRMC' for INS
                     self.UTC_time = float(item_list[1]) # hhmmss.sss
                     self.activity_status = item_list[2] # A : Active , V : Void
@@ -98,17 +99,18 @@ class TcpCommunicator(threading.Thread):
                     self.latitude = int(self.latitude/100) + (self.latitude/100 - int(self.latitude/100))/0.6
                     self.longitude = int(self.longitude/100) + (self.longitude/100 - int(self.longitude/100))/0.6
                     self.gnss_health = int(item_list[6])   # 0 - fix not available, 1 - GPS fix, 2 - Differential GPS fix, 
-                    
+                    # print("gnss health = " + str(self.gnss_health))
                     self.num_gnss = int(item_list[7])
-                    
+                    # print("number of gnss = " + str(self.num_gnss))
                     self.altitude = float(item_list[9])  
                 elif item_list[0] == '$GNHDT':
-                    if not item_list[1] == 0 or item_list[1] == '':
+                    if not float(item_list[1]) == 180.0 or item_list[1] == '':
                         self.heading = (90.0-float(item_list[1]))*math.pi/180                        
-                    
-
+                        # print("NED heading = " + str(float(item_list[1])))
+                        # print("ENU heading = " + str(self.heading*180/math.pi))
+                        self.valid_heading = True
                     else: 
-                        self.heading = 0.0 
+                        self.valid_heading = False
                     while self.heading > math.pi:
                         self.heading -= 2.0 * math.pi                        
                     while self.heading < -math.pi:
@@ -121,7 +123,7 @@ class TcpCommunicator(threading.Thread):
                 
     # ================================================== #
     def getGNSSData(self):
-        return self.activity_status, self.gnss_health, self.latitude, self.longitude, self.altitude, self.heading
+        return self.activity_status, self.gnss_health, self.latitude, self.longitude, self.altitude, self.heading, self.valid_heading
     def getEntireGNRMCData(self):
         return self.UTC_time, self.activity_status, self.latitude, self.latitude_NS_indicator, self.longitude, self.longitude_EW_indicator, \
         self.speed_knot, self.compass_degree, self.UTC_date, self.magnetic_variation, self.magnetic_variation_EW_indicator
@@ -143,7 +145,7 @@ if __name__ == '__main__':
         MyTcpCommunicator = TcpCommunicator()
         MyTcpCommunicator.start()          
         while not rospy.is_shutdown():
-            activity_status, gnss_health, latitude, longitude, altitude, heading = MyTcpCommunicator.getGNSSData()                        
+            activity_status, gnss_health, latitude, longitude, altitude, heading , valid_heading= MyTcpCommunicator.getGNSSData()                        
             fix_msg.header = Header()
             fix_msg.header.stamp = rospy.Time.now()
             fix_msg.header.frame_id = "gnss_link"            
@@ -168,39 +170,38 @@ if __name__ == '__main__':
             fix_pub.publish(fix_msg)
             
 
-            if heading == 0.0 or activity_status !='A':
-                continue
+            # if heading == 0.0 or activity_status !='A':
+            if valid_heading:
+                
+               
+                heading_raw_msg = Float64()
+                heading_raw_msg.data = heading*180/3.14195
+                heading_raw_pub.publish(heading_raw_msg)
 
-            heading_raw_msg = Float64()
-            heading_raw_msg.data = heading*180/3.14195
-            heading_raw_pub.publish(heading_raw_msg)
-            
-
-
-            fix_viz_msg.header = fix_msg.header
-            pose_tmp = PoseStamped()
-            pose_tmp.header = fix_msg.header
-            pose_tmp.pose.position.x = latitude
-            pose_tmp.pose.position.y = longitude
-            pose_tmp.pose.position.z = altitude
-            quat = quaternion_from_euler (0.0, 0.0,heading)    
-            quat = unit_vector(quat)
-            pose_tmp.pose.orientation.x = quat[0]
-            pose_tmp.pose.orientation.y = quat[1]
-            pose_tmp.pose.orientation.z = quat[2]
-            pose_tmp.pose.orientation.w = quat[3]
-            # dist_tmp = math.sqrt((prev_x - pose_tmp.pose.position.x)**2+(prev_y - pose_tmp.pose.position.y)**2)
-            # if init_update:                
-            #     prev_x = pose_tmp.pose.position.x
-            #     prev_y = pose_tmp.pose.position.y    
-            #     fix_viz_msg.poses.append(pose_tmp)
-            #     init_update = False
-            # if(dist_tmp > 0.2):
-            #     prev_x = pose_tmp.pose.position.x
-            #     prev_y = pose_tmp.pose.position.y    
-            #     fix_viz_msg.poses.append(pose_tmp)
-            # viz_fix_pub.publish(fix_viz_msg)
-            heading_pose_pub.publish(pose_tmp)
+                fix_viz_msg.header = fix_msg.header
+                pose_tmp = PoseStamped()
+                pose_tmp.header = fix_msg.header
+                pose_tmp.pose.position.x = latitude
+                pose_tmp.pose.position.y = longitude
+                pose_tmp.pose.position.z = altitude
+                quat = quaternion_from_euler (0.0, 0.0,heading)    
+                quat = unit_vector(quat)
+                pose_tmp.pose.orientation.x = quat[0]
+                pose_tmp.pose.orientation.y = quat[1]
+                pose_tmp.pose.orientation.z = quat[2]
+                pose_tmp.pose.orientation.w = quat[3]
+                # dist_tmp = math.sqrt((prev_x - pose_tmp.pose.position.x)**2+(prev_y - pose_tmp.pose.position.y)**2)
+                # if init_update:                
+                #     prev_x = pose_tmp.pose.position.x
+                #     prev_y = pose_tmp.pose.position.y    
+                #     fix_viz_msg.poses.append(pose_tmp)
+                #     init_update = False
+                # if(dist_tmp > 0.2):
+                #     prev_x = pose_tmp.pose.position.x
+                #     prev_y = pose_tmp.pose.position.y    
+                #     fix_viz_msg.poses.append(pose_tmp)
+                # viz_fix_pub.publish(fix_viz_msg)
+                heading_pose_pub.publish(pose_tmp)
 
             
          

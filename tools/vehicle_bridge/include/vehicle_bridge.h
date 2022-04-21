@@ -45,6 +45,7 @@
 #include <hmcl_msgs/VehicleWheelSpeed.h>
 #include <dynamic_reconfigure/server.h>
 #include <vehicle_bridge/testConfig.h>
+#include <std_msgs/UInt8MultiArray.h>
 #define PI 3.14159265358979323846264338
 
 
@@ -55,7 +56,7 @@ ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub;
-ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub;
+ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
 dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
@@ -86,7 +87,7 @@ void AcanWatchdog();
 
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
 void dyn_callback(vehicle_bridge::testConfig& config, uint32_t level);
-
+void InitCanmsg();
 // Vehicle commands Callbacks
 void SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg);
 void AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg);
