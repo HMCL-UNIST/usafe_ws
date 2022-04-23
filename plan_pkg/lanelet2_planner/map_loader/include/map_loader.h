@@ -23,6 +23,10 @@
 #include <boost/filesystem.hpp>
 #include <boost/thread/thread.hpp>
 
+
+
+
+
 #include <ros/ros.h>
 #include <ros/time.h>
 #include <ros/package.h>
@@ -55,12 +59,13 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <vector>
-
+#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
 #include <lanelet2_projection/UTM.h>
+
 #include <lanelet2_routing/Route.h>
 #include <lanelet2_routing/RoutingCost.h>
 #include <lanelet2_routing/RoutingGraph.h>
@@ -69,7 +74,12 @@
 #include <map_loader_utils.h>
 #include <amathutils.hpp>
 #include <route_planner.h>
+#include <autoware_lanelet2_msgs/MapBin.h>
 
+#include <lanelet2_extension/utility/message_conversion.h>
+// #include <lanelet2_extension/utility/query.h>
+// #include <lanelet2_extension/visualization/visualization.h>
+// #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
 
 #define PI 3.14159265358979323846264338
 
@@ -78,7 +88,7 @@ class MapLoader
   
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
-ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
+ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, map_bin_pub;
 
 ros::Publisher way_pub;
 
@@ -93,7 +103,7 @@ bool visualize_path, continuious_global_replan;
 RoutePlanner rp_;
 lanelet::LaneletMapPtr map;
 lanelet::routing::RoutingGraphUPtr routingGraph;
-
+bool map_loaded;
 float local_path_length;
 double origin_lat;
 double origin_lon;
@@ -101,6 +111,8 @@ double origin_att;
 bool global_traj_available;
 bool goal_available;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local;
+
+
 
 std::string osm_file_name;
 double map_road_resolution;
@@ -137,6 +149,8 @@ void fix_and_save_osm();
 
 void compute_global_path();
 void compute_local_path();
+
+void lanelet_ros_convert_loop();
 
 void viz_local_path(hmcl_msgs::Lane &lane_);
 

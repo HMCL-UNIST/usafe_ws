@@ -35,9 +35,11 @@ find_package(catkin REQUIRED COMPONENTS
   lanelet2_routing
   lanelet2_traffic_rules
   lanelet2_validation
+  autoware_lanelet2_msgs
+  lanelet2_extension
 )
 
-catkin_package(
+catkin_package( 
   CATKIN_DEPENDS 
   nav_msgs 
   roscpp 
@@ -53,12 +55,13 @@ catkin_package(
   lanelet2_routing
   lanelet2_traffic_rules
   lanelet2_validation
+  lanelet2_extension
   LIBRARIES
 )
 
 include_directories(
   include
-  maps
+  maps  
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )

@@ -40,10 +40,11 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 {
   // using namespace lanelet;
   way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 1, true);
-  local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 1, true);
+  local_traj_pub = nh_local_path_.advertise<hmcl_msgs::Lane>("/local_traj", 1, true);
   g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 1, true);  
+  map_bin_pub = nh_.advertise<autoware_lanelet2_msgs::MapBin>("/lanelet_map_bin", 1, true);
   
-  
+  map_loaded = false;
   pose_init = false; 
   goal_available = false;
   pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
@@ -89,11 +90,30 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
   
-  
+  boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
 }
 
 MapLoader::~MapLoader()
 {}
+
+void MapLoader::lanelet_ros_convert_loop(){
+ros::Rate loop_rate(0.1); // rate  
+  while (ros::ok())
+  { if(map_loaded){
+      autoware_lanelet2_msgs::MapBin map_bin_msg;
+      map_bin_msg.header.stamp = ros::Time::now();
+      map_bin_msg.header.frame_id = "map";
+      map_bin_msg.format_version = "v1";
+      map_bin_msg.map_version = "v1";
+      lanelet::utils::conversion::toBinMsg(map, &map_bin_msg);
+      
+      map_bin_pub.publish(map_bin_msg);
+    }
+  loop_rate.sleep();
+  }
+
+}
+
 
 void MapLoader::global_traj_handler(const ros::TimerEvent& time){
   if(goal_available){
@@ -410,10 +430,11 @@ void MapLoader::viz_pub(const ros::TimerEvent& time){
 }
 
 void MapLoader::load_map(){
+  map_loaded  = true;
   ROS_INFO("map loading");
-  lanelet::ErrorMessages errors;
-  lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));
-  map = load(osm_file_name, projector,&errors);
+  lanelet::ErrorMessages errors;  
+  lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
+  map = load(osm_file_name, "osm_handler",projector,&errors);
   assert(errors.empty()); 
   ROS_INFO("map loaded succesfully");
 }

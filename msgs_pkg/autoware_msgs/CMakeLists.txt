@@ -17,6 +17,8 @@ add_message_files(
     Waypoint.msg
     WaypointState.msg   
     Gear.msg 
+    DetectedObjectArray.msg
+    DetectedObject.msg
 )
 
 # add_service_files(
