@@ -7,6 +7,7 @@
         
       <!-- <remap from="/fix" to="/carla/ego_vehicle/gnss/gnss1/fix"/> -->
       <remap from="/current_pose" to="/gnss_pose_world"/>
+      <remap from="/current_pose" to="/pose_estimate"/>
       
        <!-- options :  true = gnss , false = local_pose,   -->
       <param name="path_record_with_gnss" value="false"/> 
@@ -20,9 +21,9 @@
       
       
 
-      <param name="osm_file_name" value="$(find path_recorder)/maps/unist_0420_test.osm"/> 
+      <param name="osm_file_name" value="$(find path_recorder)/maps/lgsvl_0423_test.osm"/> 
       <param name="visualize_path" value="True"/> 
-      <param name="line_resolution" value="50.0"/> 
+      <param name="line_resolution" value="10.0"/> 
       <param name="point_resolution" value="1.0"/> 
 
       

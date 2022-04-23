@@ -35,8 +35,8 @@
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
 
-PathRecorder::PathRecorder(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :  
-  nh_(nh), nh_p_(nh_p) 
+PathRecorder::PathRecorder(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_save) :  
+  nh_(nh), nh_p_(nh_p), nh_save_(nh_save) 
 {
   // using namespace lanelet;
   
@@ -59,21 +59,21 @@ PathRecorder::PathRecorder(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p
   nh_p_.param<bool>("path_record_with_gnss", path_record_with_gnss, true);
   
   
-  if(path_record_with_gnss){
-    // gpsSub_ = nh_.subscribe("/fix", 300, &PathRecorder::GpsCallback, this);
-  }
-  else{
+  // if(path_record_with_gnss){
+  //   gpsSub_ = nh_.subscribe("/fix", 300, &PathRecorder::GpsCallback, this);
+  // }
+  // else{
     pose_sub = nh_.subscribe("/current_pose",1,&PathRecorder::poseCallback,this);   
-  }
+  // }
   
-  save_map_sub = nh_.subscribe("/save_map", 1, &PathRecorder::saveMapCallback, this);
+  save_map_sub = nh_save_.subscribe("/save_map", 1, &PathRecorder::saveMapCallback, this);
   
 
   // we are given an origin
   enu_.Reset(origin_lat,origin_lon,origin_att);
  
-  // viz_timer = nh_.createTimer(ros::Duration(0.1), &PathRecorder::viz_pub,this);    
-
+  // viz_timer = nh_save_.createTimer(ros::Duration(0.1), &PathRecorder::viz_pub,this);    
+  boost::thread viz_thread(&PathRecorder::viz_pub,this); 
 }
 
 PathRecorder::~PathRecorder()
@@ -85,7 +85,7 @@ PathRecorder::~PathRecorder()
 void PathRecorder::saveMapCallback(std_msgs::BoolConstPtr data){
   if(data->data){
     if(path_record_with_gnss){
-      lanelet::LaneletMapUPtr map = lanelet::utils::createMap({lines_l, lines_r});
+      lanelet::LaneletMapUPtr map = lanelet::utils::createMap({lines_});
       ROS_INFO("map save init ...");
       lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));  
       std::string delimiter = ".osm";
@@ -95,7 +95,7 @@ void PathRecorder::saveMapCallback(std_msgs::BoolConstPtr data){
       write(osm_file_name_fixed, *map,projector);
       ROS_INFO("path based on gnss has been saved");
     }else{
-      lanelet::LaneletMapUPtr map = lanelet::utils::createMap({lines_l, lines_r});
+      lanelet::LaneletMapUPtr map = lanelet::utils::createMap({lines_});
       ROS_INFO("map save init ...");
       lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));  
       std::string delimiter = ".osm";
@@ -149,24 +149,16 @@ void PathRecorder::poseCallback(const nav_msgs::OdometryConstPtr& msg){
   double pose_x = msg->pose.pose.position.x;
   double pose_y = msg->pose.pose.position.y;
   double pose_z = msg->pose.pose.position.z;
-  
-  // tf2::Quaternion q(msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
-  // q=q.normalize();
-  // double roll_,pitch_,yaw_; 
-  // q.getRPY(roll_,pitch_,yaw_);
 
-
-    tf::Quaternion q(msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
-    tf::Matrix3x3 m(q);
+    tf::Quaternion quat(msg->pose.pose.orientation.x,msg->pose.pose.orientation.y,msg->pose.pose.orientation.z,msg->pose.pose.orientation.w);
     double roll_, pitch_, yaw_;
-    m.getRPY(roll_, pitch_, yaw_);
+    tf::Matrix3x3(quat).getRPY(roll_, pitch_, yaw_);
 
 
-    
-  double  delt_x_r = -road_length_half * sin(yaw_-PI/2);
-  double  delt_y_r = road_length_half * cos(yaw_-PI/2);
-  double  delt_x_l = -road_length_half * sin(yaw_+PI/2);
-  double  delt_y_l = road_length_half * cos(yaw_+PI/2);
+  double  delt_x_r = road_length_half * sin(yaw_);
+  double  delt_y_r = -road_length_half * cos(yaw_);
+  double  delt_x_l = -road_length_half * sin(yaw_);
+  double  delt_y_l = road_length_half * cos(yaw_);
   
   double pose_x_l = pose_x + delt_x_l;
   double pose_x_r = pose_x + delt_x_r;
@@ -182,23 +174,25 @@ void PathRecorder::poseCallback(const nav_msgs::OdometryConstPtr& msg){
     l3s_l_ = l3s_l;
     l3s_r_ = l3s_r;
    pose_init = true;
+   ROS_INFO("path record init");
   }else{
     double dist_tmp = std::sqrt(std::pow(pose_x-pre_local_pos.position.x,2)+std::pow(pose_y-pre_local_pos.position.y,2));
     if(dist_tmp > point_resolution){
       if(lanelet::geometry::length(l3s_l_) > line_resolution){
-      lines_l.push_back(l3s_l_);
-      lines_l.push_back(l3s_r_);
-      lanelet::Point3d p3d_l(lanelet::utils::getId(), pose_x_l, pose_y_l, pose_z); 
+      lines_.push_back(l3s_l_);
+      lines_.push_back(l3s_r_);
+      
+    lanelet::Point3d p3d_l(lanelet::utils::getId(), pose_x_l, pose_y_l, pose_z); 
     lanelet::Point3d p3d_r(lanelet::utils::getId(), pose_x_r, pose_y_r, pose_z); 
     lanelet::LineString3d l3s_l(lanelet::utils::getId(), {p3d_l});
     lanelet::LineString3d l3s_r(lanelet::utils::getId(), {p3d_r});
     l3s_l_ = l3s_l;
     l3s_r_ = l3s_r;
+    
         }
     
       l3s_l_.push_back(lanelet::Point3d(lanelet::utils::getId(),  pose_x_l, pose_y_l, pose_z));
-      l3s_r_.push_back(lanelet::Point3d(lanelet::utils::getId(), pose_x_r, pose_y_r, pose_z));
-
+      l3s_r_.push_back(lanelet::Point3d(lanelet::utils::getId(), pose_x_r, pose_y_r, pose_z));    
       pre_local_pos.position.x = pose_x;
       pre_local_pos.position.y = pose_y;
       pre_local_pos.position.z = pose_z;
@@ -213,40 +207,68 @@ void PathRecorder::poseCallback(const nav_msgs::OdometryConstPtr& msg){
 
 
 // void PathRecorder::viz_pub(const ros::TimerEvent& time){
-//   if(lines_.size() < 1 && lines_pose_.size() < 1){
-//     return; 
-//   }
+void PathRecorder::viz_pub(){
+  ros::Rate loop_rate(2); // rate  
+  while (ros::ok())
+  { 
+   
+  if(lines_.size() < 1 && lines_pose_.size() < 1){
+    continue; 
+    // return;
+  }
 
-//   double lss = 0.2;  // line string size  
-//   visualization_msgs::MarkerArray path_marker_array;
-//   std_msgs::ColorRGBA path_color;
-//   setColor(&path_color, 0.0, 1.0, 1.0, 0.5);
-//   if(path_record_with_gnss){
-//         for (int i=0; i < lines_.size(); i++)
-//         {
-//           visualization_msgs::Marker line_strip;
-//           lineString2Marker(lines_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
-//           path_marker_array.markers.push_back(line_strip);
-//         }
-//   }else{  
-//     for (int i=0; i < lines_pose_.size(); i++)
-//         {
-//           visualization_msgs::Marker line_strip;
-//           lineString2Marker(lines_pose_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
-//           path_marker_array.markers.push_back(line_strip);
-//         }
-//       }
-//     path_viz_pub.publish(path_marker_array);
-// }
+  double lss = 0.2;  // line string size  
+  visualization_msgs::MarkerArray path_marker_array;
+  std_msgs::ColorRGBA path_color;
+  setColor(&path_color, 0.0, 1.0, 1.0, 0.5);
+  // if(path_record_with_gnss){
+        for (int i=0; i < lines_.size(); i++)
+        {
+          visualization_msgs::Marker line_strip;
+          lineString2Marker(lines_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
+          path_marker_array.markers.push_back(line_strip);
+        }
+  // }else{  
+  //   for (int i=0; i < lines_pose_.size(); i++)
+  //       {
+  //         visualization_msgs::Marker line_strip;
+  //         lineString2Marker(lines_pose_.at(i), &line_strip, "map", "path_centerline", path_color, lss,false);
+  //         path_marker_array.markers.push_back(line_strip);
+  //       }
+  //     }
+    path_viz_pub.publish(path_marker_array);
+     loop_rate.sleep();
+  }
+
+}
 
 int main (int argc, char** argv)
 {
 ros::init(argc, argv, "PathRecorder");
-ros::NodeHandle nh_;
+ros::NodeHandle nh, nh_save;
 ros::NodeHandle nh_private("~");
-PathRecorder PathRecorder_(nh_,nh_private);
+PathRecorder PathRecorder_(nh,nh_private,nh_save);
+
+ros::CallbackQueue callback_queue_nh, callback_queue_nh_save;
+nh.setCallbackQueue(&callback_queue_nh);
+nh_save.setCallbackQueue(&callback_queue_nh_save);
+
+
+   std::thread spinner_thread_nh([&callback_queue_nh]() {
+    ros::SingleThreadedSpinner spinner_nh;
+    spinner_nh.spin(&callback_queue_nh);
+  });
+
+  std::thread spinner_thread_nh_save([&callback_queue_nh_save]() {
+    ros::SingleThreadedSpinner spinner_nh_save;
+    spinner_nh_save.spin(&callback_queue_nh_save);
+  });
+
 
 
   ros::spin();
+
+  spinner_thread_nh.join();
+  spinner_thread_nh_save.join();
 
 }

@@ -56,6 +56,8 @@
 #include <tf2/utils.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+// #include "LinearMath/btMatrix3x3.h"
+
 #include <vector>
 
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -72,13 +74,14 @@
 #include <amathutils.hpp>
 
 
+
 #define PI 3.14159265358979323846264338
 
 class PathRecorder 
 {
   
 private:
-ros::NodeHandle nh_, nh_p_;
+ros::NodeHandle nh_, nh_p_,nh_save_;
 ros::Publisher path_viz_pub;
 
 ros::Subscriber pose_sub, gpsSub_, save_map_sub;
@@ -94,7 +97,7 @@ double line_resolution, point_resolution;
 
 lanelet::LineString3d l3s_, l3s_pose_;
 lanelet::LineString3d l3s_l_, l3s_r_;
-lanelet::LineStrings3d lines_l, lines_r, lines_pose_;
+lanelet::LineStrings3d lines_, lines_pose_;
 
 double origin_lat;
 double origin_lon;
@@ -104,12 +107,13 @@ std::string osm_file_name;
 
 
 public:
-PathRecorder(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p);
+PathRecorder(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_save);
 ~PathRecorder();
 
 void GpsCallback(sensor_msgs::NavSatFixConstPtr fix);
 void saveMapCallback(std_msgs::BoolConstPtr data); 
-void viz_pub(const ros::TimerEvent& time);
+// void viz_pub(const ros::TimerEvent& time);
+void viz_pub();
 void poseCallback(const nav_msgs::OdometryConstPtr& msg);
 
 
