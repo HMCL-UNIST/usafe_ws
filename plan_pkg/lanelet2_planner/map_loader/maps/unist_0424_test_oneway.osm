@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <osm generator="VMB">
-  <MetaInfo format_version="1" map_version="2"/>
+  <MetaInfo format_version="1" map_version="3"/>
   <node id="1000" lat="35.57085039165927" lon="129.18813081492308">
     <tag k="mgrs_code" v="52SEE170363"/>
     <tag k="local_x" v="17047.1811"/>
@@ -29682,15 +29682,6 @@
     <tag k="one_way" v="yes"/>
   </relation>
   <relation id="4138">
-    <member type="way" role="left" ref="3018"/>
-    <member type="way" role="right" ref="3019"/>
-    <tag k="type" v="lanelet"/>
-    <tag k="subtype" v="road"/>
-    <tag k="speed_limit" v="10"/>
-    <tag k="location" v="urban"/>
-    <tag k="one_way" v="yes"/>
-  </relation>
-  <relation id="4139">
     <member type="way" role="left" ref="3018"/>
     <member type="way" role="right" ref="3019"/>
     <tag k="type" v="lanelet"/>

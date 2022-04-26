@@ -12,6 +12,7 @@
 
       <!-- publish topics-->
       <remap from="state_estimator/pose" to="/pose_estimate"/>
+      <remap from="state_estimator/estimated_pose" to="/geo_pose_estimate"/>
       <remap from="state_estimator/filter" to="imu/filter"/>
       <remap from="state_estimator/bias_acc" to="bias_acc"/>
       <remap from="state_estimator/bias_gyro" to="bias_gyro"/>
@@ -26,8 +27,8 @@
       <param name="GyroSigma" value="8.73e-5"/>
       <param name="AccelBiasSigma" value="3.9e-4"/>
       <param name="GyroBiasSigma" value="4.8e-05"/>
-      <param name="GPSSigma" value="0.1"/>
-      <param name="localPoseSigma" value="0.2"/>      
+      <param name="GPSSigma" value="0.01"/>
+      <param name="localPoseSigma" value="0.01"/>      
       <!--<param name="SensorTransformX" value="0.076"/>
       <param name="SensorTransformY" value="-0.0246"/>
       <param name="SensorTransformZ" value="-0.020"/>-->
