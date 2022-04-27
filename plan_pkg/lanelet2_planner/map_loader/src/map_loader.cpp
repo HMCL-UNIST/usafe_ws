@@ -39,9 +39,9 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path)  
 {
   // using namespace lanelet;
-  way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 1, true);
-  local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 1, true);
-  g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 1, true);  
+  way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 2, true);
+  local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);
+  g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);  
   
   
   pose_init = false; 
@@ -84,7 +84,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   construct_lanelets_with_viz();
   rp_.setMap(map);
   
-  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_handler,this);    
+  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.2), &MapLoader::local_traj_handler,this);    
   if(continuious_global_replan){
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }

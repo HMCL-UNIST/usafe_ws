@@ -24,6 +24,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <cmath>
+#include <cstdlib>
 
 
 #include <boost/algorithm/string.hpp>
@@ -46,16 +47,16 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
 
   AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
   AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 100);
-  statusPub = nh_can.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 100);    
-  sccPub    = nh_can.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 100);    
-  steerPub  = nh_can.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 100);    
-  wheelPub  = nh_can.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 100);    
+  statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 100);    
+  sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 100);    
+  steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 100);    
+  wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 100);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  SteeringCmdSub = nh_steer_.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
-  AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
-  ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 1, &VehicleBridge::ShiftCmdCallback, this);
-  LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 1, &VehicleBridge::LightCmdCallback, this);
-  VelSub = nh_acc.subscribe("control_effort", 1, &VehicleBridge::controlEffortCallback, this);
+  SteeringCmdSub = nh_steer_.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);
+  AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 10, &VehicleBridge::AccCmdCallback, this);
+  ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 10, &VehicleBridge::ShiftCmdCallback, this);
+  LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 10, &VehicleBridge::LightCmdCallback, this);
+  VelSub = nh_acc.subscribe("control_effort", 10, &VehicleBridge::controlEffortCallback, this);
 
   
   ROS_INFO("Init A-CAN Handler");
@@ -191,7 +192,7 @@ void VehicleBridge::InitCanmsg(){
   light_frame.is_rtr = false;
   light_frame.data[0] = (unsigned int)0 & 0b11111111;  
   light_frame.data[1] = (unsigned int)0 & 0b11111111;  
-  light_frame.data[2] = (unsigned int)1 & 0b11111111;  
+  light_frame.data[2] = (unsigned int)0 & 0b11111111;  
 
 }
 void VehicleBridge::AcanWatchdog()
@@ -226,7 +227,7 @@ void VehicleBridge::AcanWatchdog()
 
 void VehicleBridge::AcanSender()
 {
-  ros::Rate loop_rate(20); // rate of cmd   
+  ros::Rate loop_rate(50); // rate of cmd   
   while (ros::ok())
   {  
     if(can_recv_status){
@@ -244,10 +245,16 @@ void VehicleBridge::AcanSender()
       // }
       
       // debug_pub.publish(debug_msg);
+      usleep(1000);
       AcanPub.publish(steering_frame);
-      // AcanPub.publish(scc_frame);
-      // AcanPub.publish(gear_frame);
-      // AcanPub.publish(light_frame);      
+      usleep(1000);
+      AcanPub.publish(scc_frame);
+      usleep(1000);
+      AcanPub.publish(gear_frame);
+      usleep(1000);
+      AcanPub.publish(light_frame);      
+      usleep(1000);
+      
     }
     loop_rate.sleep();
   }
@@ -293,7 +300,8 @@ void VehicleBridge::AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg){
   scc_frame.is_error = false;
   scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
-  short accel_value = (short)(msg->acceleration*100);
+  double filtered_accel = min(msg->acceleration,2.0);  
+  short accel_value = (short)(filtered_accel*100);
   // scc_frame.data[0] = (unsigned int)msg->scc_mode & 0b11111111;
   scc_frame.data[1] = (accel_value & 0b11111111);
 	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
@@ -352,6 +360,8 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   steering_frame.header.stamp = ros::Time::now();
   steering_frame.id = 0x300;
   steering_frame.dlc = 3;
+  // if( steering_angle_test > 0.1)
+  // steering_angle_test = steering_angle_test + 10 
   // short steer_value = (short)(AD_STR_POS_CMD*10) ; // input  in radian, convert into degree
   // steering_frame.data[0] = (steer_value & 0b11111111);
 	// steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
@@ -361,18 +371,24 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   // scc_frame.id = 0x303;
   // scc_frame.dlc = 4;
   // short accel_value = (short)(AD_SCC_ACCEL_CMD*100);
-  // scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+  scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
   // scc_frame.data[1] = (accel_value & 0b11111111);
 	// scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
-  // scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+  scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
 
   gear_frame.header.stamp = ros::Time::now();
   gear_frame.id = 0x304;
   gear_frame.dlc = 1;
   gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111; 
 
-  
+  light_frame.data[0] = (unsigned int)AD_LEFT_TURNLAMP_STAT & 0b11111111;  
+  light_frame.data[1] = (unsigned int)AD_RIGHT_TURNLAMP_STAT & 0b11111111;  
+  light_frame.data[2] = (unsigned int)AD_HAZARD_STAT & 0b11111111;  
 
+
+  }else{
+    steering_frame.data[2] = (unsigned int)0 & 0b11111111;
+    scc_frame.data[0] = (unsigned int)0 & 0b11111111;
   }
   // cout << AD_STR_MODE_CMD << endl;
 }

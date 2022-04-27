@@ -6,7 +6,9 @@
   <node name="state_estimator" pkg="state_estimator" type="StateEstimator" output="screen">      
       <!-- subscribe topics  -->
       <remap from="state_estimator/gps" to="/fix"/>
-      <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/>
+      <!-- <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/> -->
+      <remap from="state_estimator/imu" to="/imu/data"/>
+      
       <remap from="state_estimator/local_pose" to="/gnss_pose_world"/>      
       <remap from="state_estimator/wheel_odom" to="/wheel_odom"/>
 
