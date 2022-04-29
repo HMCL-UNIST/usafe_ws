@@ -61,7 +61,7 @@ WheelOdometry::WheelOdometry()
 
   // time_delay parameter is measured in seconds - only used in debug mode
   // must be transformed to a number of messages (from /wheelSpeeds) to delay calculations of angular velocity
-  double num_delay = round(time_delay_ * 70.0); // /wheelSpeeds publish frequency is 70Hz
+  double num_delay = round(time_delay_ * 50.0); // /wheelSpeeds publish frequency is 50Hz
   angular_velocities_ = std::vector<double>(num_delay, 0.0);
   time_step_ = std::vector<double>(num_delay, 0.02); // initialize with 0.02s as time step
 

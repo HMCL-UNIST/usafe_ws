@@ -677,7 +677,7 @@ void MapLoader::pub_autoware_traj(const hmcl_msgs::Lane& lane){
   autoware_msgs::Lane autoware_lane;
   autoware_lane.header = lane.header;
   
-  for(const lane_waypoint: lane.waypoints){
+  for(const auto lane_waypoint: lane.waypoints){
     autoware_msgs::Waypoint wp;
     wp.pose = lane_waypoint.pose;
     wp.twist = lane_waypoint.twist;
