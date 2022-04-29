@@ -2,7 +2,7 @@
 <launch>
   <node name="socketcan_bridge2" pkg="socketcan_bridge" type="socketcan_bridge_node" output="screen">      
         <!-- <remap from="AA" to="BB"/> -->
-        <remap from="/received_messages" to="/c_can_recieve"/>
+        <remap from="/received_messages" to="/c_can_l2h"/>
         <remap from="/sent_messages" to="/c_can_h2l"/>
         <param name="can_device" type="string" value="can1" />
 

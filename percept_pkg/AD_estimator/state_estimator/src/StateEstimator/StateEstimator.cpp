@@ -780,6 +780,9 @@ namespace localization_core
       }
 
       // the local frame velocities
+      if((lastOdom_->twist.twist.linear.x  != lastOdom_->twist.twist.linear.x) || (lastOdom_->twist.twist.linear.y  != lastOdom_->twist.twist.linear.y) || (lastOdom_->twist.twist.angular.z != lastOdom_->twist.twist.angular.z)){
+              continue;
+      }
       double vx = lastOdom_->twist.twist.linear.x;
       double vy = lastOdom_->twist.twist.linear.y;
       // update the relative position from the initial
