@@ -47,9 +47,12 @@
   <build_depend>lanelet2_routing</build_depend>
   <build_depend>lanelet2_traffic_rules</build_depend>
   <build_depend>lanelet2_validation</build_depend>
-
+  <build_depend>autoware_msgs</build_depend>
 
   
+
+
+  <run_depend>autoware_msgs</run_depend>
   <run_depend>lanelet2_core</run_depend>
   <run_depend>lanelet2_io</run_depend>
   <run_depend>lanelet2_maps</run_depend>

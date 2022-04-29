@@ -42,7 +42,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 2, true);
   local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);
   g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);  
-  
+  autoware_lane_pub = nh_.advertise<autoware_msgs::Lane>("/local_traj_auto", 2, true);
   
   pose_init = false; 
   goal_available = false;
@@ -669,7 +669,21 @@ void MapLoader::compute_local_path(){
           viz_local_path(local_traj_msg);
           l_traj_viz_pub.publish(local_traj_marker_arrary);
       }
-     
+  pub_autoware_traj(local_traj_msg);
+
+}
+
+void MapLoader::pub_autoware_traj(const hmcl_msgs::Lane& lane){
+  autoware_msgs::Lane autoware_lane;
+  autoware_lane.header = lane.header;
+  
+  for(const lane_waypoint: lane.waypoints){
+    autoware_msgs::Waypoint wp;
+    wp.pose = lane_waypoint.pose;
+    wp.twist = lane_waypoint.twist;
+    autoware_lane.waypoints.push_back(wp);
+  }
+  autoware_lane_pub.publish(autoware_lane);
 }
 
 void MapLoader::local_traj_handler(const ros::TimerEvent& time){  
