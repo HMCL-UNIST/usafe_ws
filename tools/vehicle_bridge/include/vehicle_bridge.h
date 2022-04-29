@@ -56,7 +56,7 @@ ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub;
-ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub;
+ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
 dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
@@ -81,8 +81,8 @@ bool Master_Switch, AD_STR_MODE_CMD, AD_SCC_TAKEOVER_CMD, AD_LEFT_TURNLAMP_STAT;
 bool AD_RIGHT_TURNLAMP_STAT, AD_HAZARD_STAT;
 int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;       
 double control_effort;    
-
-
+double sign = 1;
+double test_count; 
 ros::Time Acan_callback_time;
 ros::Time Ccan_callback_time;
 public:

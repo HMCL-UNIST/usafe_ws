@@ -45,7 +45,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   Acan_callback_time = ros::Time::now();
   
   InitCanmsg();
-
+  test_count = 0; 
   AcanSub = nh_light_.subscribe("/a_can_l2h", 1, &VehicleBridge::AcanCallback, this);
   CcanSub = nh_light_.subscribe("/c_can_l2h", 1, &VehicleBridge::CcanCallback, this);
   AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 5);
@@ -53,6 +53,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 5);    
   steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 5);    
   wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
+  // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
   SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
   AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
@@ -309,6 +310,29 @@ void VehicleBridge::AcanSender()
       // usleep(1000);
       AcanPub.publish(light_frame);      
       usleep(10);
+      /// test
+      // double weight = 0.01*(test_count*2+1);
+      
+      // if(steering_info_.steering_angle > 0.45){
+      //   sign = -1;
+      //   test_count=test_count+0.03;
+      // }else if(steering_info_.steering_angle < -0.45) {
+      //   sign = 1;
+      //   test_count=test_count+0.05;
+      // }
+      // if(test_count > 20){
+      //   test_count = 0;
+      // }
+      
+      // double target_angle = steering_info_.steering_angle + weight*sign; 
+      // short steer_value = (short)(target_angle*gear_ratio*180/PI*10);
+      // steering_frame.data[0] = (steer_value & 0b11111111);
+      // steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+      
+      // std_msgs::Float64 tt; 
+      // tt.data = target_angle;
+      // test_pub.publish(tt);
+
       AcanPub.publish(steering_frame);
     }
     loop_rate.sleep();
