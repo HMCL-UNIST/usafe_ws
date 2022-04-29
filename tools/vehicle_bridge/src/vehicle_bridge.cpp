@@ -46,19 +46,19 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   
   InitCanmsg();
 
-  AcanSub = nh_light_.subscribe("/a_can_l2h", 10, &VehicleBridge::AcanCallback, this);
-  CcanSub = nh_light_.subscribe("/c_can_l2h", 10, &VehicleBridge::CcanCallback, this);
-  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 10);
-  statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 2);    
-  sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 10);    
-  steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 10);    
-  wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 10);    
+  AcanSub = nh_light_.subscribe("/a_can_l2h", 1, &VehicleBridge::AcanCallback, this);
+  CcanSub = nh_light_.subscribe("/c_can_l2h", 1, &VehicleBridge::CcanCallback, this);
+  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 5);
+  statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 5);    
+  sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 5);    
+  steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 5);    
+  wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 2, &VehicleBridge::SteeringCmdCallback, this);
-  AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 2, &VehicleBridge::AccCmdCallback, this);
-  ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 2, &VehicleBridge::ShiftCmdCallback, this);
-  LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 2, &VehicleBridge::LightCmdCallback, this);
-  VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);
+  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
+  AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
+  ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 1, &VehicleBridge::ShiftCmdCallback, this);
+  LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 1, &VehicleBridge::LightCmdCallback, this);
+  VelSub = nh_acc.subscribe("control_effort", 1, &VehicleBridge::controlEffortCallback, this);
 
   
   ROS_INFO("Init A-CAN Handler");
