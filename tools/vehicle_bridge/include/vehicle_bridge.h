@@ -63,6 +63,9 @@ dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
 
 // boost::mutex optimizedStateMutex_;
 bool can_recv_status;
+bool Acan_recv_status;
+bool Ccan_recv_status;
+
 hmcl_msgs::VehicleStatus vehicle_status_;
 hmcl_msgs::VehicleSCC scc_info_;
 hmcl_msgs::VehicleSteering steering_info_;
@@ -81,6 +84,7 @@ double control_effort;
 
 
 ros::Time Acan_callback_time;
+ros::Time Ccan_callback_time;
 public:
 VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light);
 ~VehicleBridge();
@@ -88,6 +92,7 @@ void AcanSender();
 void AcanWatchdog();
 
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
+void CcanCallback(can_msgs::FrameConstPtr ccan_data);
 void dyn_callback(vehicle_bridge::testConfig& config, uint32_t level);
 void InitCanmsg();
 // Vehicle commands Callbacks

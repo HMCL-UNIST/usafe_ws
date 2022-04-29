@@ -1,0 +1,37 @@
+function [data, info] = chassisState
+%chassisState gives an empty data for autorally_msgs/chassisState
+% Copyright 2019-2020 The MathWorks, Inc.
+data = struct();
+[data.header, info.header] = ros.internal.ros.messages.std_msgs.header;
+info.header.MLdataType = 'struct';
+[data.throttleRelayEnabled, info.throttleRelayEnabled] = ros.internal.ros.messages.ros.default_type('logical',1);
+[data.autonomousEnabled, info.autonomousEnabled] = ros.internal.ros.messages.ros.default_type('logical',1);
+[data.runstopMotionEnabled, info.runstopMotionEnabled] = ros.internal.ros.messages.ros.default_type('logical',1);
+[data.steeringCommander, info.steeringCommander] = ros.internal.ros.messages.ros.char('string',0);
+[data.steering, info.steering] = ros.internal.ros.messages.ros.default_type('double',1);
+[data.throttleCommander, info.throttleCommander] = ros.internal.ros.messages.ros.char('string',0);
+[data.throttle, info.throttle] = ros.internal.ros.messages.ros.default_type('double',1);
+[data.frontBrakeCommander, info.frontBrakeCommander] = ros.internal.ros.messages.ros.char('string',0);
+[data.frontBrake, info.frontBrake] = ros.internal.ros.messages.ros.default_type('double',1);
+info.MessageType = 'autorally_msgs/chassisState';
+info.constant = 0;
+info.default = 0;
+info.maxstrlen = NaN;
+info.MaxLen = 1;
+info.MinLen = 1;
+info.MatPath = cell(1,15);
+info.MatPath{1} = 'header';
+info.MatPath{2} = 'header.seq';
+info.MatPath{3} = 'header.stamp';
+info.MatPath{4} = 'header.stamp.sec';
+info.MatPath{5} = 'header.stamp.nsec';
+info.MatPath{6} = 'header.frame_id';
+info.MatPath{7} = 'throttleRelayEnabled';
+info.MatPath{8} = 'autonomousEnabled';
+info.MatPath{9} = 'runstopMotionEnabled';
+info.MatPath{10} = 'steeringCommander';
+info.MatPath{11} = 'steering';
+info.MatPath{12} = 'throttleCommander';
+info.MatPath{13} = 'throttle';
+info.MatPath{14} = 'frontBrakeCommander';
+info.MatPath{15} = 'frontBrake';

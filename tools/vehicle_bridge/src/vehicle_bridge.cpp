@@ -39,13 +39,15 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   nh_acc_(nh_acc),
   nh_steer_(nh_steer),
   nh_light_(nh_light),
-  can_recv_status(false) 
+  Acan_recv_status(false), 
+  Ccan_recv_status(false)
 {
   Acan_callback_time = ros::Time::now();
   
   InitCanmsg();
 
   AcanSub = nh_light_.subscribe("/a_can_l2h", 10, &VehicleBridge::AcanCallback, this);
+  CcanSub = nh_light_.subscribe("/c_can_recieve", 10, &VehicleBridge::CcanCallback, this);
   AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 10);
   statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 2);    
   sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 10);    
@@ -74,18 +76,18 @@ VehicleBridge::~VehicleBridge()
 
 void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 { 
-  can_recv_status = true;
+  Acan_recv_status = true;
   int msg_id = acan_data->id;  
   int a;
   
-  mtx_.lock();
+  
   Acan_callback_time = ros::Time::now();
-  mtx_.unlock();
+  
    
   double steer_d;
   switch(msg_id) {    
     case 0x600:
-      mtx_.lock();
+      
       // receive AD_STR_INFO      
       steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
       steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
@@ -93,55 +95,55 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
       vehicle_status_.steering_info = steering_info_; 
       // a = acan_data->data[4]; //(Reserved) 
       // a = acan_data->data[5]; //AD_STR_ALIVE_COUNT 
-      mtx_.unlock();
+      
       break;
 
     case 0x602:
-      mtx_.lock();
+      
       // receive AD_SCC_INFO      
       vehicle_status_.header = acan_data->header;
       wheel_info_.header = acan_data->header;
       scc_info_.scc_mode = (unsigned int)acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
       scc_info_.acceleration = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.01; 
-      wheel_info_.wheel_speed = ((unsigned int)acan_data->data[3]) / 3.6; //AD_SCC_WHL_SPD_STAT  convert to m/s
+      // wheel_info_.wheel_speed = ((unsigned int)acan_data->data[3]) / 3.6; //AD_SCC_WHL_SPD_STAT  convert to m/s
       vehicle_status_.scc_info = scc_info_;
-      vehicle_status_.wheelspeed = wheel_info_;
-      mtx_.unlock();
+      // vehicle_status_.wheelspeed = wheel_info_;
+      
       break;
 
     case 0x604:
       // receive AD_SHIFT_INFO
-      mtx_.lock();
+      
       vehicle_status_.auto_mode = (unsigned int)acan_data->data[0]; //AD_SHIFT_ACT_POS_STAT 
       gear_info_.gear = (unsigned int)acan_data->data[1]; //AD_SHIFT_MODE_STAT       
       vehicle_status_.gear_info = gear_info_;
-      mtx_.unlock();
+      
       break;
 
     case 0x606:
       // receive AD_BTN_INFO
-      mtx_.lock();
+      
       a = acan_data->data[0]; //AD_AUTO_BTN_STAT 
       a = acan_data->data[1]; //AD_EMS_BTN_STAT 
       a = acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT 
-      mtx_.unlock();
+      
       break;
 
     case 0x608:
     
-      mtx_.lock();
+      
       // receive TL_INFO
       a = acan_data->data[0]; //AD_HAZARD_STAT 
       a = acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT      
-      mtx_.unlock(); 
+      
       break;
 
     case 0x60:
-      mtx_.lock();
+      
       a = acan_data->data[0]; //AD_WIRELESS_REMOTE_BTN_STAT_1 
       a = acan_data->data[1]; //AD_WIRELESS_REMOTE_BTN_STAT_2
       a = acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT_3
-      mtx_.unlock();
+      
       // receive AD_RTE_INFO
       break;
       
@@ -150,6 +152,57 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
       return;        
   }  
   
+}
+void VehicleBridge::CcanCallback(can_msgs::FrameConstPtr ccan_data)
+{
+  Ccan_recv_status = true;
+  int msg_id = ccan_data->id;  
+  float fl, fr, rl, rr, whl_speed_mean;
+  float lat_acc, long_acc, yaw_rate;
+  // mtx_.lock();
+  Ccan_callback_time = ros::Time::now();
+  // mtx_.unlock();
+   
+  switch(msg_id) {    
+    case 0x220:
+      // mtx_.lock();
+      // receive AD_ACCEL & YAW RATE 
+      // 00000000 00000000 00000000 00000000
+      lat_acc = ((unsigned int)(ccan_data->data[0] + ((ccan_data->data[1] & 0b00000111) << 8)))*0.01-10.03;
+      long_acc = ((unsigned int)(((ccan_data->data[1] & 0b11100000) >> 5) + (ccan_data->data[2] << 3)))*0.01-10.40;
+      yaw_rate = ((unsigned int)(ccan_data->data[5] + ((ccan_data->data[6] & 0b00011111) << 8)))*0.01 - 41.55;           
+      // vehicle_status_.y_acceleration = clamp(lat_acc, -10.23, 10.24);
+      // vehicle_status_.x_acceleration = clamp(long_acc, -10.23, 10.24);
+      // vehicle_status_.yaw_rate = clamp(yaw_rate, -40.95, 40.96);
+      vehicle_status_.y_acceleration = lat_acc;
+      vehicle_status_.x_acceleration =long_acc;
+      vehicle_status_.yaw_rate = yaw_rate;
+      // mtx_.unlock();
+      break;
+
+    case 0x386:
+      // mtx_.lock();
+      // receive WHL_SPEED      
+      wheel_info_.header = ccan_data->header;
+      fl = ((unsigned int)(ccan_data->data[0] + ((ccan_data->data[1] & 0b00111111) << 8)))*0.03125; // whl speed front left
+      fr = ((unsigned int)(ccan_data->data[2] + ((ccan_data->data[3] & 0b00111111) << 8)))*0.03125; // whl speed front right
+      rl = ((unsigned int)(ccan_data->data[4] + ((ccan_data->data[5] & 0b00111111) << 8)))*0.03125; // whl speed rear left
+      rr = ((unsigned int)(ccan_data->data[6] + ((ccan_data->data[7] & 0b00111111) << 8)))*0.03125; // whl speed rear right
+      whl_speed_mean = (fl+fr+rl+rr)/4; // kph
+      // wheel_info_.wheel_speed = clamp(whl_speed_mean,0, 511.96875);
+      wheel_info_.wheel_speed = whl_speed_mean*3.6; // m/s
+      wheel_info_.fl = fl;
+      wheel_info_.fr = fr;
+      wheel_info_.rr = rr;
+      wheel_info_.rl = rl;
+      vehicle_status_.wheelspeed = wheel_info_;
+      
+      // mtx_.unlock();
+      break;
+      
+    default:        
+      return;        
+  }  
 }
 
 void VehicleBridge::InitCanmsg(){
@@ -206,9 +259,9 @@ void VehicleBridge::AcanWatchdog()
       // if no can msg received in 0.2 sec
       if(duration.toSec() > 0.2){        
         ROS_WARN("Acan is empty for %lf secs", duration.toSec());
-        mtx_.lock();
-        can_recv_status = false;
-        mtx_.unlock();
+      
+        Acan_recv_status = false;
+       
       }
 
       // If no accerlation command for more than 0.5 sec, slow down vehicle
@@ -230,7 +283,7 @@ void VehicleBridge::AcanSender()
   ros::Rate loop_rate(50); // rate of cmd   
   while (ros::ok())
   {  
-    if(can_recv_status){
+    if(Acan_recv_status){
       // publish vehicle info 
       steerPub.publish(steering_info_);
       statusPub.publish(vehicle_status_); 
@@ -290,7 +343,7 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
-   AcanPub.publish(steering_frame);
+  //  AcanPub.publish(steering_frame);
   }
  
 }
@@ -364,9 +417,9 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   steering_frame.dlc = 3;
   // if( steering_angle_test > 0.1)
   // steering_angle_test = steering_angle_test + 10 
-  short steer_value = (short)(AD_STR_POS_CMD) ; // input  in radian, convert into degree
-  steering_frame.data[0] = (steer_value & 0b11111111);
-	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+  // short steer_value = (short)(AD_STR_POS_CMD) ; // input  in radian, convert into degree
+  // steering_frame.data[0] = (steer_value & 0b11111111);
+	// steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
   
   // scc_frame.header.stamp = ros::Time::now();
@@ -389,7 +442,7 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
 
 
   }else{
-    steering_frame.data[2] = (unsigned int)0 & 0b11111111;
+    // steering_frame.data[2] = (unsigned int)0 & 0b11111111;
     scc_frame.data[0] = (unsigned int)0 & 0b11111111;
   }
   // cout << AD_STR_MODE_CMD << endl;
