@@ -47,7 +47,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   InitCanmsg();
 
   AcanSub = nh_light_.subscribe("/a_can_l2h", 10, &VehicleBridge::AcanCallback, this);
-  CcanSub = nh_light_.subscribe("/c_can_recieve", 10, &VehicleBridge::CcanCallback, this);
+  CcanSub = nh_light_.subscribe("/c_can_l2h", 10, &VehicleBridge::CcanCallback, this);
   AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 10);
   statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 2);    
   sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 10);    
@@ -89,6 +89,7 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
     case 0x600:
       
       // receive AD_STR_INFO      
+      steering_info_.header = acan_data->header;
       steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
       steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
       steering_info_.steering_angle = (((short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.1)*PI/180.0)/gear_ratio;      
@@ -102,7 +103,8 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
       
       // receive AD_SCC_INFO      
       vehicle_status_.header = acan_data->header;
-      wheel_info_.header = acan_data->header;
+      // wheel_info_.header = acan_data->header;
+      scc_info_.header = acan_data->header;
       scc_info_.scc_mode = (unsigned int)acan_data->data[0]; //AD_SCC_ACT_MODE_STAT 
       scc_info_.acceleration = (short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.01; 
       // wheel_info_.wheel_speed = ((unsigned int)acan_data->data[3]) / 3.6; //AD_SCC_WHL_SPD_STAT  convert to m/s

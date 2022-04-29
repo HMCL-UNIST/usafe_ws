@@ -54,8 +54,8 @@ WheelOdometry::WheelOdometry()
   // debug mode publishes a different message and subscribes to state estimator for easy visualization
   n_h.getParam("debug", debug_);
 
-  servo_sub_ = n.subscribe("chassisState", 1, &WheelOdometry::steerCallback, this);
-  wheel_speeds_sub_ = n.subscribe("wheelSpeeds", 1, &WheelOdometry::speedCallback, this);
+  status_sub_ = n.subscribe("vehicle_status", 1, &WheelOdometry::vehicleStatusCallback, this);
+  // wheel_speeds_sub_ = n.subscribe("wheelSpeeds", 1, &WheelOdometry::speedCallback, this);
   if (debug_)
     state_estimator_sub_ = n.subscribe("pose_estimate", 1, &WheelOdometry::stateEstimatorCallback, this);
 
@@ -104,26 +104,24 @@ void WheelOdometry::stateEstimatorCallback(const nav_msgs::OdometryConstPtr& sta
   }
 }
 
-void WheelOdometry::steerCallback(const hmcl_msgs::VehicleSteeringConstPtr& steer)
-{
-  // steering angle is positive for left turns
-  steering_angle_ = steer->steering_angle*180.0/PI;
-}
+void WheelOdometry::vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr& status){
+    
+    
+  steering_angle_ = status->steering_info.steering_angle * 180.0 /PI;
+  // steering_angle_ = steer->steering_angle*180.0/PI;
 
-
-void WheelOdometry::speedCallback(const hmcl_msgs::VehicleWheelSpeedConstPtr& speed)
-{
   // For first timestep, use .02 which is approximately the timestep between wheelSpeeds messages
   if (prev_ == 0)
     delta_t_ = .02;
   else
-    delta_t_ = speed->header.stamp.toSec() - prev_;
-  prev_ = speed->header.stamp.toSec();
+    delta_t_ = status->wheelspeed.header.stamp.toSec() - prev_;
+    
+  prev_ = status->wheelspeed.header.stamp.toSec();
   
-  speed_FL_ = speed->wheel_speed;
-  speed_FR_ = speed->wheel_speed;
-  speed_BL_ = speed->wheel_speed;
-  speed_BR_ = speed->wheel_speed;
+  speed_FL_ = status->wheelspeed.fl;
+  speed_FR_ = status->wheelspeed.fr;
+  speed_BL_ = status->wheelspeed.rl;
+  speed_BR_ = status->wheelspeed.rr;
   avg_speed_ = (speed_FL_ + speed_FR_) / 2;
 
   if (std::abs(steering_angle_) < 1e-6)
@@ -309,7 +307,17 @@ void WheelOdometry::speedCallback(const hmcl_msgs::VehicleWheelSpeedConstPtr& sp
   }
   odom_.publish(odom_msg);
 }
+
 }
+
+
+// void WheelOdometry::steerCallback(const hmcl_msgs::VehicleSteeringConstPtr& steer)
+// {
+//   // steering angle is positive for left turns
+
+// }
+
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "WheelOdometry");
