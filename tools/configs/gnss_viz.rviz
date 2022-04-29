@@ -9,6 +9,7 @@ Panels:
         - /Odometry1/Shape1
         - /lanelet21/Status1
         - /pose_est1/Shape1
+        - /ctrl1
       Splitter Ratio: 0.36176469922065735
     Tree Height: 596
   - Class: rviz/Selection
@@ -179,81 +180,42 @@ Visualization Manager:
         ltraj: true
       Queue Size: 100
       Value: true
-    - Class: rviz/MarkerArray
+    - Class: rviz/Group
+      Displays:
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /trajectory_circle_mark
+          Name: purepursuit_circle
+          Namespaces:
+            trajectory_circle_marker: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /next_target_mark
+          Name: purepursuit_marker
+          Namespaces:
+            next_target_marker: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /mpc_ref_trajectory
+          Name: mpc_ref
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /mpc_pred_trajectory
+          Name: mpcpredicted
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
       Enabled: true
-      Marker Topic: /mpc_pred_trajectory
-      Name: Ppath
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /mpc_ref_trajectory
-      Name: MarkerArray
-      Namespaces:
-        mpc_ref0: true
-        mpc_ref1: true
-        mpc_ref10: true
-        mpc_ref11: true
-        mpc_ref12: true
-        mpc_ref13: true
-        mpc_ref14: true
-        mpc_ref15: true
-        mpc_ref16: true
-        mpc_ref17: true
-        mpc_ref18: true
-        mpc_ref19: true
-        mpc_ref2: true
-        mpc_ref20: true
-        mpc_ref21: true
-        mpc_ref22: true
-        mpc_ref23: true
-        mpc_ref24: true
-        mpc_ref25: true
-        mpc_ref26: true
-        mpc_ref27: true
-        mpc_ref28: true
-        mpc_ref29: true
-        mpc_ref3: true
-        mpc_ref30: true
-        mpc_ref31: true
-        mpc_ref32: true
-        mpc_ref33: true
-        mpc_ref34: true
-        mpc_ref35: true
-        mpc_ref36: true
-        mpc_ref37: true
-        mpc_ref38: true
-        mpc_ref39: true
-        mpc_ref4: true
-        mpc_ref40: true
-        mpc_ref41: true
-        mpc_ref42: true
-        mpc_ref43: true
-        mpc_ref44: true
-        mpc_ref45: true
-        mpc_ref46: true
-        mpc_ref47: true
-        mpc_ref48: true
-        mpc_ref49: true
-        mpc_ref5: true
-        mpc_ref50: true
-        mpc_ref51: true
-        mpc_ref52: true
-        mpc_ref53: true
-        mpc_ref54: true
-        mpc_ref55: true
-        mpc_ref56: true
-        mpc_ref57: true
-        mpc_ref58: true
-        mpc_ref59: true
-        mpc_ref6: true
-        mpc_ref7: true
-        mpc_ref8: true
-        mpc_ref9: true
-      Queue Size: 100
-      Value: true
+      Name: ctrl
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -281,7 +243,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: -0.9850009679794312
+      Angle: 0.10999882966279984
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -291,11 +253,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 37.42351531982422
+      Scale: 31.159412384033203
       Target Frame: map
       Value: TopDownOrtho (rviz)
-      X: -52.59153747558594
-      Y: 6.365474700927734
+      X: 200.6297149658203
+      Y: 532.7948608398438
     Saved: ~
 Window Geometry:
   Displays:

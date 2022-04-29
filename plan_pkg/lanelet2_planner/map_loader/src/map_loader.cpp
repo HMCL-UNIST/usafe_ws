@@ -84,7 +84,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   construct_lanelets_with_viz();
   rp_.setMap(map);
   
-  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.2), &MapLoader::local_traj_handler,this);    
+  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.03), &MapLoader::local_traj_handler,this);    
   if(continuious_global_replan){
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
