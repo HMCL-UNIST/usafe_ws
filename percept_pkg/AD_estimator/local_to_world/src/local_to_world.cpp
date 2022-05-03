@@ -43,8 +43,8 @@ Localtoworld::Localtoworld() :
   gotFirstFix_(false),
   gotFirstLocal_(false),
   maxQSize_(0),
-  gpsPoseQ_(40),
-  localPoseQ_(40)   
+  gpsPoseQ_(3000),
+  localPoseQ_(3000)   
 {
   // temporary variables to retrieve parameters
   double l_to_g_sensor_x, l_to_g_sensor_y, l_to_g_sensor_z, l_to_g_sensor_roll, l_to_g_sensor_pich, l_to_g_sensor_yaw;
@@ -68,6 +68,13 @@ Localtoworld::Localtoworld() :
   nh_.param<std::string>("local_sensor_frame", local_sensor_frame, "lidar");
   nh_.param<std::string>("global_sensor_frame", global_sensor_frame, "gnss");
  
+
+    Eigen::Translation3f tl_init_guess_g_to_l(0.0, 0.0, 0.0);  // tl: translation
+    Eigen::AngleAxisf rot_x_init_guess_g_to_l(0.0, Eigen::Vector3f::UnitX());                   // rot: rotation
+    Eigen::AngleAxisf rot_y_init_guess_g_to_l(0.0, Eigen::Vector3f::UnitY());
+    Eigen::AngleAxisf rot_z_init_guess_g_to_l(-1*M_PI, Eigen::Vector3f::UnitZ());  
+    init_guess_g_to_l = (tl_init_guess_g_to_l * rot_z_init_guess_g_to_l * rot_y_init_guess_g_to_l * rot_x_init_guess_g_to_l).matrix();
+
 
   
   // Set frame between sensors
@@ -212,7 +219,7 @@ void Localtoworld::GpsCallback(sensor_msgs::NavSatFixConstPtr fix)
         Eigen::AngleAxisf rt_z_(0, Eigen::Vector3f::UnitZ());  
         Eigen::Matrix4f gpose = (trnss * rt_z_ * rt_y_ * rt_x_).matrix();
         // compute global sensor pose in local frame 
-        Eigen::Matrix4f global_pose_in_local_frame_ = g_to_l*gpose;            
+        Eigen::Matrix4f global_pose_in_local_frame_ = g_to_l*init_guess_g_to_l*gpose;            
      
   geometry_msgs::PoseStamped globalPose_ENU;
   globalPose_ENU.header = fix->header;
@@ -306,7 +313,7 @@ void Localtoworld::compute_transform()
   bool icp_converged  = false;
   while (ros::ok())
   {    
-    // ROS_INFO("gpsPoseQ_size = %d", gpsPoseQ_.size());      
+    ROS_INFO("gpsPoseQ_size = %d", gpsPoseQ_.size());      
     
     if( gpsPoseQ_.size() > num_of_gpsPose_for_icp){
       pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_in_global (new pcl::PointCloud<pcl::PointXYZ>(gpsPoseQ_.size()-1,1));
@@ -319,9 +326,19 @@ void Localtoworld::compute_transform()
         double E_,N_,U_;
         enu_.Forward(gpsPoseFix->latitude, gpsPoseFix->longitude, gpsPoseFix->altitude, E_, N_, U_);
     
-        point_in.x = E_;
-        point_in.y = N_;
-        point_in.z = U_;
+        // point_in.x = E_;
+        // point_in.y = N_;
+        Eigen::Translation3f tmp_gnss_trnas(E_, N_, 0);  
+        Eigen::AngleAxisf rot_tmp_x(0.0, Eigen::Vector3f::UnitX());               
+        Eigen::AngleAxisf rot_tmp_y(0.0, Eigen::Vector3f::UnitY());
+        Eigen::AngleAxisf rot_tmp_z(0.0, Eigen::Vector3f::UnitZ());  
+        Eigen::Matrix4f gnss_pose_tmp  = (tmp_gnss_trnas * rot_tmp_z * rot_tmp_y * rot_tmp_x).matrix();
+        Eigen::Matrix4f geussed_gnss_pose = init_guess_g_to_l*gnss_pose_tmp;
+
+        point_in.x   = geussed_gnss_pose(0,3); // E_*cos(-1*M_PI) - N_*sin(-1*M_PI);
+        point_in.y   = geussed_gnss_pose(1,3); // E_*sin(-1*M_PI) + N_*cos(-1*M_PI);
+        point_in.z = 0.0;
+
         std::cout << "point_in.x = " <<  point_in.x << "  point_in.y = " <<  point_in.y<< "  point_in.z = " <<  point_in.z << std::endl;
       }
       // Fill in the CloutOut data
@@ -331,7 +348,7 @@ void Localtoworld::compute_transform()
         double x,y,z; 
         x = localPose->pose.position.x;
         y = localPose->pose.position.y;
-        z = localPose->pose.position.z;        
+        z = 0.0; //localPose->pose.position.z;        
         tf::Quaternion q(localPose->pose.orientation.x, localPose->pose.orientation.y,
                         localPose->pose.orientation.z , localPose->pose.orientation.w);        
         tf::Matrix3x3 m(q);
