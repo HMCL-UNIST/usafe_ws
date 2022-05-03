@@ -9,7 +9,7 @@ import hmcl_msgs.msg
 import std_msgs.msg
 
 class VehicleStatus(genpy.Message):
-  _md5sum = "4379a0a3949b9158cbbf027b23b2d0d8"
+  _md5sum = "257eaa74ca2595e01127664962d58d27"
   _type = "hmcl_msgs/VehicleStatus"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """Header header
@@ -24,7 +24,7 @@ hmcl_msgs/RemoteButton remote_button_info
 uint8 auto_mode 
 # ems mode -> 0  off
 # ems mode -> 1  on
-uint8 ems_mode
+uint8 ems_mode 
 float64 x_acceleration
 float64 y_acceleration
 float64 yaw_rate
@@ -47,6 +47,7 @@ string frame_id
 
 ================================================================================
 MSG: hmcl_msgs/VehicleSteering
+Header header
 # steering takeover -> off       = 0
 # steering takeover -> on      = 1
 uint8 takeover
@@ -56,6 +57,7 @@ uint8 mode
 float32 steering_angle
 ================================================================================
 MSG: hmcl_msgs/VehicleSCC
+Header header
 # sccmode -> off       = 0
 # sccmode -> ready       = 1
 # sccmode -> on       = 2
@@ -68,7 +70,10 @@ float64 acceleration
 MSG: hmcl_msgs/VehicleWheelSpeed
 Header header
 float64 wheel_speed
-
+float64 fr
+float64 fl
+float64 rr
+float64 rl
 ================================================================================
 MSG: hmcl_msgs/VehicleGear
 # Gear -> P       = 1
@@ -168,7 +173,23 @@ uint8 button3"""
         length = len(_x)
       buff.write(struct.pack('<I%ss'%length, length, _x))
       _x = self
-      buff.write(_get_struct_2Bf2Bd3I().pack(_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs))
+      buff.write(_get_struct_3I().pack(_x.steering_info.header.seq, _x.steering_info.header.stamp.secs, _x.steering_info.header.stamp.nsecs))
+      _x = self.steering_info.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
+      buff.write(_get_struct_2Bf3I().pack(_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.header.seq, _x.scc_info.header.stamp.secs, _x.scc_info.header.stamp.nsecs))
+      _x = self.scc_info.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
+      buff.write(_get_struct_2Bd3I().pack(_x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs))
       _x = self.wheelspeed.header.frame_id
       length = len(_x)
       if python3 or type(_x) == unicode:
@@ -176,7 +197,7 @@ uint8 button3"""
         length = len(_x)
       buff.write(struct.pack('<I%ss'%length, length, _x))
       _x = self
-      buff.write(_get_struct_d9B3d().pack(_x.wheelspeed.wheel_speed, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate))
+      buff.write(_get_struct_5d9B3d().pack(_x.wheelspeed.wheel_speed, _x.wheelspeed.fr, _x.wheelspeed.fl, _x.wheelspeed.rr, _x.wheelspeed.rl, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
 
@@ -216,8 +237,34 @@ uint8 button3"""
         self.header.frame_id = str[start:end]
       _x = self
       start = end
-      end += 28
-      (_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs,) = _get_struct_2Bf2Bd3I().unpack(str[start:end])
+      end += 12
+      (_x.steering_info.header.seq, _x.steering_info.header.stamp.secs, _x.steering_info.header.stamp.nsecs,) = _get_struct_3I().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.steering_info.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.steering_info.header.frame_id = str[start:end]
+      _x = self
+      start = end
+      end += 18
+      (_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.header.seq, _x.scc_info.header.stamp.secs, _x.scc_info.header.stamp.nsecs,) = _get_struct_2Bf3I().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.scc_info.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.scc_info.header.frame_id = str[start:end]
+      _x = self
+      start = end
+      end += 22
+      (_x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs,) = _get_struct_2Bd3I().unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -229,8 +276,8 @@ uint8 button3"""
         self.wheelspeed.header.frame_id = str[start:end]
       _x = self
       start = end
-      end += 41
-      (_x.wheelspeed.wheel_speed, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate,) = _get_struct_d9B3d().unpack(str[start:end])
+      end += 73
+      (_x.wheelspeed.wheel_speed, _x.wheelspeed.fr, _x.wheelspeed.fl, _x.wheelspeed.rr, _x.wheelspeed.rl, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate,) = _get_struct_5d9B3d().unpack(str[start:end])
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -252,7 +299,23 @@ uint8 button3"""
         length = len(_x)
       buff.write(struct.pack('<I%ss'%length, length, _x))
       _x = self
-      buff.write(_get_struct_2Bf2Bd3I().pack(_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs))
+      buff.write(_get_struct_3I().pack(_x.steering_info.header.seq, _x.steering_info.header.stamp.secs, _x.steering_info.header.stamp.nsecs))
+      _x = self.steering_info.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
+      buff.write(_get_struct_2Bf3I().pack(_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.header.seq, _x.scc_info.header.stamp.secs, _x.scc_info.header.stamp.nsecs))
+      _x = self.scc_info.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
+      buff.write(_get_struct_2Bd3I().pack(_x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs))
       _x = self.wheelspeed.header.frame_id
       length = len(_x)
       if python3 or type(_x) == unicode:
@@ -260,7 +323,7 @@ uint8 button3"""
         length = len(_x)
       buff.write(struct.pack('<I%ss'%length, length, _x))
       _x = self
-      buff.write(_get_struct_d9B3d().pack(_x.wheelspeed.wheel_speed, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate))
+      buff.write(_get_struct_5d9B3d().pack(_x.wheelspeed.wheel_speed, _x.wheelspeed.fr, _x.wheelspeed.fl, _x.wheelspeed.rr, _x.wheelspeed.rl, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
 
@@ -301,8 +364,34 @@ uint8 button3"""
         self.header.frame_id = str[start:end]
       _x = self
       start = end
-      end += 28
-      (_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs,) = _get_struct_2Bf2Bd3I().unpack(str[start:end])
+      end += 12
+      (_x.steering_info.header.seq, _x.steering_info.header.stamp.secs, _x.steering_info.header.stamp.nsecs,) = _get_struct_3I().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.steering_info.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.steering_info.header.frame_id = str[start:end]
+      _x = self
+      start = end
+      end += 18
+      (_x.steering_info.takeover, _x.steering_info.mode, _x.steering_info.steering_angle, _x.scc_info.header.seq, _x.scc_info.header.stamp.secs, _x.scc_info.header.stamp.nsecs,) = _get_struct_2Bf3I().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.scc_info.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.scc_info.header.frame_id = str[start:end]
+      _x = self
+      start = end
+      end += 22
+      (_x.scc_info.scc_mode, _x.scc_info.scc_takeover, _x.scc_info.acceleration, _x.wheelspeed.header.seq, _x.wheelspeed.header.stamp.secs, _x.wheelspeed.header.stamp.nsecs,) = _get_struct_2Bd3I().unpack(str[start:end])
       start = end
       end += 4
       (length,) = _struct_I.unpack(str[start:end])
@@ -314,8 +403,8 @@ uint8 button3"""
         self.wheelspeed.header.frame_id = str[start:end]
       _x = self
       start = end
-      end += 41
-      (_x.wheelspeed.wheel_speed, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate,) = _get_struct_d9B3d().unpack(str[start:end])
+      end += 73
+      (_x.wheelspeed.wheel_speed, _x.wheelspeed.fr, _x.wheelspeed.fl, _x.wheelspeed.rr, _x.wheelspeed.rl, _x.gear_info.gear, _x.light_info.left_light, _x.light_info.right_light, _x.light_info.hazard_light, _x.remote_button_info.button1, _x.remote_button_info.button2, _x.remote_button_info.button3, _x.auto_mode, _x.ems_mode, _x.x_acceleration, _x.y_acceleration, _x.yaw_rate,) = _get_struct_5d9B3d().unpack(str[start:end])
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -330,15 +419,21 @@ def _get_struct_3I():
     if _struct_3I is None:
         _struct_3I = struct.Struct("<3I")
     return _struct_3I
-_struct_2Bf2Bd3I = None
-def _get_struct_2Bf2Bd3I():
-    global _struct_2Bf2Bd3I
-    if _struct_2Bf2Bd3I is None:
-        _struct_2Bf2Bd3I = struct.Struct("<2Bf2Bd3I")
-    return _struct_2Bf2Bd3I
-_struct_d9B3d = None
-def _get_struct_d9B3d():
-    global _struct_d9B3d
-    if _struct_d9B3d is None:
-        _struct_d9B3d = struct.Struct("<d9B3d")
-    return _struct_d9B3d
+_struct_2Bf3I = None
+def _get_struct_2Bf3I():
+    global _struct_2Bf3I
+    if _struct_2Bf3I is None:
+        _struct_2Bf3I = struct.Struct("<2Bf3I")
+    return _struct_2Bf3I
+_struct_2Bd3I = None
+def _get_struct_2Bd3I():
+    global _struct_2Bd3I
+    if _struct_2Bd3I is None:
+        _struct_2Bd3I = struct.Struct("<2Bd3I")
+    return _struct_2Bd3I
+_struct_5d9B3d = None
+def _get_struct_5d9B3d():
+    global _struct_5d9B3d
+    if _struct_5d9B3d is None:
+        _struct_5d9B3d = struct.Struct("<5d9B3d")
+    return _struct_5d9B3d

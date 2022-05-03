@@ -11,7 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs  
   autorally_msgs
   tf  
-  imu_3dm_gx4
+  imu_3dm_gx4  
 )
 
 find_package(cmake_modules REQUIRED)

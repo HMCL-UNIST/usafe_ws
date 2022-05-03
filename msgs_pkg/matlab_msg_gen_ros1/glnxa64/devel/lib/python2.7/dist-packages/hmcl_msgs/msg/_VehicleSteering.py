@@ -5,20 +5,38 @@ python3 = True if sys.hexversion > 0x03000000 else False
 import genpy
 import struct
 
+import std_msgs.msg
 
 class VehicleSteering(genpy.Message):
-  _md5sum = "dd3809935c332a8fcc9e52a50d78d736"
+  _md5sum = "5fb428b383c979ad23048575d907b4bf"
   _type = "hmcl_msgs/VehicleSteering"
-  _has_header = False #flag to mark the presence of a Header object
-  _full_text = """# steering takeover -> off       = 0
+  _has_header = True #flag to mark the presence of a Header object
+  _full_text = """Header header
+# steering takeover -> off       = 0
 # steering takeover -> on      = 1
 uint8 takeover
 # steering mode -> off       = 0
 # steering mode -> on      = 1
 uint8 mode
-float32 steering_angle"""
-  __slots__ = ['takeover','mode','steering_angle']
-  _slot_types = ['uint8','uint8','float32']
+float32 steering_angle
+================================================================================
+MSG: std_msgs/Header
+# Standard metadata for higher-level stamped data types.
+# This is generally used to communicate timestamped data 
+# in a particular coordinate frame.
+# 
+# sequence ID: consecutively increasing ID 
+uint32 seq
+#Two-integer timestamp that is expressed as:
+# * stamp.sec: seconds (stamp_secs) since epoch (in Python the variable is called 'secs')
+# * stamp.nsec: nanoseconds since stamp_secs (in Python the variable is called 'nsecs')
+# time-handling sugar is provided by the client library
+time stamp
+#Frame this data is associated with
+string frame_id
+"""
+  __slots__ = ['header','takeover','mode','steering_angle']
+  _slot_types = ['std_msgs/Header','uint8','uint8','float32']
 
   def __init__(self, *args, **kwds):
     """
@@ -28,7 +46,7 @@ float32 steering_angle"""
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       takeover,mode,steering_angle
+       header,takeover,mode,steering_angle
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -37,6 +55,8 @@ float32 steering_angle"""
     if args or kwds:
       super(VehicleSteering, self).__init__(*args, **kwds)
       #message fields cannot be None, assign default values for those that are
+      if self.header is None:
+        self.header = std_msgs.msg.Header()
       if self.takeover is None:
         self.takeover = 0
       if self.mode is None:
@@ -44,6 +64,7 @@ float32 steering_angle"""
       if self.steering_angle is None:
         self.steering_angle = 0.
     else:
+      self.header = std_msgs.msg.Header()
       self.takeover = 0
       self.mode = 0
       self.steering_angle = 0.
@@ -61,6 +82,14 @@ float32 steering_angle"""
     """
     try:
       _x = self
+      buff.write(_get_struct_3I().pack(_x.header.seq, _x.header.stamp.secs, _x.header.stamp.nsecs))
+      _x = self.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
       buff.write(_get_struct_2Bf().pack(_x.takeover, _x.mode, _x.steering_angle))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
@@ -71,7 +100,22 @@ float32 steering_angle"""
     :param str: byte array of serialized message, ``str``
     """
     try:
+      if self.header is None:
+        self.header = std_msgs.msg.Header()
       end = 0
+      _x = self
+      start = end
+      end += 12
+      (_x.header.seq, _x.header.stamp.secs, _x.header.stamp.nsecs,) = _get_struct_3I().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.header.frame_id = str[start:end]
       _x = self
       start = end
       end += 6
@@ -89,6 +133,14 @@ float32 steering_angle"""
     """
     try:
       _x = self
+      buff.write(_get_struct_3I().pack(_x.header.seq, _x.header.stamp.secs, _x.header.stamp.nsecs))
+      _x = self.header.frame_id
+      length = len(_x)
+      if python3 or type(_x) == unicode:
+        _x = _x.encode('utf-8')
+        length = len(_x)
+      buff.write(struct.pack('<I%ss'%length, length, _x))
+      _x = self
       buff.write(_get_struct_2Bf().pack(_x.takeover, _x.mode, _x.steering_angle))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
@@ -100,7 +152,22 @@ float32 steering_angle"""
     :param numpy: numpy python module
     """
     try:
+      if self.header is None:
+        self.header = std_msgs.msg.Header()
       end = 0
+      _x = self
+      start = end
+      end += 12
+      (_x.header.seq, _x.header.stamp.secs, _x.header.stamp.nsecs,) = _get_struct_3I().unpack(str[start:end])
+      start = end
+      end += 4
+      (length,) = _struct_I.unpack(str[start:end])
+      start = end
+      end += length
+      if python3:
+        self.header.frame_id = str[start:end].decode('utf-8')
+      else:
+        self.header.frame_id = str[start:end]
       _x = self
       start = end
       end += 6
@@ -119,3 +186,9 @@ def _get_struct_2Bf():
     if _struct_2Bf is None:
         _struct_2Bf = struct.Struct("<2Bf")
     return _struct_2Bf
+_struct_3I = None
+def _get_struct_3I():
+    global _struct_3I
+    if _struct_3I is None:
+        _struct_3I = struct.Struct("<3I")
+    return _struct_3I

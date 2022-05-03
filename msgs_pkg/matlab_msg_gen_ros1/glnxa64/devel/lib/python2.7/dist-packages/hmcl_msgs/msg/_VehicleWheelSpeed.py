@@ -8,12 +8,15 @@ import struct
 import std_msgs.msg
 
 class VehicleWheelSpeed(genpy.Message):
-  _md5sum = "8804ce48a9e0c5cc9c60aefa163da8cd"
+  _md5sum = "dd9bfec439fcf31963b917a79106fa20"
   _type = "hmcl_msgs/VehicleWheelSpeed"
   _has_header = True #flag to mark the presence of a Header object
   _full_text = """Header header
 float64 wheel_speed
-
+float64 fr
+float64 fl
+float64 rr
+float64 rl
 ================================================================================
 MSG: std_msgs/Header
 # Standard metadata for higher-level stamped data types.
@@ -30,8 +33,8 @@ time stamp
 #Frame this data is associated with
 string frame_id
 """
-  __slots__ = ['header','wheel_speed']
-  _slot_types = ['std_msgs/Header','float64']
+  __slots__ = ['header','wheel_speed','fr','fl','rr','rl']
+  _slot_types = ['std_msgs/Header','float64','float64','float64','float64','float64']
 
   def __init__(self, *args, **kwds):
     """
@@ -41,7 +44,7 @@ string frame_id
     changes.  You cannot mix in-order arguments and keyword arguments.
 
     The available fields are:
-       header,wheel_speed
+       header,wheel_speed,fr,fl,rr,rl
 
     :param args: complete set of field values, in .msg order
     :param kwds: use keyword arguments corresponding to message field names
@@ -54,9 +57,21 @@ string frame_id
         self.header = std_msgs.msg.Header()
       if self.wheel_speed is None:
         self.wheel_speed = 0.
+      if self.fr is None:
+        self.fr = 0.
+      if self.fl is None:
+        self.fl = 0.
+      if self.rr is None:
+        self.rr = 0.
+      if self.rl is None:
+        self.rl = 0.
     else:
       self.header = std_msgs.msg.Header()
       self.wheel_speed = 0.
+      self.fr = 0.
+      self.fl = 0.
+      self.rr = 0.
+      self.rl = 0.
 
   def _get_types(self):
     """
@@ -78,7 +93,8 @@ string frame_id
         _x = _x.encode('utf-8')
         length = len(_x)
       buff.write(struct.pack('<I%ss'%length, length, _x))
-      buff.write(_get_struct_d().pack(self.wheel_speed))
+      _x = self
+      buff.write(_get_struct_5d().pack(_x.wheel_speed, _x.fr, _x.fl, _x.rr, _x.rl))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
 
@@ -104,9 +120,10 @@ string frame_id
         self.header.frame_id = str[start:end].decode('utf-8')
       else:
         self.header.frame_id = str[start:end]
+      _x = self
       start = end
-      end += 8
-      (self.wheel_speed,) = _get_struct_d().unpack(str[start:end])
+      end += 40
+      (_x.wheel_speed, _x.fr, _x.fl, _x.rr, _x.rl,) = _get_struct_5d().unpack(str[start:end])
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -127,7 +144,8 @@ string frame_id
         _x = _x.encode('utf-8')
         length = len(_x)
       buff.write(struct.pack('<I%ss'%length, length, _x))
-      buff.write(_get_struct_d().pack(self.wheel_speed))
+      _x = self
+      buff.write(_get_struct_5d().pack(_x.wheel_speed, _x.fr, _x.fl, _x.rr, _x.rl))
     except struct.error as se: self._check_types(struct.error("%s: '%s' when writing '%s'" % (type(se), str(se), str(locals().get('_x', self)))))
     except TypeError as te: self._check_types(ValueError("%s: '%s' when writing '%s'" % (type(te), str(te), str(locals().get('_x', self)))))
 
@@ -154,9 +172,10 @@ string frame_id
         self.header.frame_id = str[start:end].decode('utf-8')
       else:
         self.header.frame_id = str[start:end]
+      _x = self
       start = end
-      end += 8
-      (self.wheel_speed,) = _get_struct_d().unpack(str[start:end])
+      end += 40
+      (_x.wheel_speed, _x.fr, _x.fl, _x.rr, _x.rl,) = _get_struct_5d().unpack(str[start:end])
       return self
     except struct.error as e:
       raise genpy.DeserializationError(e) #most likely buffer underfill
@@ -165,15 +184,15 @@ _struct_I = genpy.struct_I
 def _get_struct_I():
     global _struct_I
     return _struct_I
+_struct_5d = None
+def _get_struct_5d():
+    global _struct_5d
+    if _struct_5d is None:
+        _struct_5d = struct.Struct("<5d")
+    return _struct_5d
 _struct_3I = None
 def _get_struct_3I():
     global _struct_3I
     if _struct_3I is None:
         _struct_3I = struct.Struct("<3I")
     return _struct_3I
-_struct_d = None
-def _get_struct_d():
-    global _struct_d
-    if _struct_d is None:
-        _struct_d = struct.Struct("<d")
-    return _struct_d

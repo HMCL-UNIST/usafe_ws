@@ -8,7 +8,7 @@ classdef VehicleStatus < ros.Message
         MessageType = 'hmcl_msgs/VehicleStatus' % The ROS message type
     end
     properties (Constant, Hidden)
-        MD5Checksum = '4379a0a3949b9158cbbf027b23b2d0d8' % The MD5 Checksum of the message definition
+        MD5Checksum = '257eaa74ca2595e01127664962d58d27' % The MD5 Checksum of the message definition
         PropertyList = { 'Header' 'SteeringInfo' 'SccInfo' 'Wheelspeed' 'GearInfo' 'LightInfo' 'RemoteButtonInfo' 'AutoMode' 'EmsMode' 'XAcceleration' 'YAcceleration' 'YawRate' } % List of non-constant message properties
         ROSPropertyList = { 'header' 'steering_info' 'scc_info' 'wheelspeed' 'gear_info' 'light_info' 'remote_button_info' 'auto_mode' 'ems_mode' 'x_acceleration' 'y_acceleration' 'yaw_rate' } % List of non-constant ROS message properties
         PropertyMessageTypes = { 'ros.msggen.std_msgs.Header' ...

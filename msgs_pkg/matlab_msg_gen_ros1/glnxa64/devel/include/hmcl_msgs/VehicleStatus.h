@@ -176,12 +176,12 @@ struct MD5Sum< ::hmcl_msgs::VehicleStatus_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "4379a0a3949b9158cbbf027b23b2d0d8";
+    return "257eaa74ca2595e01127664962d58d27";
   }
 
   static const char* value(const ::hmcl_msgs::VehicleStatus_<ContainerAllocator>&) { return value(); }
-  static const uint64_t static_value1 = 0x4379a0a3949b9158ULL;
-  static const uint64_t static_value2 = 0xcbbf027b23b2d0d8ULL;
+  static const uint64_t static_value1 = 0x257eaa74ca2595e0ULL;
+  static const uint64_t static_value2 = 0x1127664962d58d27ULL;
 };
 
 template<class ContainerAllocator>
@@ -212,7 +212,7 @@ struct Definition< ::hmcl_msgs::VehicleStatus_<ContainerAllocator> >
 "uint8 auto_mode \n"
 "# ems mode -> 0  off\n"
 "# ems mode -> 1  on\n"
-"uint8 ems_mode\n"
+"uint8 ems_mode \n"
 "float64 x_acceleration\n"
 "float64 y_acceleration\n"
 "float64 yaw_rate\n"
@@ -235,6 +235,7 @@ struct Definition< ::hmcl_msgs::VehicleStatus_<ContainerAllocator> >
 "\n"
 "================================================================================\n"
 "MSG: hmcl_msgs/VehicleSteering\n"
+"Header header\n"
 "# steering takeover -> off       = 0\n"
 "# steering takeover -> on      = 1\n"
 "uint8 takeover\n"
@@ -244,6 +245,7 @@ struct Definition< ::hmcl_msgs::VehicleStatus_<ContainerAllocator> >
 "float32 steering_angle\n"
 "================================================================================\n"
 "MSG: hmcl_msgs/VehicleSCC\n"
+"Header header\n"
 "# sccmode -> off       = 0\n"
 "# sccmode -> ready       = 1\n"
 "# sccmode -> on       = 2\n"
@@ -256,7 +258,10 @@ struct Definition< ::hmcl_msgs::VehicleStatus_<ContainerAllocator> >
 "MSG: hmcl_msgs/VehicleWheelSpeed\n"
 "Header header\n"
 "float64 wheel_speed\n"
-"\n"
+"float64 fr\n"
+"float64 fl\n"
+"float64 rr\n"
+"float64 rl\n"
 "================================================================================\n"
 "MSG: hmcl_msgs/VehicleGear\n"
 "# Gear -> P       = 1\n"

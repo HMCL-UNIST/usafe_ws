@@ -8,10 +8,11 @@ classdef VehicleSCC < ros.Message
         MessageType = 'hmcl_msgs/VehicleSCC' % The ROS message type
     end
     properties (Constant, Hidden)
-        MD5Checksum = '2b27ed567b1b24fdf57d28dea9993802' % The MD5 Checksum of the message definition
-        PropertyList = { 'SccMode' 'SccTakeover' 'Acceleration' } % List of non-constant message properties
-        ROSPropertyList = { 'scc_mode' 'scc_takeover' 'acceleration' } % List of non-constant ROS message properties
-        PropertyMessageTypes = { '' ...
+        MD5Checksum = '0471adfa682d3742aa9adb20fb1e2600' % The MD5 Checksum of the message definition
+        PropertyList = { 'Header' 'SccMode' 'SccTakeover' 'Acceleration' } % List of non-constant message properties
+        ROSPropertyList = { 'header' 'scc_mode' 'scc_takeover' 'acceleration' } % List of non-constant ROS message properties
+        PropertyMessageTypes = { 'ros.msggen.std_msgs.Header' ...
+			 '' ...
 			 '' ...
 			 '' ...
 			 } % Types of contained nested messages
@@ -19,11 +20,18 @@ classdef VehicleSCC < ros.Message
     properties (Constant)
     end
     properties
+        Header
         SccMode
         SccTakeover
         Acceleration
     end
     methods
+        function set.Header(obj, val)
+            validAttributes = {'nonempty', 'scalar'};
+            validClasses = {'ros.msggen.std_msgs.Header'};
+            validateattributes(val, validClasses, validAttributes, 'VehicleSCC', 'Header')
+            obj.Header = val;
+        end
         function set.SccMode(obj, val)
             validClasses = {'numeric'};
             validAttributes = {'nonempty', 'scalar'};

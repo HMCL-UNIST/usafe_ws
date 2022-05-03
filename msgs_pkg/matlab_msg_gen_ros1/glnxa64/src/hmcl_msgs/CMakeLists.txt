@@ -40,6 +40,7 @@ add_message_files(
     VehicleSteering.msg
     VehicleWheelSpeed.msg
     Waypoint.msg
+    WaypointArray.msg
 )
 add_service_files(
     FILES
@@ -139,6 +140,9 @@ add_library(
     src/hmcl_msgs_Waypoint_common.cpp
     src/hmcl_msgs_msg_Waypoint_publisher.cpp
     src/hmcl_msgs_msg_Waypoint_subscriber.cpp
+    src/hmcl_msgs_WaypointArray_common.cpp
+    src/hmcl_msgs_msg_WaypointArray_publisher.cpp
+    src/hmcl_msgs_msg_WaypointArray_subscriber.cpp
     src/hmcl_msgs_RecognizeLightState_request_common.cpp
     src/hmcl_msgs_RecognizeLightState_response_common.cpp
     src/hmcl_msgs_srv_RecognizeLightState_client.cpp
@@ -186,5 +190,5 @@ install(
   RUNTIME DESTINATION bin
 )
 install (DIRECTORY m/ DESTINATION m/ FILES_MATCHING PATTERN "*.m")
-# Generated 28-Apr-2022 23:53:04
+# Generated 02-May-2022 20:41:56
 # Copyright 2019-2020 The MathWorks, Inc.

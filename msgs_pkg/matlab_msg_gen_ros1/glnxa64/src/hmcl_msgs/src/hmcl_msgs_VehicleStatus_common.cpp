@@ -132,6 +132,15 @@ namespace VehicleStatus {
   }
   //----------------------------------------------------------------------------
   void copy_from_arr_hmcl_msgs_VehicleSteering(hmcl_msgs::VehicleSteering& val, const matlab::data::StructArray& arr) {
+    // _hmcl_msgs_VehicleSteering.header
+    try {
+        const matlab::data::StructArray _steering_infoheader_arr = arr[0]["header"];
+        copy_from_arr_std_msgs_Header(val.header,_steering_infoheader_arr);
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'header' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'header' is wrong type; expected a struct.");
+    }
     // _hmcl_msgs_VehicleSteering.takeover
     try {
         const matlab::data::TypedArray<uint8_t> _steering_infotakeover_arr = arr[0]["takeover"];
@@ -162,7 +171,9 @@ namespace VehicleStatus {
   }
   //----------------------------------------------------------------------------
   MDArray_T get_arr_hmcl_msgs_VehicleSteering(MDFactory_T& factory, const hmcl_msgs::VehicleStatus::_steering_info_type& val) {
-    auto _steering_infooutArray = factory.createStructArray({1,1},{"takeover","mode","steering_angle"});
+    auto _steering_infooutArray = factory.createStructArray({1,1},{"header","takeover","mode","steering_angle"});
+    // _hmcl_msgs_VehicleSteering.header
+    _steering_infooutArray[0]["header"] = get_arr_std_msgs_Header(factory, val.header);
     // _hmcl_msgs_VehicleSteering.takeover
     _steering_infooutArray[0]["takeover"] = factory.createScalar(val.takeover);
     // _hmcl_msgs_VehicleSteering.mode
@@ -173,6 +184,15 @@ namespace VehicleStatus {
   }
   //----------------------------------------------------------------------------
   void copy_from_arr_hmcl_msgs_VehicleSCC(hmcl_msgs::VehicleSCC& val, const matlab::data::StructArray& arr) {
+    // _hmcl_msgs_VehicleSCC.header
+    try {
+        const matlab::data::StructArray _scc_infoheader_arr = arr[0]["header"];
+        copy_from_arr_std_msgs_Header(val.header,_scc_infoheader_arr);
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'header' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'header' is wrong type; expected a struct.");
+    }
     // _hmcl_msgs_VehicleSCC.scc_mode
     try {
         const matlab::data::TypedArray<uint8_t> _scc_infoscc_mode_arr = arr[0]["scc_mode"];
@@ -203,7 +223,9 @@ namespace VehicleStatus {
   }
   //----------------------------------------------------------------------------
   MDArray_T get_arr_hmcl_msgs_VehicleSCC(MDFactory_T& factory, const hmcl_msgs::VehicleStatus::_scc_info_type& val) {
-    auto _scc_infooutArray = factory.createStructArray({1,1},{"scc_mode","scc_takeover","acceleration"});
+    auto _scc_infooutArray = factory.createStructArray({1,1},{"header","scc_mode","scc_takeover","acceleration"});
+    // _hmcl_msgs_VehicleSCC.header
+    _scc_infooutArray[0]["header"] = get_arr_std_msgs_Header(factory, val.header);
     // _hmcl_msgs_VehicleSCC.scc_mode
     _scc_infooutArray[0]["scc_mode"] = factory.createScalar(val.scc_mode);
     // _hmcl_msgs_VehicleSCC.scc_takeover
@@ -232,14 +254,58 @@ namespace VehicleStatus {
     } catch (matlab::data::TypeMismatchException&) {
         throw std::invalid_argument("Field 'wheel_speed' is wrong type; expected a double.");
     }
+    // _hmcl_msgs_VehicleWheelSpeed.fr
+    try {
+        const matlab::data::TypedArray<double> _wheelspeedfr_arr = arr[0]["fr"];
+        val.fr = _wheelspeedfr_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'fr' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'fr' is wrong type; expected a double.");
+    }
+    // _hmcl_msgs_VehicleWheelSpeed.fl
+    try {
+        const matlab::data::TypedArray<double> _wheelspeedfl_arr = arr[0]["fl"];
+        val.fl = _wheelspeedfl_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'fl' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'fl' is wrong type; expected a double.");
+    }
+    // _hmcl_msgs_VehicleWheelSpeed.rr
+    try {
+        const matlab::data::TypedArray<double> _wheelspeedrr_arr = arr[0]["rr"];
+        val.rr = _wheelspeedrr_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'rr' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'rr' is wrong type; expected a double.");
+    }
+    // _hmcl_msgs_VehicleWheelSpeed.rl
+    try {
+        const matlab::data::TypedArray<double> _wheelspeedrl_arr = arr[0]["rl"];
+        val.rl = _wheelspeedrl_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'rl' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'rl' is wrong type; expected a double.");
+    }
   }
   //----------------------------------------------------------------------------
   MDArray_T get_arr_hmcl_msgs_VehicleWheelSpeed(MDFactory_T& factory, const hmcl_msgs::VehicleStatus::_wheelspeed_type& val) {
-    auto _wheelspeedoutArray = factory.createStructArray({1,1},{"header","wheel_speed"});
+    auto _wheelspeedoutArray = factory.createStructArray({1,1},{"header","wheel_speed","fr","fl","rr","rl"});
     // _hmcl_msgs_VehicleWheelSpeed.header
     _wheelspeedoutArray[0]["header"] = get_arr_std_msgs_Header(factory, val.header);
     // _hmcl_msgs_VehicleWheelSpeed.wheel_speed
     _wheelspeedoutArray[0]["wheel_speed"] = factory.createScalar(val.wheel_speed);
+    // _hmcl_msgs_VehicleWheelSpeed.fr
+    _wheelspeedoutArray[0]["fr"] = factory.createScalar(val.fr);
+    // _hmcl_msgs_VehicleWheelSpeed.fl
+    _wheelspeedoutArray[0]["fl"] = factory.createScalar(val.fl);
+    // _hmcl_msgs_VehicleWheelSpeed.rr
+    _wheelspeedoutArray[0]["rr"] = factory.createScalar(val.rr);
+    // _hmcl_msgs_VehicleWheelSpeed.rl
+    _wheelspeedoutArray[0]["rl"] = factory.createScalar(val.rl);
     return std::move(_wheelspeedoutArray);
   }
   //----------------------------------------------------------------------------

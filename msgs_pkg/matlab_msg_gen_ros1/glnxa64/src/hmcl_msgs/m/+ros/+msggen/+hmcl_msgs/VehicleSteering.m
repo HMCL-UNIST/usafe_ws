@@ -8,10 +8,11 @@ classdef VehicleSteering < ros.Message
         MessageType = 'hmcl_msgs/VehicleSteering' % The ROS message type
     end
     properties (Constant, Hidden)
-        MD5Checksum = 'dd3809935c332a8fcc9e52a50d78d736' % The MD5 Checksum of the message definition
-        PropertyList = { 'Takeover' 'Mode' 'SteeringAngle' } % List of non-constant message properties
-        ROSPropertyList = { 'takeover' 'mode' 'steering_angle' } % List of non-constant ROS message properties
-        PropertyMessageTypes = { '' ...
+        MD5Checksum = '5fb428b383c979ad23048575d907b4bf' % The MD5 Checksum of the message definition
+        PropertyList = { 'Header' 'Takeover' 'Mode' 'SteeringAngle' } % List of non-constant message properties
+        ROSPropertyList = { 'header' 'takeover' 'mode' 'steering_angle' } % List of non-constant ROS message properties
+        PropertyMessageTypes = { 'ros.msggen.std_msgs.Header' ...
+			 '' ...
 			 '' ...
 			 '' ...
 			 } % Types of contained nested messages
@@ -19,11 +20,18 @@ classdef VehicleSteering < ros.Message
     properties (Constant)
     end
     properties
+        Header
         Takeover
         Mode
         SteeringAngle
     end
     methods
+        function set.Header(obj, val)
+            validAttributes = {'nonempty', 'scalar'};
+            validClasses = {'ros.msggen.std_msgs.Header'};
+            validateattributes(val, validClasses, validAttributes, 'VehicleSteering', 'Header')
+            obj.Header = val;
+        end
         function set.Takeover(obj, val)
             validClasses = {'numeric'};
             validAttributes = {'nonempty', 'scalar'};

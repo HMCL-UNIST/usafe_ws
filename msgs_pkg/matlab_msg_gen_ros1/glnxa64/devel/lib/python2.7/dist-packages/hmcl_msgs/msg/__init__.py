@@ -9,3 +9,4 @@ from ._VehicleStatus import *
 from ._VehicleSteering import *
 from ._VehicleWheelSpeed import *
 from ._Waypoint import *
+from ._WaypointArray import *

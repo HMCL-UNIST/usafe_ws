@@ -8,10 +8,14 @@ classdef VehicleWheelSpeed < ros.Message
         MessageType = 'hmcl_msgs/VehicleWheelSpeed' % The ROS message type
     end
     properties (Constant, Hidden)
-        MD5Checksum = '8804ce48a9e0c5cc9c60aefa163da8cd' % The MD5 Checksum of the message definition
-        PropertyList = { 'Header' 'WheelSpeed' } % List of non-constant message properties
-        ROSPropertyList = { 'header' 'wheel_speed' } % List of non-constant ROS message properties
+        MD5Checksum = 'dd9bfec439fcf31963b917a79106fa20' % The MD5 Checksum of the message definition
+        PropertyList = { 'Header' 'WheelSpeed' 'Fr' 'Fl' 'Rr' 'Rl' } % List of non-constant message properties
+        ROSPropertyList = { 'header' 'wheel_speed' 'fr' 'fl' 'rr' 'rl' } % List of non-constant ROS message properties
         PropertyMessageTypes = { 'ros.msggen.std_msgs.Header' ...
+			 '' ...
+			 '' ...
+			 '' ...
+			 '' ...
 			 '' ...
 			 } % Types of contained nested messages
     end
@@ -20,6 +24,10 @@ classdef VehicleWheelSpeed < ros.Message
     properties
         Header
         WheelSpeed
+        Fr
+        Fl
+        Rr
+        Rl
     end
     methods
         function set.Header(obj, val)
@@ -33,6 +41,30 @@ classdef VehicleWheelSpeed < ros.Message
             validAttributes = {'nonempty', 'scalar'};
             validateattributes(val, validClasses, validAttributes, 'VehicleWheelSpeed', 'WheelSpeed');
             obj.WheelSpeed = double(val);
+        end
+        function set.Fr(obj, val)
+            validClasses = {'numeric'};
+            validAttributes = {'nonempty', 'scalar'};
+            validateattributes(val, validClasses, validAttributes, 'VehicleWheelSpeed', 'Fr');
+            obj.Fr = double(val);
+        end
+        function set.Fl(obj, val)
+            validClasses = {'numeric'};
+            validAttributes = {'nonempty', 'scalar'};
+            validateattributes(val, validClasses, validAttributes, 'VehicleWheelSpeed', 'Fl');
+            obj.Fl = double(val);
+        end
+        function set.Rr(obj, val)
+            validClasses = {'numeric'};
+            validAttributes = {'nonempty', 'scalar'};
+            validateattributes(val, validClasses, validAttributes, 'VehicleWheelSpeed', 'Rr');
+            obj.Rr = double(val);
+        end
+        function set.Rl(obj, val)
+            validClasses = {'numeric'};
+            validAttributes = {'nonempty', 'scalar'};
+            validateattributes(val, validClasses, validAttributes, 'VehicleWheelSpeed', 'Rl');
+            obj.Rl = double(val);
         end
     end
     methods (Static, Access = {?matlab.unittest.TestCase, ?ros.Message})

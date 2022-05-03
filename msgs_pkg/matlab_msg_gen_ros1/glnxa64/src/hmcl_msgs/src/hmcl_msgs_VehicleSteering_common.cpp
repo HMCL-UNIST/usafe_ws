@@ -43,8 +43,92 @@ typedef foundation::matlabdata::standalone::ClientArrayFactory MDFactory_T;
 namespace hmcl_msgs {
 namespace matlabhelper {
 namespace VehicleSteering {
+  void copy_from_arr_std_msgs_Header(std_msgs::Header& val, const matlab::data::StructArray& arr);
+  MDArray_T get_arr_std_msgs_Header(MDFactory_T& factory, const hmcl_msgs::VehicleSteering::_header_type& val);
+  void copy_from_arr_ros_Time(ros::Time& val, const matlab::data::StructArray& arr);
+  MDArray_T get_arr_ros_Time(MDFactory_T& factory, const std_msgs::Header::_stamp_type& val);
+  //----------------------------------------------------------------------------
+  void copy_from_arr_std_msgs_Header(std_msgs::Header& val, const matlab::data::StructArray& arr) {
+    // _std_msgs_Header.seq
+    try {
+        const matlab::data::TypedArray<uint32_t> _headerseq_arr = arr[0]["seq"];
+        val.seq = _headerseq_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'seq' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'seq' is wrong type; expected a uint32.");
+    }
+    // _std_msgs_Header.stamp
+    try {
+        const matlab::data::StructArray _headerstamp_arr = arr[0]["stamp"];
+        copy_from_arr_ros_Time(val.stamp,_headerstamp_arr);
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'stamp' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'stamp' is wrong type; expected a struct.");
+    }
+    // _std_msgs_Header.frame_id
+    try {
+        const matlab::data::CharArray _headerframe_id_arr = arr[0]["frame_id"];
+        val.frame_id = _headerframe_id_arr.toAscii();
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'frame_id' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'frame_id' is wrong type; expected a string.");
+    }
+  }
+  //----------------------------------------------------------------------------
+  MDArray_T get_arr_std_msgs_Header(MDFactory_T& factory, const hmcl_msgs::VehicleSteering::_header_type& val) {
+    auto _headeroutArray = factory.createStructArray({1,1},{"seq","stamp","frame_id"});
+    // _std_msgs_Header.seq
+    _headeroutArray[0]["seq"] = factory.createScalar(val.seq);
+    // _std_msgs_Header.stamp
+    _headeroutArray[0]["stamp"] = get_arr_ros_Time(factory, val.stamp);
+    // _std_msgs_Header.frame_id
+    _headeroutArray[0]["frame_id"] = factory.createCharArray(val.frame_id);
+    return std::move(_headeroutArray);
+  }
+  //----------------------------------------------------------------------------
+  void copy_from_arr_ros_Time(ros::Time& val, const matlab::data::StructArray& arr) {
+    // _ros_Time.sec
+    try {
+        const matlab::data::TypedArray<uint32_t> _header_stampsec_arr = arr[0]["sec"];
+        val.sec = _header_stampsec_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'sec' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'sec' is wrong type; expected a uint32.");
+    }
+    // _ros_Time.nsec
+    try {
+        const matlab::data::TypedArray<uint32_t> _header_stampnsec_arr = arr[0]["nsec"];
+        val.nsec = _header_stampnsec_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'nsec' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'nsec' is wrong type; expected a uint32.");
+    }
+  }
+  //----------------------------------------------------------------------------
+  MDArray_T get_arr_ros_Time(MDFactory_T& factory, const std_msgs::Header::_stamp_type& val) {
+    auto _header_stampoutArray = factory.createStructArray({1,1},{"sec","nsec"});
+    // _ros_Time.sec
+    _header_stampoutArray[0]["sec"] = factory.createScalar(val.sec);
+    // _ros_Time.nsec
+    _header_stampoutArray[0]["nsec"] = factory.createScalar(val.nsec);
+    return std::move(_header_stampoutArray);
+  }
   //----------------------------------------------------------------------------
   HMCL_MSGS_EXPORT void copy_from_arr(boost::shared_ptr<hmcl_msgs::VehicleSteering>& msg, const matlab::data::StructArray arr) {
+    try {
+        //header
+        const matlab::data::StructArray header_arr = arr[0]["header"];
+        copy_from_arr_std_msgs_Header(msg->header,header_arr);
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'header' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'header' is wrong type; expected a struct.");
+    }
     try {
         //takeover
         const matlab::data::TypedArray<uint8_t> takeover_arr = arr[0]["takeover"];
@@ -75,7 +159,9 @@ namespace VehicleSteering {
   }
   //----------------------------------------------------------------------------
   HMCL_MSGS_EXPORT MDArray_T get_arr(MDFactory_T& factory, const boost::shared_ptr<const hmcl_msgs::VehicleSteering>& msg) {
-    auto outArray = factory.createStructArray({1,1},{"takeover","mode","steering_angle"});
+    auto outArray = factory.createStructArray({1,1},{"header","takeover","mode","steering_angle"});
+    // header
+    outArray[0]["header"] = get_arr_std_msgs_Header(factory, msg->header);
     // takeover
     outArray[0]["takeover"] = factory.createScalar(msg->takeover);
     // mode

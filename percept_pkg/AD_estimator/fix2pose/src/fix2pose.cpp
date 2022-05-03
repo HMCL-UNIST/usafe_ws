@@ -50,12 +50,14 @@ Fix2Pose::Fix2Pose() :
   enu_gnss_.Reset(latOrigin,lonOrigin,altOrigin);
 
 
-
+  ahrs_heading_switch = false;
+  heading_in_rad = 0.0;
   
   worldGnssPosePub = nh_.advertise<geometry_msgs::PoseStamped>("/gnss_pose_world", 1);  
 
   fixgnssPoseSub = nh_.subscribe("/gnss_h_pose", 100, &Fix2Pose::fixgnssPoseSubCallback, this);  
 
+  headingSub = nh_.subscribe("/nav/heading", 10, &Fix2Pose::headingCallback,this);  
   
 }
 
@@ -71,12 +73,22 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   global_gnss_pose.pose.position.x = gnss_pose_global_x;
   global_gnss_pose.pose.position.y = gnss_pose_global_y;
   global_gnss_pose.pose.position.z = gnss_pose_global_z;
-  global_gnss_pose.pose.orientation.x = pose->pose.orientation.x;
-  global_gnss_pose.pose.orientation.y = pose->pose.orientation.y;
-  global_gnss_pose.pose.orientation.z = pose->pose.orientation.z;
-  global_gnss_pose.pose.orientation.w = pose->pose.orientation.w;
+  if(ahrs_heading_switch){
+    tf2::Quaternion q;
+    q.setRPY(0, 0, heading_in_rad);
+    q=q.normalize();
+    global_gnss_pose.pose.orientation.x = q[0];
+    global_gnss_pose.pose.orientation.y = q[1];
+    global_gnss_pose.pose.orientation.z = q[2];
+    global_gnss_pose.pose.orientation.w = q[3];
+  }else{
+    global_gnss_pose.pose.orientation.x = pose->pose.orientation.x;
+    global_gnss_pose.pose.orientation.y = pose->pose.orientation.y;
+    global_gnss_pose.pose.orientation.z = pose->pose.orientation.z;
+    global_gnss_pose.pose.orientation.w = pose->pose.orientation.w;
+  }
   worldGnssPosePub.publish(global_gnss_pose);    
-   
+  ahrs_heading_switch = false;
   // tf::Transform transform;
   // // transform.setOrigin( tf::Vector3(gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z) );
   // // tf::Quaternion q(pose->pose.orientation.x,pose->pose.orientation.y,pose->pose.orientation.z,pose->pose.orientation.w);
@@ -88,7 +100,20 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
 
 }
 
-
+void Fix2Pose::headingCallback(microstrain_inertial_msgs::FilterHeadingConstPtr msg){
+  ahrs_heading_switch = true;
+  //  (90.0-float(item_list[1]))*math.pi/180 
+    // heading_in_rad = msg->heading_rad;
+    heading_in_rad = M_PI/2.0 - msg->heading_rad; 
+    msg->heading_rad;
+    while(heading_in_rad > M_PI){
+      heading_in_rad = heading_in_rad - 2*M_PI;
+    }
+    while(heading_in_rad < M_PI){
+      heading_in_rad = heading_in_rad + 2*M_PI;
+    }
+    ROS_INFO("heading_in_degree = %f ", heading_in_rad*180/M_PI);
+}
 
 
 int main (int argc, char** argv)

@@ -15,6 +15,7 @@
 #include <ros/builtin_message_traits.h>
 #include <ros/message_operations.h>
 
+#include <std_msgs/Header.h>
 
 namespace hmcl_msgs
 {
@@ -24,18 +25,23 @@ struct VehicleSteering_
   typedef VehicleSteering_<ContainerAllocator> Type;
 
   VehicleSteering_()
-    : takeover(0)
+    : header()
+    , takeover(0)
     , mode(0)
     , steering_angle(0.0)  {
     }
   VehicleSteering_(const ContainerAllocator& _alloc)
-    : takeover(0)
+    : header(_alloc)
+    , takeover(0)
     , mode(0)
     , steering_angle(0.0)  {
   (void)_alloc;
     }
 
 
+
+   typedef  ::std_msgs::Header_<ContainerAllocator>  _header_type;
+  _header_type header;
 
    typedef uint8_t _takeover_type;
   _takeover_type takeover;
@@ -80,7 +86,7 @@ namespace message_traits
 
 
 
-// BOOLTRAITS {'IsFixedSize': True, 'IsMessage': True, 'HasHeader': False}
+// BOOLTRAITS {'IsFixedSize': False, 'IsMessage': True, 'HasHeader': True}
 // {'hmcl_msgs': ['/home/hmcl/usafe/src/msgs_pkg/matlab_msg_gen_ros1/glnxa64/src/hmcl_msgs/msg'], 'geometry_msgs': ['/usr/local/MATLAB/R2020b/sys/ros1/glnxa64/ros1/share/geometry_msgs/cmake/../msg'], 'std_msgs': ['/usr/local/MATLAB/R2020b/sys/ros1/glnxa64/ros1/share/std_msgs/cmake/../msg', '/usr/local/MATLAB/R2020b/sys/ros1/glnxa64/ros1/share/std_msgs/cmake/../msg'], 'sensor_msgs': ['/usr/local/MATLAB/R2020b/sys/ros1/glnxa64/ros1/share/sensor_msgs/cmake/../msg']}
 
 // !!!!!!!!!!! ['__class__', '__delattr__', '__dict__', '__doc__', '__eq__', '__format__', '__getattribute__', '__hash__', '__init__', '__module__', '__ne__', '__new__', '__reduce__', '__reduce_ex__', '__repr__', '__setattr__', '__sizeof__', '__str__', '__subclasshook__', '__weakref__', '_parsed_fields', 'constants', 'fields', 'full_name', 'has_header', 'header_present', 'names', 'package', 'parsed_fields', 'short_name', 'text', 'types']
@@ -90,12 +96,12 @@ namespace message_traits
 
 template <class ContainerAllocator>
 struct IsFixedSize< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> >
-  : TrueType
+  : FalseType
   { };
 
 template <class ContainerAllocator>
 struct IsFixedSize< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> const>
-  : TrueType
+  : FalseType
   { };
 
 template <class ContainerAllocator>
@@ -110,12 +116,12 @@ struct IsMessage< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> const>
 
 template <class ContainerAllocator>
 struct HasHeader< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> >
-  : FalseType
+  : TrueType
   { };
 
 template <class ContainerAllocator>
 struct HasHeader< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> const>
-  : FalseType
+  : TrueType
   { };
 
 
@@ -124,12 +130,12 @@ struct MD5Sum< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "dd3809935c332a8fcc9e52a50d78d736";
+    return "5fb428b383c979ad23048575d907b4bf";
   }
 
   static const char* value(const ::hmcl_msgs::VehicleSteering_<ContainerAllocator>&) { return value(); }
-  static const uint64_t static_value1 = 0xdd3809935c332a8fULL;
-  static const uint64_t static_value2 = 0xcc9e52a50d78d736ULL;
+  static const uint64_t static_value1 = 0x5fb428b383c979adULL;
+  static const uint64_t static_value2 = 0x23048575d907b4bfULL;
 };
 
 template<class ContainerAllocator>
@@ -148,13 +154,29 @@ struct Definition< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "# steering takeover -> off       = 0\n"
+    return "Header header\n"
+"# steering takeover -> off       = 0\n"
 "# steering takeover -> on      = 1\n"
 "uint8 takeover\n"
 "# steering mode -> off       = 0\n"
 "# steering mode -> on      = 1\n"
 "uint8 mode\n"
 "float32 steering_angle\n"
+"================================================================================\n"
+"MSG: std_msgs/Header\n"
+"# Standard metadata for higher-level stamped data types.\n"
+"# This is generally used to communicate timestamped data \n"
+"# in a particular coordinate frame.\n"
+"# \n"
+"# sequence ID: consecutively increasing ID \n"
+"uint32 seq\n"
+"#Two-integer timestamp that is expressed as:\n"
+"# * stamp.sec: seconds (stamp_secs) since epoch (in Python the variable is called 'secs')\n"
+"# * stamp.nsec: nanoseconds since stamp_secs (in Python the variable is called 'nsecs')\n"
+"# time-handling sugar is provided by the client library\n"
+"time stamp\n"
+"#Frame this data is associated with\n"
+"string frame_id\n"
 ;
   }
 
@@ -173,6 +195,7 @@ namespace serialization
   {
     template<typename Stream, typename T> inline static void allInOne(Stream& stream, T m)
     {
+      stream.next(m.header);
       stream.next(m.takeover);
       stream.next(m.mode);
       stream.next(m.steering_angle);
@@ -194,6 +217,9 @@ struct Printer< ::hmcl_msgs::VehicleSteering_<ContainerAllocator> >
 {
   template<typename Stream> static void stream(Stream& s, const std::string& indent, const ::hmcl_msgs::VehicleSteering_<ContainerAllocator>& v)
   {
+    s << indent << "header: ";
+    s << std::endl;
+    Printer< ::std_msgs::Header_<ContainerAllocator> >::stream(s, indent + "  ", v.header);
     s << indent << "takeover: ";
     Printer<uint8_t>::stream(s, indent + "  ", v.takeover);
     s << indent << "mode: ";

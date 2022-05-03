@@ -138,14 +138,58 @@ namespace VehicleWheelSpeed {
     } catch (matlab::data::TypeMismatchException&) {
         throw std::invalid_argument("Field 'wheel_speed' is wrong type; expected a double.");
     }
+    try {
+        //fr
+        const matlab::data::TypedArray<double> fr_arr = arr[0]["fr"];
+        msg->fr = fr_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'fr' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'fr' is wrong type; expected a double.");
+    }
+    try {
+        //fl
+        const matlab::data::TypedArray<double> fl_arr = arr[0]["fl"];
+        msg->fl = fl_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'fl' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'fl' is wrong type; expected a double.");
+    }
+    try {
+        //rr
+        const matlab::data::TypedArray<double> rr_arr = arr[0]["rr"];
+        msg->rr = rr_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'rr' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'rr' is wrong type; expected a double.");
+    }
+    try {
+        //rl
+        const matlab::data::TypedArray<double> rl_arr = arr[0]["rl"];
+        msg->rl = rl_arr[0];
+    } catch (matlab::data::InvalidFieldNameException&) {
+        throw std::invalid_argument("Field 'rl' is missing.");
+    } catch (matlab::data::TypeMismatchException&) {
+        throw std::invalid_argument("Field 'rl' is wrong type; expected a double.");
+    }
   }
   //----------------------------------------------------------------------------
   HMCL_MSGS_EXPORT MDArray_T get_arr(MDFactory_T& factory, const boost::shared_ptr<const hmcl_msgs::VehicleWheelSpeed>& msg) {
-    auto outArray = factory.createStructArray({1,1},{"header","wheel_speed"});
+    auto outArray = factory.createStructArray({1,1},{"header","wheel_speed","fr","fl","rr","rl"});
     // header
     outArray[0]["header"] = get_arr_std_msgs_Header(factory, msg->header);
     // wheel_speed
     outArray[0]["wheel_speed"] = factory.createScalar(msg->wheel_speed);
+    // fr
+    outArray[0]["fr"] = factory.createScalar(msg->fr);
+    // fl
+    outArray[0]["fl"] = factory.createScalar(msg->fl);
+    // rr
+    outArray[0]["rr"] = factory.createScalar(msg->rr);
+    // rl
+    outArray[0]["rl"] = factory.createScalar(msg->rl);
     return std::move(outArray);
   }
 } //namespace VehicleWheelSpeed

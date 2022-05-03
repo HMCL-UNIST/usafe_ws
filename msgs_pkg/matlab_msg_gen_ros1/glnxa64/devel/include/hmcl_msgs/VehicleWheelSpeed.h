@@ -26,11 +26,19 @@ struct VehicleWheelSpeed_
 
   VehicleWheelSpeed_()
     : header()
-    , wheel_speed(0.0)  {
+    , wheel_speed(0.0)
+    , fr(0.0)
+    , fl(0.0)
+    , rr(0.0)
+    , rl(0.0)  {
     }
   VehicleWheelSpeed_(const ContainerAllocator& _alloc)
     : header(_alloc)
-    , wheel_speed(0.0)  {
+    , wheel_speed(0.0)
+    , fr(0.0)
+    , fl(0.0)
+    , rr(0.0)
+    , rl(0.0)  {
   (void)_alloc;
     }
 
@@ -41,6 +49,18 @@ struct VehicleWheelSpeed_
 
    typedef double _wheel_speed_type;
   _wheel_speed_type wheel_speed;
+
+   typedef double _fr_type;
+  _fr_type fr;
+
+   typedef double _fl_type;
+  _fl_type fl;
+
+   typedef double _rr_type;
+  _rr_type rr;
+
+   typedef double _rl_type;
+  _rl_type rl;
 
 
 
@@ -120,12 +140,12 @@ struct MD5Sum< ::hmcl_msgs::VehicleWheelSpeed_<ContainerAllocator> >
 {
   static const char* value()
   {
-    return "8804ce48a9e0c5cc9c60aefa163da8cd";
+    return "dd9bfec439fcf31963b917a79106fa20";
   }
 
   static const char* value(const ::hmcl_msgs::VehicleWheelSpeed_<ContainerAllocator>&) { return value(); }
-  static const uint64_t static_value1 = 0x8804ce48a9e0c5ccULL;
-  static const uint64_t static_value2 = 0x9c60aefa163da8cdULL;
+  static const uint64_t static_value1 = 0xdd9bfec439fcf319ULL;
+  static const uint64_t static_value2 = 0x63b917a79106fa20ULL;
 };
 
 template<class ContainerAllocator>
@@ -146,7 +166,10 @@ struct Definition< ::hmcl_msgs::VehicleWheelSpeed_<ContainerAllocator> >
   {
     return "Header header\n"
 "float64 wheel_speed\n"
-"\n"
+"float64 fr\n"
+"float64 fl\n"
+"float64 rr\n"
+"float64 rl\n"
 "================================================================================\n"
 "MSG: std_msgs/Header\n"
 "# Standard metadata for higher-level stamped data types.\n"
@@ -182,6 +205,10 @@ namespace serialization
     {
       stream.next(m.header);
       stream.next(m.wheel_speed);
+      stream.next(m.fr);
+      stream.next(m.fl);
+      stream.next(m.rr);
+      stream.next(m.rl);
     }
 
     ROS_DECLARE_ALLINONE_SERIALIZER
@@ -205,6 +232,14 @@ struct Printer< ::hmcl_msgs::VehicleWheelSpeed_<ContainerAllocator> >
     Printer< ::std_msgs::Header_<ContainerAllocator> >::stream(s, indent + "  ", v.header);
     s << indent << "wheel_speed: ";
     Printer<double>::stream(s, indent + "  ", v.wheel_speed);
+    s << indent << "fr: ";
+    Printer<double>::stream(s, indent + "  ", v.fr);
+    s << indent << "fl: ";
+    Printer<double>::stream(s, indent + "  ", v.fl);
+    s << indent << "rr: ";
+    Printer<double>::stream(s, indent + "  ", v.rr);
+    s << indent << "rl: ";
+    Printer<double>::stream(s, indent + "  ", v.rl);
   }
 };
 
