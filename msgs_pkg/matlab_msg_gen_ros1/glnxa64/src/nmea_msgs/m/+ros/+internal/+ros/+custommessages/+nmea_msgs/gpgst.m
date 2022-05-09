@@ -1,0 +1,37 @@
+function [data, info] = gpgst
+%Gpgst gives an empty data for nmea_msgs/Gpgst
+% Copyright 2019-2020 The MathWorks, Inc.
+data = struct();
+[data.header, info.header] = ros.internal.ros.messages.std_msgs.header;
+info.header.MLdataType = 'struct';
+[data.message_id, info.message_id] = ros.internal.ros.messages.ros.char('string',0);
+[data.utc_seconds, info.utc_seconds] = ros.internal.ros.messages.ros.default_type('double',1);
+[data.rms, info.rms] = ros.internal.ros.messages.ros.default_type('single',1);
+[data.semi_major_dev, info.semi_major_dev] = ros.internal.ros.messages.ros.default_type('single',1);
+[data.semi_minor_dev, info.semi_minor_dev] = ros.internal.ros.messages.ros.default_type('single',1);
+[data.orientation, info.orientation] = ros.internal.ros.messages.ros.default_type('single',1);
+[data.lat_dev, info.lat_dev] = ros.internal.ros.messages.ros.default_type('single',1);
+[data.lon_dev, info.lon_dev] = ros.internal.ros.messages.ros.default_type('single',1);
+[data.alt_dev, info.alt_dev] = ros.internal.ros.messages.ros.default_type('single',1);
+info.MessageType = 'nmea_msgs/Gpgst';
+info.constant = 0;
+info.default = 0;
+info.maxstrlen = NaN;
+info.MaxLen = 1;
+info.MinLen = 1;
+info.MatPath = cell(1,15);
+info.MatPath{1} = 'header';
+info.MatPath{2} = 'header.seq';
+info.MatPath{3} = 'header.stamp';
+info.MatPath{4} = 'header.stamp.sec';
+info.MatPath{5} = 'header.stamp.nsec';
+info.MatPath{6} = 'header.frame_id';
+info.MatPath{7} = 'message_id';
+info.MatPath{8} = 'utc_seconds';
+info.MatPath{9} = 'rms';
+info.MatPath{10} = 'semi_major_dev';
+info.MatPath{11} = 'semi_minor_dev';
+info.MatPath{12} = 'orientation';
+info.MatPath{13} = 'lat_dev';
+info.MatPath{14} = 'lon_dev';
+info.MatPath{15} = 'alt_dev';

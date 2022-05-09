@@ -98,7 +98,7 @@ bool tf_available;
 double latOrigin, lonOrigin, altOrigin;
 std::vector<std::vector<std::string>> tf_data;
 
-Eigen::Matrix4f l_to_g, g_to_l;
+Eigen::Matrix4f l_to_g, g_to_l, init_guess_g_to_l;
 Eigen::Matrix4f l_to_g_sensor, g_to_l_sensor;
 
 // transform from local sensor frame to global sensor frame

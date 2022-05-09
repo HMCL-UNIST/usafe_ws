@@ -25,6 +25,7 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   std_msgs
   tf  
+  microstrain_inertial_msgs
 )
 
 catkin_package(

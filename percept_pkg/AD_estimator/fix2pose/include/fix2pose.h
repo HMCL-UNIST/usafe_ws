@@ -45,6 +45,10 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
+#include <microstrain_inertial_msgs/FilterHeading.h>
 
 
 #define PI 3.14159265358979323846264338
@@ -55,11 +59,12 @@ class Fix2Pose
   
 private:
 ros::NodeHandle nh_;
-ros::Subscriber fixgnssPoseSub;
+ros::Subscriber fixgnssPoseSub, headingSub;
 ros::Publisher  worldGnssPosePub;
 tf::TransformBroadcaster gnss_to_map_br;
 
-
+double heading_in_rad;
+bool ahrs_heading_switch;
 
 GeographicLib::LocalCartesian enu_gnss_;   /// Object to put lat/lon coordinates into local cartesian
 
@@ -69,6 +74,7 @@ public:
 Fix2Pose();
 ~Fix2Pose();
 void fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose);
+void headingCallback(microstrain_inertial_msgs::FilterHeadingConstPtr msg);
 
 
 

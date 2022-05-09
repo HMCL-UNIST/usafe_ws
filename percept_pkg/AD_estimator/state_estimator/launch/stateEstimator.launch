@@ -6,12 +6,15 @@
   <node name="state_estimator" pkg="state_estimator" type="StateEstimator" output="screen">      
       <!-- subscribe topics  -->
       <remap from="state_estimator/gps" to="/fix"/>
-      <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/>
+      <!-- <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/> -->
+      <remap from="state_estimator/imu" to="/imu/data"/>
+      
       <remap from="state_estimator/local_pose" to="/gnss_pose_world"/>      
       <remap from="state_estimator/wheel_odom" to="/wheel_odom"/>
 
       <!-- publish topics-->
       <remap from="state_estimator/pose" to="/pose_estimate"/>
+      <remap from="state_estimator/estimated_pose" to="/geo_pose_estimate"/>
       <remap from="state_estimator/filter" to="imu/filter"/>
       <remap from="state_estimator/bias_acc" to="bias_acc"/>
       <remap from="state_estimator/bias_gyro" to="bias_gyro"/>
@@ -26,9 +29,9 @@
       <param name="GyroSigma" value="8.73e-5"/>
       <param name="AccelBiasSigma" value="3.9e-4"/>
       <param name="GyroBiasSigma" value="4.8e-05"/>
-      <param name="GPSSigma" value="0.1"/>
-      <param name="localPoseSigma" value="0.2"/>      
-      <!--<param name="SensorTransformX" value="0.076"/>
+      <param name="GPSSigma" value="0.01"/>
+      <param name="localPoseSigma" value="0.01"/>      
+       <!--<param name="SensorTransformX" value="0.076"/>
       <param name="SensorTransformY" value="-0.0246"/>
       <param name="SensorTransformZ" value="-0.020"/>-->
       <param name="SensorXAngle" value="0.0"/>
@@ -69,14 +72,14 @@
       <param name="altOrigin" value="55.494"/> 
       
       <!-- flag for whether to use the wheel odometry messages -->
-      <param name="UseOdom" value="false"/>
+      <param name="UseOdom" value="true"/>
 
       <param name="UseLocalPose" value="true"/>
 
       <!-- if a GPS measurement is more than this threshold from the expected reading given
            the previous estimate, it will be disgarded (in meters) -->
-      <param name="MaxGPSError" value="3"/>
-      <param name="maxLocalPoseError" value="3"/>
+      <param name="MaxGPSError" value="5"/>
+      <param name="maxLocalPoseError" value="5"/>
       
 
   </node>

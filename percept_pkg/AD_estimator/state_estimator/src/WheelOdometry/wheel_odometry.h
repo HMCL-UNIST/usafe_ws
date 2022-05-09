@@ -40,6 +40,7 @@
 #include "ros/ros.h"
 #include <hmcl_msgs/VehicleSteering.h>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
+#include <hmcl_msgs/VehicleStatus.h>
 #include <nav_msgs/Odometry.h>
 
 namespace autorally_core
@@ -76,8 +77,8 @@ private:
   const double VELOCITY_THETA_BETA = -5.1233; ///< Coefficient for calculating variance in yaw rate
   const double VELOCITY_THETA_GAMMA = 3.7705; ///< Coefficient for calculating variance in yaw rate
 
-  ros::Subscriber servo_sub_;           ///< Subscriber for servo status
-  ros::Subscriber wheel_speeds_sub_;     ///< Subscriber for wheel speeds
+  ros::Subscriber status_sub_;           ///< Subscriber for servo status
+  // ros::Subscriber wheel_speeds_sub_;     ///< Subscriber for wheel speeds
   ros::Subscriber state_estimator_sub_;  /// < Subscriber for state estimate
   ros::Publisher odom_;                 ///< Publisher for odometry values
 
@@ -135,8 +136,8 @@ private:
     * This callback estimates the steering angle based on incoming servo values
     * @param servo message containing servo steering value
     */  
-  void steerCallback(const hmcl_msgs::VehicleSteeringConstPtr& steer);
-
+  // void steerCallback(const hmcl_msgs::VehicleSteeringConstPtr& steer);
+  void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr& status);
   /**
     * This callback estimates the vehicle's linear velocities and yaw rate and publishes an Odometry message. This
     * method calculates error values proportional to the difference between estimated velocities and true velocities

@@ -44,6 +44,10 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/MarkerArray.h>
+#include <autoware_msgs/Lane.h>
+#include <autoware_msgs/Waypoint.h>
+
+
 #include <GeographicLib/LocalCartesian.hpp>
 #include "BlockingQueue.h"
 #include <eigen3/Eigen/Geometry>
@@ -81,6 +85,8 @@
 // #include <lanelet2_extension/visualization/visualization.h>
 // #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
 
+
+
 #define PI 3.14159265358979323846264338
 
 class MapLoader 
@@ -88,7 +94,7 @@ class MapLoader
   
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
-ros::Publisher g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, map_bin_pub;
+ros::Publisher autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
 
 ros::Publisher way_pub;
 
@@ -147,6 +153,7 @@ unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d 
 void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx);
 void fix_and_save_osm();
 
+
 void compute_global_path();
 void compute_local_path();
 
@@ -154,6 +161,7 @@ void lanelet_ros_convert_loop();
 
 void viz_local_path(hmcl_msgs::Lane &lane_);
 
+void pub_autoware_traj(const hmcl_msgs::Lane& lane);
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
 
 

@@ -39,12 +39,15 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path)  
 {
   // using namespace lanelet;
-  way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 1, true);
-  local_traj_pub = nh_local_path_.advertise<hmcl_msgs::Lane>("/local_traj", 1, true);
-  g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 1, true);  
+
   map_bin_pub = nh_.advertise<autoware_lanelet2_msgs::MapBin>("/lanelet_map_bin", 1, true);
   
   map_loaded = false;
+  way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 2, true);
+  local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);
+  g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);  
+  autoware_lane_pub = nh_.advertise<autoware_msgs::Lane>("/local_traj_auto", 2, true);
+  
   pose_init = false; 
   goal_available = false;
   pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
@@ -85,7 +88,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   construct_lanelets_with_viz();
   rp_.setMap(map);
   
-  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_handler,this);    
+  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.03), &MapLoader::local_traj_handler,this);    
   if(continuious_global_replan){
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
@@ -690,7 +693,21 @@ void MapLoader::compute_local_path(){
           viz_local_path(local_traj_msg);
           l_traj_viz_pub.publish(local_traj_marker_arrary);
       }
-     
+  pub_autoware_traj(local_traj_msg);
+
+}
+
+void MapLoader::pub_autoware_traj(const hmcl_msgs::Lane& lane){
+  autoware_msgs::Lane autoware_lane;
+  autoware_lane.header = lane.header;
+  
+  for(const auto lane_waypoint: lane.waypoints){
+    autoware_msgs::Waypoint wp;
+    wp.pose = lane_waypoint.pose;
+    wp.twist = lane_waypoint.twist;
+    autoware_lane.waypoints.push_back(wp);
+  }
+  autoware_lane_pub.publish(autoware_lane);
 }
 
 void MapLoader::local_traj_handler(const ros::TimerEvent& time){  

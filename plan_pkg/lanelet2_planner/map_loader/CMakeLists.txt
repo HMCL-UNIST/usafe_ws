@@ -37,6 +37,7 @@ find_package(catkin REQUIRED COMPONENTS
   lanelet2_validation
   autoware_lanelet2_msgs
   lanelet2_extension
+  autoware_msgs
 )
 
 catkin_package( 
@@ -56,6 +57,7 @@ catkin_package(
   lanelet2_traffic_rules
   lanelet2_validation
   lanelet2_extension
+  autoware_msgs
   LIBRARIES
 )
 
