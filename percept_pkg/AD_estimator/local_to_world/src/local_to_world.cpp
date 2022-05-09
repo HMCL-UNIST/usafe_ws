@@ -323,6 +323,7 @@ void Localtoworld::compute_transform()
         point_in.y = N_;
         point_in.z = U_;
         std::cout << "point_in.x = " <<  point_in.x << "  point_in.y = " <<  point_in.y<< "  point_in.z = " <<  point_in.z << std::endl;
+        
       }
       // Fill in the CloutOut data
       for (auto& point_out : *cloud_out_local)
