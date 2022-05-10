@@ -5,7 +5,7 @@
 
   <node name="map_loader" pkg="map_loader" type="map_loader" output="screen">      
       
-      <remap from="/current_pose" to="/geo_pose_estimate"/>  
+      <!-- <remap from="/current_pose" to="/geo_pose_estimate"/>   -->
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
@@ -26,7 +26,7 @@
      
       <param name="visualize_path" value="True"/> 
       <param name="map_fix" value="True"/> 
-      <param name="map_road_resolution" value="1.0"/> 
+      <param name="map_road_resolution" value="2.0"/> 
       <param name="local_path_length" value="40.0"/> 
       <param name="weight_decay_rate" value="0.85"/> 
       <param name="continuious_global_replan" value="False"/> 

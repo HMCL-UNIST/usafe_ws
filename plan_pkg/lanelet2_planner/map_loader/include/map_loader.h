@@ -94,7 +94,8 @@ class MapLoader
   
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
-ros::Publisher autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
+
+ros::Publisher map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
 
 ros::Publisher way_pub;
 
