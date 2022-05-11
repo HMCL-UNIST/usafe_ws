@@ -61,9 +61,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<double>("lr", lr, 1.35);
   nh_traj.param<double>("mass", mass, 1650);    
   nh_traj.param<double>("dt", dt, 0.04); 
-  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.2); 
-  nh_traj.param<double>("lag_tau", lag_tau, 0.2); 
-  nh_traj.param<int>("preview_step", preview_step, 6); 
+  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.04); 
+  nh_traj.param<double>("lag_tau", lag_tau, 0.05); 
+  nh_traj.param<int>("preview_step", preview_step, 50); 
 
   nh_traj.param<double>("Q_ey", Q_ey, 3.0); 
   nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
@@ -77,9 +77,10 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
 
   delay_step = (int)(delay_in_sec/dt);
-  VehicleModel_.init(dt, wheelbase, lf, lr, mass, delay_step);
   VehicleModel_.setDelayStep(delay_step);  
   VehicleModel_.setLagTau(lag_tau);
+  VehicleModel_.initModel(dt, wheelbase, lf, lr, mass);
+
   ROS_INFO("lag_tau = %f", lag_tau);
   ROS_INFO("delay_step = %f", delay_step);
  
@@ -95,11 +96,12 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   waypointSub = nh_traj.subscribe(waypoint_topic, 2, &PreviewCtrl::callbackRefPath, this);
   poseSub = nh_traj.subscribe(pose_topic, 2, &PreviewCtrl::callbackPose, this);
   StatusSub = nh_traj.subscribe(status_topic, 2, &PreviewCtrl::statusCallback, this);
-
+  
 
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(control_topic, 2);    
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
-    
+  ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
+
   boost::thread ControlLoopHandler(&PreviewCtrl::ControlLoop,this);   
   ROS_INFO("Init Preview controller with delay compensation");
   
@@ -151,22 +153,28 @@ void PreviewCtrl::ControlLoop()
           ROS_WARN("solution not found ~~~!!!!!!! control lost"); 
           continue;
         }
-        VehicleModel_.computeGain();           
+        double delta_cmd = VehicleModel_.computeGain();           
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-
+        ackermann_msgs::AckermannDrive ctrl_msg;
+        ctrl_msg.acceleration = 1.0;
+        ctrl_msg.steering_angle = delta_cmd;
+        ackmanPub.publish(ctrl_msg);
         ///////////////////////////////////////////////////////
         // record control inputs 
-        double delta_cmd = 0.0;        
         delta_buffer.push_back(delta_cmd);
         if(delta_buffer.size()>delay_step){
           delta_buffer.erase(delta_buffer.begin());
         }
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
 
-        auto end = std::chrono::steady_clock::now();     
+      auto end = std::chrono::steady_clock::now();     
      loop_rate.sleep();
      std::chrono::duration<double> elapsed_seconds = end-start;
-      std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
+     if ( elapsed_seconds.count() > dt){
+       ROS_ERROR("computing control gain takes too much time");
+       std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
+     }
+      
     }
 }
 
@@ -191,6 +199,8 @@ bool PreviewCtrl::stateSetup(){
   double steer = vehicle_status_.tire_angle_rad;
   state_time = vehicle_status_.header.stamp;
    /* get steering angle */
+  Xk = Eigen::VectorXd::Zero(delay_step+5,1);
+  Cr = Eigen::VectorXd::Zero(preview_step+1);  
   
   if(!state_received){
     state_received= true;    
@@ -215,11 +225,11 @@ bool PreviewCtrl::stateSetup(){
         Xk(5+i) = delta_buffer[i];
       }
 
-
+      
       Cr = Eigen::VectorXd::Zero(preview_step+1);      
       int cuv_size = traj_.k.size()-nearest_index;
-      for(int i=nearest_index; i< min(cuv_size,preview_step+1) ;i++){
-        Cr(i) = traj_.k[i];
+      for(int i=0; i< min(cuv_size,preview_step+1) ;i++){
+        Cr(i) = traj_.k[nearest_index+i];
       }
 
 
@@ -236,7 +246,8 @@ bool PreviewCtrl::stateSetup(){
 
 void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 {
-  
+  config_switch = config.config_switch;
+  if(config_switch){
   Q_ey = config.Q_ey;
   Q_eydot = config.Q_eydot;
   Q_epsi = config.Q_epsi ;
@@ -250,7 +261,7 @@ void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
   VehicleModel_.setWeight( Qweight, R_weight);
   VehicleModel_.setDelayStep(delay_step);  
   VehicleModel_.setLagTau(lag_tau);
-
+  }
 
   
 }

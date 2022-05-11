@@ -55,6 +55,7 @@ private:
   Eigen::MatrixXd mcAd, mcBd, mcDd; 
   Eigen::MatrixXd mcP;
 
+  Eigen::VectorXd Xk, Cr; // Xk contains states and deltas && Cr contains preview curvature 
 
 
 public:
@@ -63,7 +64,7 @@ public:
 VehicleModel(){};
 ~VehicleModel(){};
 
-void init(double& dt, double& wheelbase, double&  lf, double&  lr, double& mass, int delay_step_);
+void initModel(double& dt, double& wheelbase, double&  lf, double&  lr, double& mass);
 void setDelayStep(int delay_step_);
 void setLagTau(double tau_);
 void setWeight(std::vector<double> q_weight, double r_weight);
@@ -71,8 +72,8 @@ void reintMatrices();
 void computeMatrices(double vel);
 
 bool solveRiccati();
-void computeGain();
-void setState(Eigen::MatrixXd Xk,Eigen::MatrixXd Cr);
+double computeGain();
+void setState(Eigen::VectorXd Xk,Eigen::VectorXd Cr);
 
 
 

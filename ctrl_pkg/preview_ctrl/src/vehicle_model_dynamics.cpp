@@ -18,7 +18,7 @@
 #include "vehicle_model_dynamics.h"
 
 
-void VehicleModel::init(double& dt, double&  wheelbase, double& lf, double& lr, double& mass, int delay_step_){
+void VehicleModel::initModel(double& dt, double&  wheelbase, double& lf, double& lr, double& mass){
         
         dt_ = dt;
         wheelbase_ = wheelbase;
@@ -34,7 +34,7 @@ void VehicleModel::init(double& dt, double&  wheelbase, double& lf, double& lr, 
         sigma1 = 2.0*(cf_+cr_);
         sigma2 = -2.0*(lf_ * cf_ - lr_ * cr_);
         sigma3 = -2.0*(lf_* lf_ * cf_ + lr_* lr_ * cr_);
-        mcQ    = Eigen::MatrixXd::Zero(delay_step_+5,delay_step_+5);     
+        mcQ    = Eigen::MatrixXd::Zero(delay_step+5,delay_step+5);     
         mcR    = Eigen::MatrixXd::Zero(1,1);
         init_done = true;
         
@@ -152,12 +152,42 @@ bool VehicleModel::solveRiccati(){
     return mcp_found;
 }
 
-void VehicleModel::computeGain(){
+double VehicleModel::computeGain(){    
+    double delta; 
+    
     Eigen::MatrixXd Kb = Eigen::MatrixXd::Zero(delay_step+5,delay_step+5);
-    Kb = (mcR+mcBd.transpose()*mcP*mcBd).inverse()*mcBd.transpose()*mcP*mcAd;
-    // PRINT_MAT(Kb);
+    Eigen::MatrixXd invertMtx = (mcR+mcBd.transpose()*mcP*mcBd).inverse()*mcBd.transpose();
+  
+    Kb = invertMtx*mcP*mcAd;
+   
+  
+    // state error feedback  and feedback for delayed commands//////
+ 
+    Eigen::MatrixXd delay_state_feedback =  -1*Kb*Xk;
+  
+    /////////////////////////
+    Eigen::MatrixXd Izeta = Eigen::MatrixXd::Identity(delay_step+5,delay_step+5);
+    Eigen::MatrixXd zeta =  mcAd.transpose()*(Izeta+mcP*mcBd*mcR.inverse()*mcBd.transpose()).inverse();    
+    Eigen::MatrixXd zeta_pow = Eigen::MatrixXd::Identity(delay_step+5,delay_step+5);
+    std::vector<Eigen::MatrixXd> kfs;
+    Eigen::MatrixXd kf_1_col = invertMtx*mcP*mcDd;
+    
+    // Preview curvature feedback gain 
+    Eigen::MatrixXd preview_feedback = -1*kf_1_col*Cr(0);           
+    
+    for(int i=1; i < Cr.size();i++){
+         zeta_pow = zeta_pow*zeta;         
+        Eigen::MatrixXd Kf_col = invertMtx*zeta_pow*mcP*mcDd;        
+        Eigen::MatrixXd tmpMtx = - 1*Kf_col*Cr(i);        
+        preview_feedback = preview_feedback + tmpMtx;
+        
+    }        
+    delta = delta + delay_state_feedback(0,0) + preview_feedback(0,0);
+    ROS_INFO("delta = %f, stataFeedback = %f, previewFeedback = %f",delta, delay_state_feedback(0,0) , preview_feedback(0,0));
+    return delta;
 }
 
-void VehicleModel::setState(Eigen::MatrixXd Xk,Eigen::MatrixXd Cr){
-return;
+void VehicleModel::setState(Eigen::VectorXd Xk_,Eigen::VectorXd Cr_){
+    Xk = Xk_;
+    Cr = Cr_;        
 }

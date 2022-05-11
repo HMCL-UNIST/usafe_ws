@@ -40,6 +40,7 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
+#include <ackermann_msgs/AckermannDrive.h>
 #include <hmcl_msgs/VehicleStatus.h>
 #include <hmcl_msgs/VehicleSCC.h>
 #include <hmcl_msgs/VehicleSteering.h>
@@ -77,7 +78,7 @@ bool my_steering_ok_,my_position_ok_;
   
 std::mutex mtx_;
 ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub;
-ros::Publisher  steerPub, pub_debug_filtered_traj_;
+ros::Publisher  ackmanPub, steerPub, pub_debug_filtered_traj_;
 
 Trajectory traj_;
 hmcl_msgs::Lane current_waypoints_;
@@ -111,6 +112,8 @@ ros::Time state_time, prev_state_time;
 
 Eigen::VectorXd Xk, Cr;
 double prev_ey, prev_epsi;
+
+bool config_switch;
 
 public:
 PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj);

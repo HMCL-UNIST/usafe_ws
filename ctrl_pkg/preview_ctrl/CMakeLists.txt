@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   sensor_msgs
   geometry_msgs
   visualization_msgs
+  ackermann_msgs
   std_msgs
   tf  
   hmcl_msgs  
