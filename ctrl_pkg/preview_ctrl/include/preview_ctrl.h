@@ -74,10 +74,10 @@ double tire_angle_rad;      //< @brief vehicle tire angle
 };
 VehicleStatus vehicle_status_; //< @brief vehicle status
 
-bool my_steering_ok_,my_position_ok_;
+bool my_steering_ok_,my_position_ok_, my_odom_ok_;
   
 std::mutex mtx_;
-ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub;
+ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub;
 ros::Publisher  ackmanPub, steerPub, pub_debug_filtered_traj_;
 
 Trajectory traj_;
@@ -101,7 +101,7 @@ double dt, wheelbase, lf, lr, mass;
 
 
 double error_deriv_lpf_curoff_hz;
-std::string control_topic, pose_topic, vehicle_states_topic, waypoint_topic, odom_topic, status_topic;
+std::string control_topic, pose_topic, vehicle_states_topic, waypoint_topic, odom_topic, status_topic, simstatus_topic;
 
 Butterworth2dFilter lpf_lateral_error_;
 Butterworth2dFilter lpf_yaw_error_; 
@@ -122,7 +122,9 @@ void ControlLoop();
 
 
 void callbackPose(const geometry_msgs::PoseStampedConstPtr& msg);
-void statusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr& msg);
+void simstatusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr& msg);
+void statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg);
+void odomCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg);
 bool stateSetup();
 

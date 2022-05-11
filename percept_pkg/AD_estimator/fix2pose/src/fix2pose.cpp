@@ -109,10 +109,10 @@ void Fix2Pose::headingCallback(microstrain_inertial_msgs::FilterHeadingConstPtr 
     while(heading_in_rad > M_PI){
       heading_in_rad = heading_in_rad - 2*M_PI;
     }
-    while(heading_in_rad < M_PI){
+    while(heading_in_rad < -M_PI){
       heading_in_rad = heading_in_rad + 2*M_PI;
     }
-    ROS_INFO("heading_in_degree = %f ", heading_in_rad*180/M_PI);
+    // ROS_INFO("heading_in_degree = %f ", heading_in_rad*180/M_PI);
 }
 
 

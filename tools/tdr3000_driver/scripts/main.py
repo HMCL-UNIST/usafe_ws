@@ -64,7 +64,7 @@ class TcpCommunicator(threading.Thread):
                 line = str(data)
                 #line = line[2:] # discard b' at start and ' at end
                 item_list = line.split(',')
-                print(item_list)
+                # print(item_list)
                 if item_list[0] == '$GNRMC': # for GNSS   or   '$INRMC' for INS
                     self.UTC_time = float(item_list[1]) # hhmmss.sss
                     self.activity_status = item_list[2] # A : Active , V : Void

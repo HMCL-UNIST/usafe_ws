@@ -41,17 +41,20 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj_(nh_traj),
   my_steering_ok_(false),
   my_position_ok_(false),
+  my_odom_ok_(false),
   state_received(false)
 {
   
 
   nh_traj.param<std::string>("pose_topic", pose_topic, "/current_pose");
-  nh_traj.param<std::string>("status_topic", status_topic, "/carla/ego_vehicle/vehicle_status");
+  nh_traj.param<std::string>("simstatus_topic", simstatus_topic, "/carla/ego_vehicle/vehicle_status");
+  nh_traj.param<std::string>("status_topic", status_topic, "/vehicle_status");  
   nh_traj.param<std::string>("vehicle_states_topic", vehicle_states_topic, "/ctrl_states");
   nh_traj.param<std::string>("control_topic", control_topic, "/hmcl_ctrl_cmd");
   nh_traj.param<std::string>("waypoint_topic", waypoint_topic, "/local_traj");
-  nh_traj.param<std::string>("odom_topic", odom_topic, "/carla/ego_vehicle/odometry");
- 
+  // nh_traj.param<std::string>("odom_topic", odom_topic, "/carla/ego_vehicle/odometry");
+  nh_traj.param<std::string>("odom_topic", odom_topic, "pose_estimate");
+  
    
   nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 1);
   nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
@@ -95,7 +98,12 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
   waypointSub = nh_traj.subscribe(waypoint_topic, 2, &PreviewCtrl::callbackRefPath, this);
   poseSub = nh_traj.subscribe(pose_topic, 2, &PreviewCtrl::callbackPose, this);
+  
+  simStatusSub = nh_traj.subscribe(simstatus_topic, 2, &PreviewCtrl::simstatusCallback, this);
   StatusSub = nh_traj.subscribe(status_topic, 2, &PreviewCtrl::statusCallback, this);
+  
+  
+  odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
   
 
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(control_topic, 2);    
@@ -114,13 +122,36 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
 PreviewCtrl::~PreviewCtrl()
 {}
 
+void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
+    double yaw_ = tf2::getYaw(msg->pose.pose.orientation);         
+    double global_x = msg->twist.twist.linear.x;
+    double global_y = msg->twist.twist.linear.y;
+         
+    vehicle_status_.twist.linear.x = global_x*cos(-1*yaw_) - global_y*sin(-1*yaw_);
+    vehicle_status_.twist.linear.y = global_x*sin(-1*yaw_) + global_y*cos(-1*yaw_);
+    vehicle_status_.twist.angular.z = msg->twist.twist.angular.z;
+
+    my_odom_ok_ = true;
+}
+
 void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
   vehicle_status_.header = msg->header;
   vehicle_status_.pose = msg->pose;
   my_position_ok_ = true;
 }
+void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
+  // recieve longitudinal velocity and steering 
+      if(msg->wheelspeed.wheel_speed > 0){
+        if(fabs(vehicle_status_.twist.linear.x - msg->wheelspeed.wheel_speed) > 3){
+          vehicle_status_.twist.linear.x = msg->wheelspeed.wheel_speed;
+        }
+      }
+      vehicle_status_.tire_angle_rad = msg->steering_info.steering_angle;        
+  my_steering_ok_ = true;
+  
+}
 
-void PreviewCtrl::statusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr &msg){
+void PreviewCtrl::simstatusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr &msg){
   // recieve longitudinal velocity and steering 
   vehicle_status_.twist.linear.x = msg->velocity;
   vehicle_status_.tire_angle_rad = -1*msg->control.steer;  

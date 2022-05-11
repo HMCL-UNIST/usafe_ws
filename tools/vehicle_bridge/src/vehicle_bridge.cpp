@@ -46,16 +46,16 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   
   InitCanmsg();
   test_count = 0; 
-  AcanSub = nh_light_.subscribe("/a_can_l2h", 1, &VehicleBridge::AcanCallback, this);
-  CcanSub = nh_light_.subscribe("/c_can_l2h", 1, &VehicleBridge::CcanCallback, this);
-  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 5);
+  AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
+  CcanSub = nh_light_.subscribe("/c_can_l2h", 100, &VehicleBridge::CcanCallback, this);
+  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 5);  
   statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 5);    
   sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 5);    
   steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 5);    
   wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
+  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);
   AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
   ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 1, &VehicleBridge::ShiftCmdCallback, this);
   LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 1, &VehicleBridge::LightCmdCallback, this);
@@ -283,7 +283,7 @@ void VehicleBridge::AcanWatchdog()
 
 void VehicleBridge::AcanSender()
 {
-  ros::Rate loop_rate(50); // rate of cmd   
+  ros::Rate loop_rate(25); // rate of cmd   
   while (ros::ok())
   {  
     if(Acan_recv_status){
@@ -308,8 +308,11 @@ void VehicleBridge::AcanSender()
       // usleep(1000);
       // AcanPub.publish(gear_frame);
       // usleep(1000);
+
+      
       AcanPub.publish(light_frame);      
-      usleep(10);
+      usleep(1000);
+      AcanPub.publish(steering_frame);
       /// test
       // double weight = 0.01*(test_count*2+1);
       
@@ -333,7 +336,6 @@ void VehicleBridge::AcanSender()
       // tt.data = target_angle;
       // test_pub.publish(tt);
 
-      AcanPub.publish(steering_frame);
     }
     loop_rate.sleep();
   }
