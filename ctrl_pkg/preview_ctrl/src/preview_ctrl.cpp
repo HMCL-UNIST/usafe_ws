@@ -33,7 +33,7 @@
 #include <vector>
 #include "preview_ctrl.h"
 
-
+int test_count = 0;
 using namespace std;
 
 PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):  
@@ -46,7 +46,8 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
 {
   
 
-  nh_traj.param<std::string>("pose_topic", pose_topic, "/current_pose");
+  // nh_traj.param<std::string>("pose_topic", pose_topic, "/current_pose");
+  nh_traj.param<std::string>("pose_topic", pose_topic, "/pose_estimate");  
   nh_traj.param<std::string>("simstatus_topic", simstatus_topic, "/carla/ego_vehicle/vehicle_status");
   nh_traj.param<std::string>("status_topic", status_topic, "/vehicle_status");  
   nh_traj.param<std::string>("vehicle_states_topic", vehicle_states_topic, "/ctrl_states");
@@ -54,29 +55,32 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<std::string>("waypoint_topic", waypoint_topic, "/local_traj");
   // nh_traj.param<std::string>("odom_topic", odom_topic, "/carla/ego_vehicle/odometry");
   nh_traj.param<std::string>("odom_topic", odom_topic, "pose_estimate");
+
+  nh_traj.param<std::string>("steer_cmd_topic", steer_cmd_topic, "/usafe_steer_cmd");
   
-   
-  nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 1);
+  
+
+  nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 10);
   nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
   nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
-  nh_traj.param<double>("wheelbase", wheelbase, 2.7);
-  nh_traj.param<double>("lf", lf, 1.35);
-  nh_traj.param<double>("lr", lr, 1.35);
+  nh_traj.param<double>("wheelbase", wheelbase, 2.6);
+  nh_traj.param<double>("lf", lf, 1.3);
+  nh_traj.param<double>("lr", lr, 1.3);
   nh_traj.param<double>("mass", mass, 1650);    
   nh_traj.param<double>("dt", dt, 0.04); 
-  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.04); 
-  nh_traj.param<double>("lag_tau", lag_tau, 0.05); 
-  nh_traj.param<int>("preview_step", preview_step, 50); 
+  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.12); 
+  nh_traj.param<double>("lag_tau", lag_tau, 0.12); 
+  nh_traj.param<int>("preview_step", preview_step, 40); 
 
   nh_traj.param<double>("Q_ey", Q_ey, 3.0); 
   nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
   nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
-  nh_traj.param<double>("R_weight", R_weight, 1500); 
+  nh_traj.param<double>("R_weight", R_weight, 2500); 
   
   
 
-  nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 5.0); 
+  nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 0.75); 
   
 
   delay_step = (int)(delay_in_sec/dt);
@@ -89,6 +93,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
  
   lpf_lateral_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
+  lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
+  lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
+  steer_filter.initialize(dt, 0.85);
 
 
   std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
@@ -97,7 +104,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
   
   waypointSub = nh_traj.subscribe(waypoint_topic, 2, &PreviewCtrl::callbackRefPath, this);
-  poseSub = nh_traj.subscribe(pose_topic, 2, &PreviewCtrl::callbackPose, this);
+  // poseSub = nh_traj.subscribe(pose_topic, 2, &PreviewCtrl::callbackPose, this);
   
   simStatusSub = nh_traj.subscribe(simstatus_topic, 2, &PreviewCtrl::simstatusCallback, this);
   StatusSub = nh_traj.subscribe(status_topic, 2, &PreviewCtrl::statusCallback, this);
@@ -105,8 +112,8 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
   odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
   
-
-  steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(control_topic, 2);    
+  debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
+  steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);    
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
   ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
 
@@ -123,22 +130,26 @@ PreviewCtrl::~PreviewCtrl()
 {}
 
 void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
+    
+    vehicle_status_.header = msg->header;
+    vehicle_status_.pose = msg->pose.pose;
+    my_position_ok_ = true;
+
     double yaw_ = tf2::getYaw(msg->pose.pose.orientation);         
     double global_x = msg->twist.twist.linear.x;
     double global_y = msg->twist.twist.linear.y;
          
-    vehicle_status_.twist.linear.x = global_x*cos(-1*yaw_) - global_y*sin(-1*yaw_);
+    vehicle_status_.twist.linear.x = fabs(global_x*cos(-1*yaw_) - global_y*sin(-1*yaw_));
     vehicle_status_.twist.linear.y = global_x*sin(-1*yaw_) + global_y*cos(-1*yaw_);
-    vehicle_status_.twist.angular.z = msg->twist.twist.angular.z;
-
+    vehicle_status_.twist.angular.z = msg->twist.twist.angular.z;    
     my_odom_ok_ = true;
 }
 
-void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
-  vehicle_status_.header = msg->header;
-  vehicle_status_.pose = msg->pose;
-  my_position_ok_ = true;
-}
+// void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
+//   vehicle_status_.header = msg->header;
+//   vehicle_status_.pose = msg->pose;
+//   my_position_ok_ = true;
+// }
 void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
   // recieve longitudinal velocity and steering 
       if(msg->wheelspeed.wheel_speed > 0){
@@ -167,9 +178,11 @@ void PreviewCtrl::ControlLoop()
         auto start = std::chrono::steady_clock::now();        
         
         ///////////////////////////////////////////////////////
+
         // Prepare current State for state feedback control 
         if(!stateSetup()){
           ROS_WARN("Path is not close to the current position");
+           loop_rate.sleep();
           continue;
         }
         VehicleModel_.setState(Xk,Cr);
@@ -178,18 +191,52 @@ void PreviewCtrl::ControlLoop()
          
         // Computes control gains 
         ///////////////////////////////////////////////////////
+        geometry_msgs::PoseStamped debug_msg;
+        debug_msg.header.stamp = ros::Time::now();        
         VehicleModel_.computeMatrices(current_speed);  
+
+        
         bool riccati_solved = VehicleModel_.solveRiccati();
         if(!riccati_solved){
           ROS_WARN("solution not found ~~~!!!!!!! control lost"); 
+           loop_rate.sleep();
           continue;
         }
-        double delta_cmd = VehicleModel_.computeGain();           
+        double delta_cmd = VehicleModel_.computeGain(); 
+        if(fabs(delta_cmd) > 0.5){
+           loop_rate.sleep();
+          continue;
+        }                  
+        debug_msg.pose.position.x = delta_cmd*180/PI;        
+        delta_cmd = steer_filter.filter(delta_cmd);            
+        debug_msg.pose.position.y = delta_cmd*180/PI;
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
         ackermann_msgs::AckermannDrive ctrl_msg;
         ctrl_msg.acceleration = 1.0;
+        
+       
+        
         ctrl_msg.steering_angle = delta_cmd;
         ackmanPub.publish(ctrl_msg);
+        
+        
+        debug_msg.pose.position.z = debug_yaw*180/PI;
+        debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
+        debug_msg.pose.orientation.y = Xk(0); // ;        
+        debug_msg.pose.orientation.z = Xk(2)*180/PI;
+        debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
+
+        
+
+        debugPub.publish(debug_msg);
+        
+        
+        hmcl_msgs::VehicleSteering steer_msg;
+        
+        steer_msg.header.stamp = ros::Time::now();
+        steer_msg.steering_angle = delta_cmd;        
+
+        steerPub.publish(steer_msg);
         ///////////////////////////////////////////////////////
         // record control inputs 
         delta_buffer.push_back(delta_cmd);
@@ -213,6 +260,7 @@ void PreviewCtrl::ControlLoop()
 bool PreviewCtrl::stateSetup(){
 
   const double current_yaw = tf2::getYaw(vehicle_status_.pose.orientation);
+  debug_yaw = current_yaw;
   /* calculate nearest point on reference trajectory (used as initial state) */
   unsigned int nearest_index = 0;
   double yaw_err, dist_err, nearest_traj_time;
@@ -240,12 +288,14 @@ bool PreviewCtrl::stateSetup(){
     prev_epsi = yaw_err;
     return true;  
   }else{      
-      double diff_time = (prev_state_time-state_time).toSec();
-      double eydot = (err_lat-prev_ey)/(diff_time+1e-8);
+      double diff_time = dt; //(state_time - prev_state_time).toSec();      
+      double eydot = (err_lat-prev_ey)/(diff_time+1e-15);      
       double epsidot = yaw_err-prev_epsi;
       eydot = lpf_lateral_error_.filter(eydot);
       epsidot = lpf_yaw_error_.filter(epsidot);    
       Xk = Eigen::VectorXd::Zero(delay_step+5,1);
+      err_lat = lpf_ey.filter(err_lat);
+      yaw_err = lpf_epsi.filter(yaw_err);
       Xk(0) = err_lat;
       Xk(1) = eydot;
       Xk(2) = yaw_err;
@@ -305,6 +355,10 @@ void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 void PreviewCtrl::callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg)
 {
   current_waypoints_ = *msg;  
+ 
+         
+
+
   Trajectory traj;
   /* calculate relative time */
   std::vector<double> relative_time;
@@ -332,7 +386,7 @@ void PreviewCtrl::callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg)
   }
 
   /* calculate yaw angle */
-  bool enable_yaw_recalculation_=true;
+  bool enable_yaw_recalculation_=false;
   if (enable_yaw_recalculation_)
   {
     calcTrajectoryYawFromXY(traj);

@@ -73,6 +73,7 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   global_gnss_pose.pose.position.x = gnss_pose_global_x;
   global_gnss_pose.pose.position.y = gnss_pose_global_y;
   global_gnss_pose.pose.position.z = gnss_pose_global_z;
+  ahrs_heading_switch = false;
   if(ahrs_heading_switch){
     tf2::Quaternion q;
     q.setRPY(0, 0, heading_in_rad);
@@ -104,15 +105,17 @@ void Fix2Pose::headingCallback(microstrain_inertial_msgs::FilterHeadingConstPtr 
   ahrs_heading_switch = true;
   //  (90.0-float(item_list[1]))*math.pi/180 
     // heading_in_rad = msg->heading_rad;
-    heading_in_rad = M_PI/2.0 - msg->heading_rad; 
-    msg->heading_rad;
+    // heading_in_rad = M_PI/2.0 - msg->heading_rad; 
+    
+    heading_in_rad =  - msg->heading_rad; 
+    
     while(heading_in_rad > M_PI){
       heading_in_rad = heading_in_rad - 2*M_PI;
     }
     while(heading_in_rad < -M_PI){
       heading_in_rad = heading_in_rad + 2*M_PI;
     }
-    // ROS_INFO("heading_in_degree = %f ", heading_in_rad*180/M_PI);
+    
 }
 
 

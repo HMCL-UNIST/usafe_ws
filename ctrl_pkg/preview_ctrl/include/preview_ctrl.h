@@ -55,6 +55,7 @@
 #include "lowpass_filter.h"
 #include "trajectory.h"
 #include "utils.h"
+#include "polyfit.h"
 
 
 #define PI 3.14159265358979323846264338
@@ -78,7 +79,7 @@ bool my_steering_ok_,my_position_ok_, my_odom_ok_;
   
 std::mutex mtx_;
 ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub;
-ros::Publisher  ackmanPub, steerPub, pub_debug_filtered_traj_;
+ros::Publisher  ackmanPub, steerPub, pub_debug_filtered_traj_, debugPub;
 
 Trajectory traj_;
 hmcl_msgs::Lane current_waypoints_;
@@ -99,12 +100,16 @@ double Vx;
 
 double dt, wheelbase, lf, lr, mass;
 
+double debug_yaw;
 
 double error_deriv_lpf_curoff_hz;
-std::string control_topic, pose_topic, vehicle_states_topic, waypoint_topic, odom_topic, status_topic, simstatus_topic;
+std::string control_topic, pose_topic, vehicle_states_topic, waypoint_topic, odom_topic, status_topic, simstatus_topic, steer_cmd_topic;
 
 Butterworth2dFilter lpf_lateral_error_;
 Butterworth2dFilter lpf_yaw_error_; 
+Butterworth2dFilter lpf_ey; 
+Butterworth2dFilter lpf_epsi; 
+Butterworth2dFilter steer_filter; 
 
 
 bool state_received;
@@ -121,7 +126,7 @@ PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj);
 void ControlLoop();
 
 
-void callbackPose(const geometry_msgs::PoseStampedConstPtr& msg);
+// void callbackPose(const geometry_msgs::PoseStampedConstPtr& msg);
 void simstatusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr& msg);
 void statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg);
 void odomCallback(const nav_msgs::OdometryConstPtr& msg);

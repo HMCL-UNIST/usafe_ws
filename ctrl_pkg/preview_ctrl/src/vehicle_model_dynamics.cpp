@@ -153,7 +153,7 @@ bool VehicleModel::solveRiccati(){
 }
 
 double VehicleModel::computeGain(){    
-    double delta; 
+    double delta = 0.0; 
     
     Eigen::MatrixXd Kb = Eigen::MatrixXd::Zero(delay_step+5,delay_step+5);
     Eigen::MatrixXd invertMtx = (mcR+mcBd.transpose()*mcP*mcBd).inverse()*mcBd.transpose();
@@ -182,8 +182,12 @@ double VehicleModel::computeGain(){
         preview_feedback = preview_feedback + tmpMtx;
         
     }        
+    
     delta = delta + delay_state_feedback(0,0) + preview_feedback(0,0);
+    debug_state_feedback   = delay_state_feedback(0,0)*180/M_PI;
+    debug_preview_feedback = preview_feedback(0,0)*180/M_PI;
     ROS_INFO("delta = %f, stataFeedback = %f, previewFeedback = %f",delta, delay_state_feedback(0,0) , preview_feedback(0,0));
+
     return delta;
 }
 

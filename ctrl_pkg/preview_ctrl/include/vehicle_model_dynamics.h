@@ -60,6 +60,8 @@ private:
 
 public:
 
+  double debug_state_feedback;
+  double debug_preview_feedback;
 
 VehicleModel(){};
 ~VehicleModel(){};

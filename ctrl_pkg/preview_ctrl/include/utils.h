@@ -31,7 +31,6 @@
 #include "trajectory.h"
 
 
-
 double normalizeRadian(const double _angle);
 
 double find_distance(geometry_msgs::Point p1,geometry_msgs::Point p2);

@@ -307,7 +307,7 @@ namespace localization_core
 
   void StateEstimator::GpsHelper()
   {
-    ros::Rate loop_rate(10); // rate of GPS 
+    ros::Rate loop_rate(20); // rate of GPS 
     bool gotFirstFix = false;
     double startTime;
     int odomKey = 1;

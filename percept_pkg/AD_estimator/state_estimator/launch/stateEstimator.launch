@@ -72,7 +72,7 @@
       <param name="altOrigin" value="55.494"/> 
       
       <!-- flag for whether to use the wheel odometry messages -->
-      <param name="UseOdom" value="true"/>
+      <param name="UseOdom" value="false"/>
 
       <param name="UseLocalPose" value="true"/>
 

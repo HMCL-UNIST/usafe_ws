@@ -377,7 +377,7 @@ bool calcNearestPoseInterp(const Trajectory &traj, const geometry_msgs::Pose &se
   }
   const double my_x = self_pose.position.x;
   const double my_y = self_pose.position.y;
-  const double my_yaw = tf2::getYaw(self_pose.orientation);
+  const double my_yaw = normalizeRadian(tf2::getYaw(self_pose.orientation));
 
   int nearest_index_tmp = -1;
   double min_dist_squared = std::numeric_limits<double>::max();
@@ -388,7 +388,7 @@ bool calcNearestPoseInterp(const Trajectory &traj, const geometry_msgs::Pose &se
     const double dist_squared = dx * dx + dy * dy;
 
     /* ignore when yaw error is large, for crossing path */
-    const double err_yaw = normalizeRadian(my_yaw - traj.yaw[i]);
+    double err_yaw = normalizeRadian(my_yaw - traj.yaw[i]);
     if (fabs(err_yaw) < (M_PI / 3.0))
     {
       if (dist_squared < min_dist_squared)
@@ -503,3 +503,6 @@ bool calcNearestPoseInterp(const Trajectory &traj, const geometry_msgs::Pose &se
   nearest_yaw_error = normalizeRadian(my_yaw - nearest_yaw);
   return true;
 }
+
+
+
