@@ -146,9 +146,18 @@ void VehicleModel::computeMatrices(double vel){
 
 }
 
-void VehicleModel::solveRiccati(){
+bool VehicleModel::solveRiccati(){
     mcP = Eigen::MatrixXd::Zero(delay_step+5, delay_step+5);
-    solveRiccatiIterationD(mcAd, mcBd, mcQ, mcR, mcP);
+    bool mcp_found = solveRiccatiIterationD(mcAd, mcBd, mcQ, mcR, mcP);
+    return mcp_found;
+}
 
-    PRINT_MAT(mcP);
+void VehicleModel::computeGain(){
+    Eigen::MatrixXd Kb = Eigen::MatrixXd::Zero(delay_step+5,delay_step+5);
+    Kb = (mcR+mcBd.transpose()*mcP*mcBd).inverse()*mcBd.transpose()*mcP*mcAd;
+    // PRINT_MAT(Kb);
+}
+
+void VehicleModel::setState(Eigen::MatrixXd Xk,Eigen::MatrixXd Cr){
+return;
 }

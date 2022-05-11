@@ -22,7 +22,7 @@
 #include <ros/ros.h>
 #include <time.h>
 
-#define PI 3.14159265358979323846264338
+// #define PI 3.14159265358979323846264338
 
 #define PRINT_MAT(X) std::cout << #X << ":\n" << X << std::endl << std::endl
 
@@ -69,7 +69,10 @@ void setLagTau(double tau_);
 void setWeight(std::vector<double> q_weight, double r_weight);
 void reintMatrices();
 void computeMatrices(double vel);
-void solveRiccati();
+
+bool solveRiccati();
+void computeGain();
+void setState(Eigen::MatrixXd Xk,Eigen::MatrixXd Cr);
 
 
 

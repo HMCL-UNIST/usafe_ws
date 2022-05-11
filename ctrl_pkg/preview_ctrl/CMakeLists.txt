@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   geometry_msgs
+  visualization_msgs
   std_msgs
   tf  
   hmcl_msgs  
@@ -31,7 +32,7 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
-  CATKIN_DEPENDS nav_msgs roscpp sensor_msgs geometry_msgs std_msgs hmcl_msgs tf carla_msgs dynamic_reconfigure
+  CATKIN_DEPENDS nav_msgs roscpp sensor_msgs geometry_msgs std_msgs hmcl_msgs tf carla_msgs visualization_msgs dynamic_reconfigure
   LIBRARIES
 )
 
@@ -41,12 +42,12 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
-add_executable(dynamic_reconfigure_node src/riccati_solver.cpp src/vehicle_model_dynamics.cpp src/preview_ctrl.cpp)
+add_executable(dynamic_reconfigure_node src/utils.cpp src/trajectory.cpp src/lowpass_filter.cpp src/riccati_solver.cpp src/vehicle_model_dynamics.cpp src/preview_ctrl.cpp)
 add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
 target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(preview_ctrl src/riccati_solver.cpp src/vehicle_model_dynamics.cpp src/preview_ctrl.cpp)
+add_executable(preview_ctrl src/utils.cpp src/trajectory.cpp src/lowpass_filter.cpp src/riccati_solver.cpp src/vehicle_model_dynamics.cpp src/preview_ctrl.cpp)
 add_dependencies(preview_ctrl ${catkin_EXPORTED_TARGETS})
 target_link_libraries(preview_ctrl ${catkin_LIBRARIES})
 

@@ -27,6 +27,8 @@
 #include <std_msgs/Float64.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -42,13 +44,16 @@
 #include <hmcl_msgs/VehicleSCC.h>
 #include <hmcl_msgs/VehicleSteering.h>
 #include <hmcl_msgs/Lane.h>
+#include <hmcl_msgs/CtrlVehicleStates.h>
 #include <carla_msgs/CarlaEgoVehicleStatus.h>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
 #include <dynamic_reconfigure/server.h>
 #include <preview_ctrl/testConfig.h>
 #include "vehicle_model_dynamics.h"
 #include <std_msgs/UInt8MultiArray.h>
-
+#include "lowpass_filter.h"
+#include "trajectory.h"
+#include "utils.h"
 
 
 #define PI 3.14159265358979323846264338
@@ -59,21 +64,33 @@ class PreviewCtrl
 private:
 ros::NodeHandle nh_ctrl_, nh_traj_;
 
+struct VehicleStatus
+{
+std_msgs::Header header;    //< @brief header
+geometry_msgs::Pose pose;   //< @brief vehicle pose
+geometry_msgs::Twist twist; //< @brief vehicle velocity
+double tire_angle_rad;      //< @brief vehicle tire angle
+};
+VehicleStatus vehicle_status_; //< @brief vehicle status
 
-
-std::mutex mtx_;
-ros::Subscriber poseSub, waypointSub, vehicleStatusSub, odomSub;
-ros::Publisher  steerPub;
-
-
+bool my_steering_ok_,my_position_ok_;
   
+std::mutex mtx_;
+ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub;
+ros::Publisher  steerPub, pub_debug_filtered_traj_;
+
+Trajectory traj_;
+hmcl_msgs::Lane current_waypoints_;
+
 dynamic_reconfigure::Server<preview_ctrl::testConfig> srv;
 dynamic_reconfigure::Server<preview_ctrl::testConfig>::CallbackType f;
 
 VehicleModel VehicleModel_;
+std::vector<double> delta_buffer;
+int path_filter_moving_ave_num_, curvature_smoothing_num_, path_smoothing_times_;
 
 
-int delay_step;
+int delay_step, preview_step;
 double delay_in_sec, lag_tau;
 double Q_ey, Q_eydot, Q_epsi, Q_epsidot, R_weight;
 
@@ -81,32 +98,33 @@ double Vx;
 
 double dt, wheelbase, lf, lr, mass;
 
-double Vx_test = 0.0;
 
-std::string control_topic, pose_topic, vehicle_status_topic, waypoint_topic, odom_topic;
+double error_deriv_lpf_curoff_hz;
+std::string control_topic, pose_topic, vehicle_states_topic, waypoint_topic, odom_topic, status_topic;
 
-hmcl_msgs::VehicleStatus vehicle_status_;
-hmcl_msgs::VehicleSCC scc_info_;
-hmcl_msgs::VehicleSteering steering_info_;
-hmcl_msgs::VehicleWheelSpeed wheel_info_;
-hmcl_msgs::VehicleGear gear_info_;
+Butterworth2dFilter lpf_lateral_error_;
+Butterworth2dFilter lpf_yaw_error_; 
 
 
+bool state_received;
+ros::Time state_time, prev_state_time;
 
-
-
+Eigen::VectorXd Xk, Cr;
+double prev_ey, prev_epsi;
 
 public:
 PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj);
 ~PreviewCtrl();
 void ControlLoop();
-void PoseCallback(geometry_msgs::PoseStampedConstPtr pose_msg);
-void WaypointCallback(hmcl_msgs::LaneConstPtr waypoints_msg);
-void VehicleStatusCallback(carla_msgs::CarlaEgoVehicleStatusConstPtr status_msg);
-void odomCabllback(nav_msgs::OdometryConstPtr odom_msg);
 
 
+void callbackPose(const geometry_msgs::PoseStampedConstPtr& msg);
+void statusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr& msg);
+void callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg);
+bool stateSetup();
 
+void convertTrajToMarker(const Trajectory &traj, visualization_msgs::Marker &marker,
+                                      std::string ns, double r, double g, double b, double z);
 
 void dyn_callback(preview_ctrl::testConfig& config, uint32_t level);
 
