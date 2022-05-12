@@ -73,11 +73,11 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<double>("lag_tau", lag_tau, 0.12); 
   nh_traj.param<int>("preview_step", preview_step, 40); 
 
-  nh_traj.param<double>("Q_ey", Q_ey, 3.0); 
+  nh_traj.param<double>("Q_ey", Q_ey, 5.0); 
   nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
   nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
-  nh_traj.param<double>("R_weight", R_weight, 2500); 
+  nh_traj.param<double>("R_weight", R_weight, 1500); 
   
   
 
@@ -219,8 +219,7 @@ void PreviewCtrl::ControlLoop()
         }                  
         // concatenate via angular limit
         double diff_delta = delta_cmd-prev_delta_cmd;
-        debug_msg.pose.position.y = diff_delta*180/PI;
-        debug_msg.pose.position.z = vehicle_status_.twist.linear.x;
+        
         if( fabs(diff_delta)/dt > angle_rate_limit ){
           if(diff_delta>0){
               delta_cmd = prev_delta_cmd + angle_rate_limit*dt;
@@ -262,10 +261,10 @@ void PreviewCtrl::ControlLoop()
         ///////////
         
         // debug_msg.pose.position.z = debug_yaw*180/PI;
-        // debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
+        debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
         // debug_msg.pose.orientation.y = Xk(0); // ;        
         // debug_msg.pose.orientation.z = Xk(2)*180/PI;
-        // debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
+        debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
 
         
 
@@ -334,13 +333,9 @@ bool PreviewCtrl::stateSetup(){
       double epsidot = yaw_err-prev_epsi;
       eydot = lpf_lateral_error_.filter(eydot);
       epsidot = lpf_yaw_error_.filter(epsidot);    
-      Xk = Eigen::VectorXd::Zero(delay_step+5,1);
-      debug_msg.pose.orientation.x = err_lat;
-      debug_msg.pose.orientation.z = yaw_err*180/PI;    
+      Xk = Eigen::VectorXd::Zero(delay_step+5,1);      
       err_lat = lpf_ey.filter(err_lat);
-      yaw_err = lpf_epsi.filter(yaw_err);
-      debug_msg.pose.orientation.y = err_lat;
-      debug_msg.pose.orientation.w = yaw_err*180/PI;    
+      yaw_err = lpf_epsi.filter(yaw_err);      
       Xk(0) = err_lat;
       Xk(1) = eydot;
       Xk(2) = yaw_err;
