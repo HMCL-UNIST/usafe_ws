@@ -191,9 +191,9 @@ void VehicleBridge::CcanCallback(can_msgs::FrameConstPtr ccan_data)
       fr = ((unsigned int)(ccan_data->data[2] + ((ccan_data->data[3] & 0b00111111) << 8)))*0.03125; // whl speed front right
       rl = ((unsigned int)(ccan_data->data[4] + ((ccan_data->data[5] & 0b00111111) << 8)))*0.03125; // whl speed rear left
       rr = ((unsigned int)(ccan_data->data[6] + ((ccan_data->data[7] & 0b00111111) << 8)))*0.03125; // whl speed rear right
-      whl_speed_mean = (fl+fr+rl+rr)/4; // kph
+      whl_speed_mean = (fl+fr+rl+rr)/4; // 
       // wheel_info_.wheel_speed = clamp(whl_speed_mean,0, 511.96875);
-      wheel_info_.wheel_speed = whl_speed_mean*3.6; // m/s
+      wheel_info_.wheel_speed = whl_speed_mean/3.6; // m/s
       wheel_info_.fl = fl;
       wheel_info_.fr = fr;
       wheel_info_.rr = rr;
@@ -283,7 +283,7 @@ void VehicleBridge::AcanWatchdog()
 
 void VehicleBridge::AcanSender()
 {
-  ros::Rate loop_rate(25); // rate of cmd   
+  ros::Rate loop_rate(5); // rate of cmd   
   while (ros::ok())
   {  
     if(Acan_recv_status){
@@ -312,7 +312,7 @@ void VehicleBridge::AcanSender()
       
       AcanPub.publish(light_frame);      
       usleep(1000);
-      AcanPub.publish(steering_frame);
+      // AcanPub.publish(steering_frame);
       /// test
       // double weight = 0.01*(test_count*2+1);
       
@@ -449,7 +449,7 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   // steering_frame.data[0] = (steer_value & 0b11111111);
 	// steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
-  
+  AcanPub.publish(steering_frame);
   // scc_frame.header.stamp = ros::Time::now();
   // scc_frame.id = 0x303;
   // scc_frame.dlc = 4;

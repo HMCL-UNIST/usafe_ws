@@ -40,6 +40,7 @@
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
 
+#include <can_msgs/Frame.h>
 #include <ackermann_msgs/AckermannDrive.h>
 #include <hmcl_msgs/VehicleStatus.h>
 #include <hmcl_msgs/VehicleSCC.h>
@@ -76,10 +77,10 @@ double tire_angle_rad;      //< @brief vehicle tire angle
 VehicleStatus vehicle_status_; //< @brief vehicle status
 
 bool my_steering_ok_,my_position_ok_, my_odom_ok_;
-  
+double angle_rate_limit, prev_delta_cmd;   
 std::mutex mtx_;
 ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub;
-ros::Publisher  ackmanPub, steerPub, pub_debug_filtered_traj_, debugPub;
+ros::Publisher  ackmanPub, steerPub, pub_debug_filtered_traj_, debugPub, AcanPub;
 
 Trajectory traj_;
 hmcl_msgs::Lane current_waypoints_;
@@ -99,7 +100,7 @@ double Q_ey, Q_eydot, Q_epsi, Q_epsidot, R_weight;
 double Vx;
 
 double dt, wheelbase, lf, lr, mass;
-
+ geometry_msgs::PoseStamped debug_msg;
 double debug_yaw;
 
 double error_deriv_lpf_curoff_hz;

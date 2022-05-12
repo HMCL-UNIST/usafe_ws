@@ -35,6 +35,35 @@
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
 
+
+template<typename T>
+std::vector<double> linspace(T start_in, T end_in, int num_in)
+{
+  
+  std::vector<double> linspaced;
+
+  double start = static_cast<double>(start_in);
+  double end = static_cast<double>(end_in);
+  double num = static_cast<double>(num_in);
+
+  if (num == 0) { return linspaced; }
+  if (num == 1) 
+    {
+      linspaced.push_back(start);
+      return linspaced;
+    }
+
+  double delta = (end - start) / (num - 1);
+
+  for(int i=0; i < num-1; ++i)
+    {
+      linspaced.push_back(start + delta * i);
+    }
+  linspaced.push_back(end); // I want to ensure that start and end
+                            // are exactly the same as the input
+  return linspaced;
+}
+
 MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path) :  
   nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path)  
 {
@@ -55,6 +84,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
   nh_p_.getParam("osm_file_name", osm_file_name);
+  nh_p_.param<double>("test_direction", test_direction, 1.0);
   nh_p_.param<double>("map_origin_lat", origin_lat, 0.0);
   nh_p_.param<double>("map_origin_lon", origin_lon, 0.0);
   nh_p_.param<double>("map_origin_att", origin_att, 0.0);
@@ -74,6 +104,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
   }
   
+  
+  
   global_traj_available = false;    
   load_map();
   bool map_fix;
@@ -85,10 +117,12 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   lanelet::traffic_rules::TrafficRulesPtr trafficRules =
   lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
   routingGraph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);  
+  
   construct_lanelets_with_viz();
   rp_.setMap(map);
-  
-  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.03), &MapLoader::local_traj_handler,this);    
+
+
+  local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.5), &MapLoader::local_traj_handler,this);    
   if(continuious_global_replan){
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
@@ -345,6 +379,7 @@ void MapLoader::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &ms
   cur_goal = msg->pose;
   goal_available = true;
   ROS_INFO("goal received");    
+  
   compute_global_path();
   goal_available = true;
   
@@ -566,7 +601,7 @@ void MapLoader::viz_local_path(hmcl_msgs::Lane &lane_){
               for(int i=0; i< lane_.waypoints.size();i++){
                       visualization_msgs::Marker marker_tmp;
                       marker_tmp.header.stamp = ros::Time::now();
-                      marker_tmp.header.frame_id = global_lane_array.header.frame_id;
+                      marker_tmp.header.frame_id = "map" ; //global_lane_array.header.frame_id;
                       marker_tmp.id = 10000+i;
                       marker_tmp.ns = "ltraj";
                       marker_tmp.type = visualization_msgs::Marker::ARROW;
@@ -609,6 +644,9 @@ void MapLoader::findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes
 
 
 void MapLoader::compute_local_path(){
+
+  
+
     
     // extract local trajectory from "global_lane_array_for_local" to -- >  "local_traj"
     // If we found lane change, we add linstrtings upto the next of the lane which has lane change signal
@@ -688,6 +726,8 @@ void MapLoader::compute_local_path(){
     }
       
   
+
+
   local_traj_pub.publish(local_traj_msg);
       if(visualize_path){
           viz_local_path(local_traj_msg);
@@ -711,6 +751,54 @@ void MapLoader::pub_autoware_traj(const hmcl_msgs::Lane& lane){
 }
 
 void MapLoader::local_traj_handler(const ros::TimerEvent& time){  
+    
+    //////////////////////// //////////////////////// ////////////////////////
+  hmcl_msgs::Lane local_traj_test_msg;
+       local_traj_test_msg.header.frame_id = "map";
+          local_traj_test_msg.header.stamp = ros::Time::now();  
+  std::vector<double> p1,p2;
+  if(test_direction > 0){
+    p1.push_back(417.856);
+    p1.push_back(639.95);
+    
+    p2.push_back(691.05);
+    p2.push_back(725.87);
+    
+    
+  }else{
+    
+    p2.push_back(417.856);
+    p2.push_back(639.95);
+
+    
+    p1.push_back(691.05);
+    p1.push_back(725.87);
+  }
+  
+  
+
+  double dist_tmp = sqrt((p1[0]-p2[0])*(p1[0]-p2[0]) + (p1[1]-p2[1])*(p1[1]-p2[1]));
+  double resolution = 0.5;
+  int num_of_points = dist_tmp/resolution;
+  std::vector<double> x_poses = linspace(p1[0], p2[0], num_of_points);
+
+  //  y = (p2[1]-p1[2]/(p2[0]-p1[0])*(x-p1[0])+p1[0];
+  
+  for(int i=0;i < x_poses.size(); i++){    
+    hmcl_msgs::Waypoint waypoint_tmp;
+    waypoint_tmp.pose.header = local_traj_test_msg.header;
+    waypoint_tmp.pose.pose.position.x = x_poses[i];
+    waypoint_tmp.pose.pose.position.y=  (p2[1]-p1[1])/(p2[0]-p1[0])*(x_poses[i]-p1[0])+p1[1];
+    local_traj_test_msg.waypoints.push_back(waypoint_tmp);
+  }
+  
+  local_traj_pub.publish(local_traj_test_msg);
+      if(visualize_path){
+          viz_local_path(local_traj_test_msg);
+          l_traj_viz_pub.publish(local_traj_marker_arrary);
+      }
+  pub_autoware_traj(local_traj_test_msg);
+  //////////////////////// //////////////////////// //////////////////////// ////////////////////////
     if(global_traj_available){
       compute_local_path();
     }    

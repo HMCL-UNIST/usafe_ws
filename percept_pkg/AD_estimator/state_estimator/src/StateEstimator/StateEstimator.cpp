@@ -307,7 +307,7 @@ namespace localization_core
 
   void StateEstimator::GpsHelper()
   {
-    ros::Rate loop_rate(20); // rate of GPS 
+    ros::Rate loop_rate(10); // rate of GPS 
     bool gotFirstFix = false;
     double startTime;
     int odomKey = 1;
@@ -537,7 +537,7 @@ namespace localization_core
             if (dist_ < maxLocalPoseError_ || key_ < imuKey-2)
             {
               SharedDiagonal LocalPoseNoise = noiseModel::Diagonal::Sigmas(
-                      (Vector(6) << localPoseSigma_*0.1,localPoseSigma_*0.1,localPoseSigma_*0.1,localPoseSigma_,localPoseSigma_,localPoseSigma_).finished());
+                      (Vector(6) << localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_).finished());
 
               PriorFactor<Pose3> localPosePrior_(X(key_), local_pose3_, LocalPoseNoise);
               newFactors.add(localPosePrior_);

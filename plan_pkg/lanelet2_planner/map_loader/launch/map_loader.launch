@@ -23,6 +23,9 @@
       <param name="map_origin_lon" value="0.0"/>  
       
       <param name="map_origin_att" value="0.0"/> 
+
+      <param name="test_direction" value="1.0"/> 
+      
      
       <param name="visualize_path" value="True"/> 
       <param name="map_fix" value="True"/> 

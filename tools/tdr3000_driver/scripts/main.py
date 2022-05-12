@@ -137,7 +137,7 @@ if __name__ == '__main__':
     heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
     heading_raw_pub = rospy.Publisher('heading_ned', Float64, queue_size=1)
     rospy.init_node('tdr3000', anonymous=True)
-    rate = rospy.Rate(20) # 20hz
+    rate = rospy.Rate(10) # 10hz
     fix_msg = NavSatFix()
     fix_viz_msg = Path()
     init_update = True

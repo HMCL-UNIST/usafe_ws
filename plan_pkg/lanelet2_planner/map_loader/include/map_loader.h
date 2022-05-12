@@ -104,7 +104,7 @@ ros::Subscriber pose_sub, goal_sub;
 ros::Timer viz_timer, g_traj_timer, local_traj_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary;
 
-
+double test_direction;
 bool visualize_path, continuious_global_replan;
 
 RoutePlanner rp_;

@@ -59,10 +59,11 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<std::string>("steer_cmd_topic", steer_cmd_topic, "/usafe_steer_cmd");
   
   
-
+  
   nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 10);
   nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
   nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
+  nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 1); // rad/s 
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
   nh_traj.param<double>("lf", lf, 1.3);
   nh_traj.param<double>("lr", lr, 1.3);
@@ -80,9 +81,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
   
 
-  nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 0.75); 
+  nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 5); 
   
-
+  prev_delta_cmd = 0.0;
   delay_step = (int)(delay_in_sec/dt);
   VehicleModel_.setDelayStep(delay_step);  
   VehicleModel_.setLagTau(lag_tau);
@@ -95,7 +96,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
-  steer_filter.initialize(dt, 0.85);
+  steer_filter.initialize(dt, 3.0);
 
 
   std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
@@ -116,6 +117,11 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);    
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
   ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
+
+  AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);  
+
+   
+
 
   boost::thread ControlLoopHandler(&PreviewCtrl::ControlLoop,this);   
   ROS_INFO("Init Preview controller with delay compensation");
@@ -152,11 +158,14 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
 // }
 void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
   // recieve longitudinal velocity and steering 
-      if(msg->wheelspeed.wheel_speed > 0){
-        if(fabs(vehicle_status_.twist.linear.x - msg->wheelspeed.wheel_speed) > 3){
-          vehicle_status_.twist.linear.x = msg->wheelspeed.wheel_speed;
-        }
-      }
+   
+   double wheel_speed = msg->wheelspeed.wheel_speed;
+      // if(wheel_speed > 0){
+        // vehicle_status_.twist.linear.x = wheel_speed;
+        // if(fabs(vehicle_status_.twist.linear.x - wheel_speed) > 3){
+        //   vehicle_status_.twist.linear.x = wheel_speed;
+        // }
+      // }
       vehicle_status_.tire_angle_rad = msg->steering_info.steering_angle;        
   my_steering_ok_ = true;
   
@@ -191,7 +200,7 @@ void PreviewCtrl::ControlLoop()
          
         // Computes control gains 
         ///////////////////////////////////////////////////////
-        geometry_msgs::PoseStamped debug_msg;
+       
         debug_msg.header.stamp = ros::Time::now();        
         VehicleModel_.computeMatrices(current_speed);  
 
@@ -203,10 +212,23 @@ void PreviewCtrl::ControlLoop()
           continue;
         }
         double delta_cmd = VehicleModel_.computeGain(); 
+        
         if(fabs(delta_cmd) > 0.5){
            loop_rate.sleep();
           continue;
         }                  
+        // concatenate via angular limit
+        double diff_delta = delta_cmd-prev_delta_cmd;
+        debug_msg.pose.position.y = diff_delta*180/PI;
+        debug_msg.pose.position.z = vehicle_status_.twist.linear.x;
+        if( fabs(diff_delta)/dt > angle_rate_limit ){
+          if(diff_delta>0){
+              delta_cmd = prev_delta_cmd + angle_rate_limit*dt;
+          }else{
+              delta_cmd = prev_delta_cmd - angle_rate_limit*dt;
+          }
+        }
+        
         debug_msg.pose.position.x = delta_cmd*180/PI;        
         delta_cmd = steer_filter.filter(delta_cmd);            
         debug_msg.pose.position.y = delta_cmd*180/PI;
@@ -217,14 +239,33 @@ void PreviewCtrl::ControlLoop()
        
         
         ctrl_msg.steering_angle = delta_cmd;
+
+        
         ackmanPub.publish(ctrl_msg);
         
+        //////////////////
+        can_msgs::Frame steering_frame;
+        steering_frame.header.stamp = ros::Time::now();
+        steering_frame.id = 0x300;
+        steering_frame.dlc = 3;
+        steering_frame.is_error = false;
+        steering_frame.is_extended = false;
+        steering_frame.is_rtr = false;        
+        short steer_value = (short)(delta_cmd*15.0*180/PI*10);
+        prev_delta_cmd = delta_cmd;
+        steering_frame.data[0] = (steer_value & 0b11111111);
+	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+        steering_frame.data[2] = (unsigned int)1 & 0b11111111;
+        AcanPub.publish(steering_frame);
+          
+
+        ///////////
         
-        debug_msg.pose.position.z = debug_yaw*180/PI;
-        debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
-        debug_msg.pose.orientation.y = Xk(0); // ;        
-        debug_msg.pose.orientation.z = Xk(2)*180/PI;
-        debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
+        // debug_msg.pose.position.z = debug_yaw*180/PI;
+        // debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
+        // debug_msg.pose.orientation.y = Xk(0); // ;        
+        // debug_msg.pose.orientation.z = Xk(2)*180/PI;
+        // debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
 
         
 
@@ -294,8 +335,12 @@ bool PreviewCtrl::stateSetup(){
       eydot = lpf_lateral_error_.filter(eydot);
       epsidot = lpf_yaw_error_.filter(epsidot);    
       Xk = Eigen::VectorXd::Zero(delay_step+5,1);
+      debug_msg.pose.orientation.x = err_lat;
+      debug_msg.pose.orientation.z = yaw_err*180/PI;    
       err_lat = lpf_ey.filter(err_lat);
       yaw_err = lpf_epsi.filter(yaw_err);
+      debug_msg.pose.orientation.y = err_lat;
+      debug_msg.pose.orientation.w = yaw_err*180/PI;    
       Xk(0) = err_lat;
       Xk(1) = eydot;
       Xk(2) = yaw_err;
@@ -386,7 +431,7 @@ void PreviewCtrl::callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg)
   }
 
   /* calculate yaw angle */
-  bool enable_yaw_recalculation_=false;
+  bool enable_yaw_recalculation_=true;
   if (enable_yaw_recalculation_)
   {
     calcTrajectoryYawFromXY(traj);
