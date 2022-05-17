@@ -54,7 +54,7 @@ class VehicleBridge
 private:
 ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
-ros::Subscriber AcanSub, CcanSub;
+ros::Subscriber AcanSub, CcanSub, emergency_stopSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub;
 ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
 
@@ -65,6 +65,8 @@ dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
 bool can_recv_status;
 bool Acan_recv_status;
 bool Ccan_recv_status;
+bool emergency_stop_activate;
+int emergency_count;
 
 hmcl_msgs::VehicleStatus vehicle_status_;
 hmcl_msgs::VehicleSCC scc_info_;
@@ -102,6 +104,10 @@ void AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg);
 void ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg);
 void LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg);
 void controlEffortCallback(const std_msgs::Float64& control_effort_input);
+
+void emergencyRemoteCallback(std_msgs::Float64ConstPtr msg);
+
+
 };
 
 

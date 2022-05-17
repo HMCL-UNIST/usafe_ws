@@ -40,7 +40,8 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   nh_steer_(nh_steer),
   nh_light_(nh_light),
   Acan_recv_status(false), 
-  Ccan_recv_status(false)
+  Ccan_recv_status(false), 
+  emergency_count(0)
 {
   Acan_callback_time = ros::Time::now();
   
@@ -60,7 +61,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 2, &VehicleBridge::ShiftCmdCallback, this);
   LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 2, &VehicleBridge::LightCmdCallback, this);
   VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);
-
+  emergency_stopSub = nh_acc.subscribe("/volt", 2, &VehicleBridge::emergencyRemoteCallback, this);
   
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
@@ -74,6 +75,27 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
 VehicleBridge::~VehicleBridge()
 {}
 
+void VehicleBridge::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
+    int thres = 5;
+    if(msg->data > 0.9){
+      emergency_count++;
+    }else{
+      emergency_count--;
+    }
+    
+    if(emergency_count > thres){
+      emergency_stop_activate = true;           
+    }else{
+      emergency_stop_activate = false;            
+    }
+    
+    if( emergency_count > thres*10 ){
+      emergency_count = thres+1;
+    }
+    if(emergency_count < 0 ){
+      emergency_count = 0;
+    }
+}
 
 void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 { 
@@ -289,11 +311,25 @@ void VehicleBridge::AcanSender()
     if(Acan_recv_status){
       // publish vehicle info 
       steerPub.publish(steering_info_);
-      statusPub.publish(vehicle_status_); 
+      statusPub.publish(vehicle_status_);
+      if(emergency_stop_activate){
+        scc_frame.header.stamp = ros::Time::now();
+        scc_frame.id = 0x303;
+        scc_frame.dlc = 4;
+        scc_frame.is_error = false;
+        scc_frame.is_extended = false;
+        scc_frame.is_rtr = false;
+        accel_value = (-1*100);
+        scc_frame.data[0] = (unsigned int)2 & 0b11111111;
+        scc_frame.data[1] = (accel_value & 0b11111111);
+        scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+        scc_frame.data[3] = (unsigned int)0 & 0b11111111;
+        ROS_WARN("Emergency activated !!!");
+      } 
       sccPub.publish(scc_info_);    
       wheelPub.publish(wheel_info_);  
 
-      AcanPub.publish(steering_frame);
+      // AcanPub.publish(steering_frame);
       usleep(1000);
       AcanPub.publish(scc_frame);
       usleep(1000);
