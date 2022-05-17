@@ -61,7 +61,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 2, &VehicleBridge::ShiftCmdCallback, this);
   LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 2, &VehicleBridge::LightCmdCallback, this);
   VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);
-  emergency_stopSub = nh_acc.subscribe("/volt", 2, &VehicleBridge::emergencyRemoteCallback, this);
+  emergency_stopSub = nh_acc.subscribe("/emer", 2, &VehicleBridge::emergencyRemoteCallback, this);
   
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
@@ -77,7 +77,7 @@ VehicleBridge::~VehicleBridge()
 
 void VehicleBridge::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
     int thres = 5;
-    if(msg->data > 0.9){
+    if(msg->data > 0.5){
       emergency_count++;
     }else{
       emergency_count--;
@@ -325,7 +325,7 @@ void VehicleBridge::AcanSender()
         scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
         scc_frame.data[3] = (unsigned int)0 & 0b11111111;
         ROS_WARN("Emergency activated !!!");
-      } 
+      }
       sccPub.publish(scc_info_);    
       wheelPub.publish(wheel_info_);  
 
