@@ -83,6 +83,7 @@ int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;
 double control_effort;    
 double sign = 1;
 double test_count; 
+short accel_value;
 ros::Time Acan_callback_time;
 ros::Time Ccan_callback_time;
 public:
