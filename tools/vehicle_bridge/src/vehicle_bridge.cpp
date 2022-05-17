@@ -319,7 +319,7 @@ void VehicleBridge::AcanSender()
         scc_frame.is_error = false;
         scc_frame.is_extended = false;
         scc_frame.is_rtr = false;
-        accel_value = (-1*100);
+        accel_value = (-2*100);
         scc_frame.data[0] = (unsigned int)2 & 0b11111111;
         scc_frame.data[1] = (accel_value & 0b11111111);
         scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
