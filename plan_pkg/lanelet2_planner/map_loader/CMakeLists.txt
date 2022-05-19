@@ -70,7 +70,7 @@ include_directories(
 
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(map_loader src/map_loader.cpp src/route_planner.cpp)
+add_executable(map_loader src/Amathutils.cpp src/map_loader.cpp src/route_planner.cpp)
 target_link_libraries(map_loader ${catkin_LIBRARIES} ${GeographicLib_LIBRARY_DIRS}/libGeographic.so)
 add_dependencies(map_loader ${catkin_EXPORTED_TARGETS})
 

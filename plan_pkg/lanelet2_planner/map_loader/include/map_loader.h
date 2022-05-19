@@ -26,7 +26,7 @@
 
 
 
-
+#include <chrono>
 #include <ros/ros.h>
 #include <ros/time.h>
 #include <ros/package.h>
@@ -55,6 +55,7 @@
 #include <thread>
 #include <boost/thread/thread.hpp>
 
+
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
@@ -81,6 +82,7 @@
 #include <autoware_lanelet2_msgs/MapBin.h>
 
 #include <lanelet2_extension/utility/message_conversion.h>
+#include <polyfit.h>
 // #include <lanelet2_extension/utility/query.h>
 // #include <lanelet2_extension/visualization/visualization.h>
 // #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
@@ -137,6 +139,9 @@ lanelet::Lanelets road_lanelets;
 lanelet::ConstLanelets road_lanelets_const;
 
 
+double poly_error;
+bool polyfit_error;
+
 public:
 MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path);
 ~MapLoader();
@@ -154,6 +159,8 @@ unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d 
 void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx);
 void fix_and_save_osm();
 
+PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
+void curve_fitting(std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg);
 
 void compute_global_path();
 void compute_local_path();

@@ -36,34 +36,6 @@
 
 
 
-template<typename T>
-std::vector<double> linspace(T start_in, T end_in, int num_in)
-{
-  
-  std::vector<double> linspaced;
-
-  double start = static_cast<double>(start_in);
-  double end = static_cast<double>(end_in);
-  double num = static_cast<double>(num_in);
-
-  if (num == 0) { return linspaced; }
-  if (num == 1) 
-    {
-      linspaced.push_back(start);
-      return linspaced;
-    }
-
-  double delta = (end - start) / (num - 1);
-
-  for(int i=0; i < num-1; ++i)
-    {
-      linspaced.push_back(start + delta * i);
-    }
-  linspaced.push_back(end); // I want to ensure that start and end
-                            // are exactly the same as the input
-  return linspaced;
-}
-
 MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path) :  
   nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path)  
 {
@@ -171,6 +143,10 @@ void MapLoader::compute_global_path(){
       int goal_closest_lane_idx = get_closest_lanelet(road_lanelets_const,cur_goal);
       // lanelet::Optional<lanelet::routing::LaneletPath> route = routingGraph->shortestPath(road_lanelets[start_closest_lane_idx], road_lanelets[goal_closest_lane_idx], 1);
       lanelet::Optional<lanelet::routing::Route> route = routingGraph->getRoute(road_lanelets_const[start_closest_lane_idx], road_lanelets_const[goal_closest_lane_idx], 0);
+      if(!route){
+        ROS_WARN("[MAP_LOADER] = Route is not found");      
+        return;
+      }
       lanelet::routing::LaneletPath local_path = route->shortestPath();
       routingGraph->checkValidity();      
       // ROS_INFO("shortest path_size = %d", local_path.size());
@@ -647,7 +623,8 @@ void MapLoader::compute_local_path(){
 
   
 
-    
+    std::vector<std::vector<double>> global_points;
+
     // extract local trajectory from "global_lane_array_for_local" to -- >  "local_traj"
     // If we found lane change, we add linstrtings upto the next of the lane which has lane change signal
     int init_l_lane_idx, init_point_idx;  
@@ -712,6 +689,10 @@ void MapLoader::compute_local_path(){
                   }
                 }
                 local_traj_msg.waypoints.push_back(waypoint_tmp);
+                std::vector<double> tmp_points; 
+                tmp_points.push_back(waypoint_tmp.pose.pose.position.x);
+                tmp_points.push_back(waypoint_tmp.pose.pose.position.y);
+                global_points.push_back(tmp_points);                                
                 double lane_dist_= sqrt(pow((prev_pose.position.x - waypoint_tmp.pose.pose.position.x),2) + pow((prev_pose.position.y - waypoint_tmp.pose.pose.position.y),2));      
                 lane_dist_cumulative = lane_dist_cumulative + lane_dist_;
                 prev_pose.position.x = waypoint_tmp.pose.pose.position.x;
@@ -727,6 +708,12 @@ void MapLoader::compute_local_path(){
       
   
 
+  ////////////////////////////////////////////////////
+  // curve fitting   
+  
+  curve_fitting(global_points, local_traj_msg);
+  
+  /////////////////////////
 
   local_traj_pub.publish(local_traj_msg);
       if(visualize_path){
@@ -736,6 +723,79 @@ void MapLoader::compute_local_path(){
   pub_autoware_traj(local_traj_msg);
 
 }
+
+
+void MapLoader::curve_fitting(std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg){
+      if(g_points.size() < 10){
+        ROS_WARN("polyfit is not done as number of points are not enough");
+        return;
+      } 
+      std::vector<double> local_xs, local_ys; 
+      double current_yaw = amathutils::getPoseYawAngle(cur_pose);
+      amathutils::wrap_yaw_rad(current_yaw);
+      double psi = -1*current_yaw;
+      double dx = -1*cur_pose.position.x;
+      double dy = -1*cur_pose.position.y;  
+
+       // convert to local frame 
+      for(int i=0;i< g_points.size();i++){    
+          double local_x = cos(psi)*(g_points[i][0]+dx) - sin(psi)*(g_points[i][1]+dy);
+          double local_y = sin(psi)*(g_points[i][0]+dx) + cos(psi)*(g_points[i][1]+dy);
+          local_xs.push_back(local_x);
+          local_ys.push_back(local_y);          
+      }  
+
+      // fit in local frame 
+      
+      PolyFit<double> f = polyfit(local_xs, local_ys);
+      if(polyfit_error){
+        ROS_WARN("No solution found from polyfit"); 
+        return; 
+      }   
+      Eigen::Matrix<double, Eigen::Dynamic, 1> Pcoef_tmp = f.getCoefficients();
+      // ROS_INFO("current Pose  x = %f,y  = %f,yaw  = %f ", -1*dx, -1*dy, -1*psi);
+      // ROS_INFO("c3 = %f,c2 = %f,c1 = %f,c0 = %f ", Pcoef_tmp(0,0), Pcoef_tmp(1,0), Pcoef_tmp(2,0), Pcoef_tmp(3,0));
+      
+      double c3 = Pcoef_tmp(0,0);
+      double c2 = Pcoef_tmp(1,0);
+      double c1 = Pcoef_tmp(2,0);
+      double c0 = Pcoef_tmp(3,0);      
+
+      poly_error = f.getMSE();         
+      float init_s = 0.0;
+      if(poly_error < 10){                    
+          std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));
+          std::vector<double> yval = f.evalPoly(xeval);             
+          
+          hmcl_msgs::Lane local_traj_msg_fit;
+          local_traj_msg_fit.header = global_lane_array_for_local.header;
+          for(int i=0; i< xeval.size(); i++){    
+            hmcl_msgs::Waypoint waypoint_tmp;        
+            waypoint_tmp.pose.pose.position.x = (cos(-1*psi)*xeval[i]-sin(-1*psi)*yval[i])-dx;
+            waypoint_tmp.pose.pose.position.y = (sin(-1*psi)*xeval[i]+cos(-1*psi)*yval[i])-dy;          
+            double epsi_tmp = 3*xeval[i]*xeval[i]*c3 + 2*xeval[i]*c2 + c1;     
+            epsi_tmp = atan(epsi_tmp)- psi;       
+            tf2::Quaternion q_tmp;
+            q_tmp.setRPY(0, 0, epsi_tmp);
+            q_tmp=q_tmp.normalize();
+            waypoint_tmp.pose.pose.orientation.x = q_tmp[0];
+            waypoint_tmp.pose.pose.orientation.y = q_tmp[1];
+            waypoint_tmp.pose.pose.orientation.z = q_tmp[2];
+            waypoint_tmp.pose.pose.orientation.w = q_tmp[3];
+
+            local_traj_msg_fit.waypoints.push_back(waypoint_tmp);            
+          }
+          local_traj_msg = local_traj_msg_fit;
+          
+      }else{
+        ROS_INFO("poly_error = %f", poly_error);
+      }
+
+}
+
+
+
+
 
 void MapLoader::pub_autoware_traj(const hmcl_msgs::Lane& lane){
   autoware_msgs::Lane autoware_lane;
@@ -800,7 +860,10 @@ void MapLoader::local_traj_handler(const ros::TimerEvent& time){
   // pub_autoware_traj(local_traj_test_msg);
   //////////////////////// //////////////////////// //////////////////////// ////////////////////////
     if(global_traj_available){
-      compute_local_path();
+      // std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+        compute_local_path();
+  //     std::chrono::duration<double> sec = std::chrono::system_clock::now() - start;
+  // std::cout << "loop iteration time = " << sec.count() << " seconds" << std::endl;
     }    
 }
 
@@ -811,6 +874,37 @@ void MapLoader::local_traj_handler(const ros::TimerEvent& time){
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
+PolyFit<double> MapLoader::polyfit(std::vector<double> x, std::vector<double> y){
+  try 
+  {
+    
+    // Create options for fitting
+    PolyFit<double>::Options options;
+    options.polyDeg = 3; 
+    options.solver = PolyFit<double>::EIGEN_JACOBI_SVD; // SVD solver
+    int mxpts = x.size()-2;
+    // if(mxpts > 10){ 
+    //   mxpts = 10;
+    // }
+    options.maxMPts = mxpts; // x.size(); // #Pts to use for fitting
+    options.maxTrial = 500; // Max. nr. of trials
+    options.tolerance = 0.01; // Distance tolerance for inlier    
+    // Create fitting object
+    PolyFit<double>f(x,y,options);    
+    // Solve using RANSAC 
+    f.solveRLS(); 
+     
+    // Output result    
+    polyfit_error = false;
+    return f;
+  }
+  catch (std::exception &e)
+  {
+     ROS_WARN("PolyFit Error");  
+     polyfit_error = true;  
+    poly_error = 1e10;
+  }
+}
 
 int main (int argc, char** argv)
 {

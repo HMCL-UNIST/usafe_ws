@@ -153,7 +153,7 @@ void wrap_yaw_rad(double & _angle){
     while(_angle < M_PI){
       _angle = _angle + 2*M_PI;
     }
-    return _angle;
+    
 }
 
 geometry_msgs::Quaternion getQuaternionFromYaw(const double &_yaw)
