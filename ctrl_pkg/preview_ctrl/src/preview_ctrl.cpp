@@ -65,8 +65,8 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
   nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 1); // rad/s 
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
-  nh_traj.param<double>("lf", lf, 1.3);
-  nh_traj.param<double>("lr", lr, 1.3);
+  nh_traj.param<double>("lf", lf, 1.2);
+  nh_traj.param<double>("lr", lr, 1.4);
   nh_traj.param<double>("mass", mass, 1650);    
   nh_traj.param<double>("dt", dt, 0.04); 
   nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.12); 
@@ -201,7 +201,7 @@ void PreviewCtrl::ControlLoop()
         // Computes control gains 
         ///////////////////////////////////////////////////////
        
-        debug_msg.header.stamp = ros::Time::now();        
+           
         VehicleModel_.computeMatrices(current_speed);  
 
         
@@ -228,9 +228,9 @@ void PreviewCtrl::ControlLoop()
           }
         }
         
-        debug_msg.pose.position.x = delta_cmd*180/PI;        
+    
         delta_cmd = steer_filter.filter(delta_cmd);            
-        debug_msg.pose.position.y = delta_cmd*180/PI;
+        
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
         ackermann_msgs::AckermannDrive ctrl_msg;
         ctrl_msg.acceleration = 1.0;
@@ -260,15 +260,6 @@ void PreviewCtrl::ControlLoop()
 
         ///////////
         
-        // debug_msg.pose.position.z = debug_yaw*180/PI;
-        debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
-        // debug_msg.pose.orientation.y = Xk(0); // ;        
-        // debug_msg.pose.orientation.z = Xk(2)*180/PI;
-        debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
-
-        
-
-        debugPub.publish(debug_msg);
         
         
         hmcl_msgs::VehicleSteering steer_msg;
@@ -320,7 +311,9 @@ bool PreviewCtrl::stateSetup(){
    /* get steering angle */
   Xk = Eigen::VectorXd::Zero(delay_step+5,1);
   Cr = Eigen::VectorXd::Zero(preview_step+1);  
-  
+
+     
+
   if(!state_received){
     state_received= true;    
     prev_state_time = vehicle_status_.header.stamp;
@@ -352,6 +345,16 @@ bool PreviewCtrl::stateSetup(){
       for(int i=0; i< min(cuv_size,preview_step+1) ;i++){
         Cr(i) = traj_.k[nearest_index+i];
       }
+
+      debug_msg.header.stamp = ros::Time::now();    
+      debug_msg.pose.position.x = err_lat;  
+      debug_msg.pose.position.y = yaw_err;    
+      // debug_msg.pose.position.z = debug_yaw*180/PI;
+      // debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
+      // debug_msg.pose.orientation.y = Xk(0); // ;        
+      // debug_msg.pose.orientation.z = Xk(2)*180/PI;
+      // debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
+      debugPub.publish(debug_msg);
 
 
   }

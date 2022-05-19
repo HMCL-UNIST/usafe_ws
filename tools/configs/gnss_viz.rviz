@@ -4,12 +4,7 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
         - /Status1
-        - /Odometry1/Shape1
-        - /lanelet21/Status1
-        - /pose_est1/Shape1
-        - /ctrl1
       Splitter Ratio: 0.36176469922065735
     Tree Height: 549
   - Class: rviz/Selection
@@ -56,130 +51,6 @@ Visualization Manager:
       Plane Cell Count: 10
       Reference Frame: <Fixed Frame>
       Value: true
-    - Angle Tolerance: 0.10000000149011612
-      Class: rviz/Odometry
-      Covariance:
-        Orientation:
-          Alpha: 0.5
-          Color: 255; 255; 127
-          Color Style: Unique
-          Frame: Local
-          Offset: 1
-          Scale: 1
-          Value: true
-        Position:
-          Alpha: 0.30000001192092896
-          Color: 204; 51; 204
-          Scale: 1
-          Value: true
-        Value: true
-      Enabled: false
-      Keep: 1
-      Name: Odometry
-      Position Tolerance: 0.10000000149011612
-      Shape:
-        Alpha: 1
-        Axes Length: 1
-        Axes Radius: 0.10000000149011612
-        Color: 255; 25; 0
-        Head Length: 2
-        Head Radius: 5
-        Shaft Length: 2
-        Shaft Radius: 2
-        Value: Arrow
-      Topic: /pose_estimate
-      Unreliable: false
-      Value: false
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /lanelet2_map_viz
-      Name: lanelet2
-      Namespaces:
-        center_lane_line: true
-        left_lane_bound: true
-        right_lane_bound: true
-      Queue Size: 100
-      Value: true
-    - Alpha: 1
-      Axes Length: 1
-      Axes Radius: 0.10000000149011612
-      Class: rviz/Pose
-      Color: 115; 210; 22
-      Enabled: false
-      Head Length: 2
-      Head Radius: 4
-      Name: Pose
-      Shaft Length: 2
-      Shaft Radius: 2
-      Shape: Arrow
-      Topic: /gnss_pose_world
-      Unreliable: false
-      Value: false
-    - Class: rviz/Axes
-      Enabled: true
-      Length: 1
-      Name: Axes
-      Radius: 0.10000000149011612
-      Reference Frame: <Fixed Frame>
-      Value: true
-    - Angle Tolerance: 0.10000000149011612
-      Class: rviz/Odometry
-      Covariance:
-        Orientation:
-          Alpha: 0.5
-          Color: 255; 255; 127
-          Color Style: Unique
-          Frame: Local
-          Offset: 1
-          Scale: 1
-          Value: true
-        Position:
-          Alpha: 0.30000001192092896
-          Color: 204; 51; 204
-          Scale: 1
-          Value: true
-        Value: true
-      Enabled: true
-      Keep: 1
-      Name: pose_est
-      Position Tolerance: 0.10000000149011612
-      Shape:
-        Alpha: 1
-        Axes Length: 1
-        Axes Radius: 0.10000000149011612
-        Color: 255; 25; 0
-        Head Length: 0.5
-        Head Radius: 5
-        Shaft Length: 0.11999999731779099
-        Shaft Radius: 1
-        Value: Arrow
-      Topic: /pose_estimate
-      Unreliable: false
-      Value: true
-    - Class: rviz/MarkerArray
-      Enabled: false
-      Marker Topic: /global_traj_lanelets_viz
-      Name: globalpathsegment
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
-    - Class: rviz/MarkerArray
-      Enabled: false
-      Marker Topic: /global_traj_viz
-      Name: Gpath
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: false
-    - Class: rviz/MarkerArray
-      Enabled: true
-      Marker Topic: /local_traj_viz
-      Name: Lpath
-      Namespaces:
-        ltraj: true
-      Queue Size: 100
-      Value: true
     - Class: rviz/Group
       Displays:
         - Class: rviz/Marker
@@ -216,14 +87,138 @@ Visualization Manager:
           Value: true
       Enabled: true
       Name: ctrl
-    - Class: rviz/Marker
+    - Class: rviz/Group
+      Displays:
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /global_traj_lanelets_viz
+          Name: globalpathsegment
+          Namespaces:
+            center_lane_line: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /local_traj_viz
+          Name: Lpath
+          Namespaces:
+            ltraj: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /lanelet2_map_viz
+          Name: lanelet2
+          Namespaces:
+            center_lane_line: true
+            left_lane_bound: true
+            right_lane_bound: true
+          Queue Size: 100
+          Value: true
       Enabled: true
+      Name: plan
+    - Class: rviz/Group
+      Displays:
+        - Angle Tolerance: 0.10000000149011612
+          Class: rviz/Odometry
+          Covariance:
+            Orientation:
+              Alpha: 0.5
+              Color: 255; 255; 127
+              Color Style: Unique
+              Frame: Local
+              Offset: 1
+              Scale: 1
+              Value: true
+            Position:
+              Alpha: 0.30000001192092896
+              Color: 204; 51; 204
+              Scale: 1
+              Value: true
+            Value: true
+          Enabled: false
+          Keep: 1
+          Name: Odometry
+          Position Tolerance: 0.10000000149011612
+          Shape:
+            Alpha: 1
+            Axes Length: 1
+            Axes Radius: 0.10000000149011612
+            Color: 255; 25; 0
+            Head Length: 2
+            Head Radius: 5
+            Shaft Length: 2
+            Shaft Radius: 2
+            Value: Arrow
+          Topic: /pose_estimate
+          Unreliable: false
+          Value: false
+        - Alpha: 1
+          Axes Length: 1
+          Axes Radius: 0.10000000149011612
+          Class: rviz/Pose
+          Color: 115; 210; 22
+          Enabled: true
+          Head Length: 2
+          Head Radius: 4
+          Name: Pose
+          Shaft Length: 2
+          Shaft Radius: 2
+          Shape: Arrow
+          Topic: /gnss_pose_world
+          Unreliable: false
+          Value: true
+        - Class: rviz/Axes
+          Enabled: true
+          Length: 1
+          Name: Axes
+          Radius: 0.10000000149011612
+          Reference Frame: <Fixed Frame>
+          Value: true
+        - Angle Tolerance: 0.10000000149011612
+          Class: rviz/Odometry
+          Covariance:
+            Orientation:
+              Alpha: 0.5
+              Color: 255; 255; 127
+              Color Style: Unique
+              Frame: Local
+              Offset: 1
+              Scale: 1
+              Value: true
+            Position:
+              Alpha: 0.30000001192092896
+              Color: 204; 51; 204
+              Scale: 1
+              Value: true
+            Value: true
+          Enabled: true
+          Keep: 1
+          Name: pose_est
+          Position Tolerance: 0.10000000149011612
+          Shape:
+            Alpha: 1
+            Axes Length: 1
+            Axes Radius: 0.10000000149011612
+            Color: 255; 25; 0
+            Head Length: 0.5
+            Head Radius: 5
+            Shaft Length: 0.11999999731779099
+            Shaft Radius: 1
+            Value: Arrow
+          Topic: /pose_estimate
+          Unreliable: false
+          Value: true
+      Enabled: true
+      Name: localization
+    - Class: rviz/Marker
+      Enabled: false
       Marker Topic: /debug/filtered_traj
-      Name: Marker
+      Name: debug
       Namespaces:
-        ref_traj: true
+        {}
       Queue Size: 100
-      Value: true
+      Value: false
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -251,7 +246,7 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Angle: 0.10999882966279984
+      Angle: 0.24499867856502533
       Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
@@ -261,11 +256,11 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 8.677926063537598
+      Scale: 24.886762619018555
       Target Frame: map
       Value: TopDownOrtho (rviz)
-      X: -17.302330017089844
-      Y: 310.011962890625
+      X: 678.0789184570312
+      Y: 120.55709075927734
     Saved: ~
 Window Geometry:
   Displays:
@@ -283,5 +278,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1267
-  X: 231
-  Y: 170
+  X: 325
+  Y: 126

@@ -753,55 +753,55 @@ void MapLoader::pub_autoware_traj(const hmcl_msgs::Lane& lane){
 void MapLoader::local_traj_handler(const ros::TimerEvent& time){  
     
     //////////////////////// //////////////////////// ////////////////////////
-  hmcl_msgs::Lane local_traj_test_msg;
-       local_traj_test_msg.header.frame_id = "map";
-          local_traj_test_msg.header.stamp = ros::Time::now();  
-  std::vector<double> p1,p2;
-  if(test_direction > 0){
-    p1.push_back(417.856);
-    p1.push_back(639.95);
+  // hmcl_msgs::Lane local_traj_test_msg;
+  //      local_traj_test_msg.header.frame_id = "map";
+  //         local_traj_test_msg.header.stamp = ros::Time::now();  
+  // std::vector<double> p1,p2;
+  // if(test_direction > 0){
+  //   p1.push_back(417.856);
+  //   p1.push_back(639.95);
     
-    p2.push_back(691.05);
-    p2.push_back(725.87);
+  //   p2.push_back(691.05);
+  //   p2.push_back(725.87);
     
     
-  }else{
+  // }else{
     
-    p2.push_back(417.856);
-    p2.push_back(639.95);
+  //   p2.push_back(417.856);
+  //   p2.push_back(639.95);
 
     
-    p1.push_back(691.05);
-    p1.push_back(725.87);
-  }
+  //   p1.push_back(691.05);
+  //   p1.push_back(725.87);
+  // }
   
   
 
-  double dist_tmp = sqrt((p1[0]-p2[0])*(p1[0]-p2[0]) + (p1[1]-p2[1])*(p1[1]-p2[1]));
-  double resolution = 0.5;
-  int num_of_points = dist_tmp/resolution;
-  std::vector<double> x_poses = linspace(p1[0], p2[0], num_of_points);
+  // double dist_tmp = sqrt((p1[0]-p2[0])*(p1[0]-p2[0]) + (p1[1]-p2[1])*(p1[1]-p2[1]));
+  // double resolution = 0.5;
+  // int num_of_points = dist_tmp/resolution;
+  // std::vector<double> x_poses = linspace(p1[0], p2[0], num_of_points);
 
-  //  y = (p2[1]-p1[2]/(p2[0]-p1[0])*(x-p1[0])+p1[0];
+  // //  y = (p2[1]-p1[2]/(p2[0]-p1[0])*(x-p1[0])+p1[0];
   
-  for(int i=0;i < x_poses.size(); i++){    
-    hmcl_msgs::Waypoint waypoint_tmp;
-    waypoint_tmp.pose.header = local_traj_test_msg.header;
-    waypoint_tmp.pose.pose.position.x = x_poses[i];
-    waypoint_tmp.pose.pose.position.y=  (p2[1]-p1[1])/(p2[0]-p1[0])*(x_poses[i]-p1[0])+p1[1];
-    local_traj_test_msg.waypoints.push_back(waypoint_tmp);
-  }
+  // for(int i=0;i < x_poses.size(); i++){    
+  //   hmcl_msgs::Waypoint waypoint_tmp;
+  //   waypoint_tmp.pose.header = local_traj_test_msg.header;
+  //   waypoint_tmp.pose.pose.position.x = x_poses[i];
+  //   waypoint_tmp.pose.pose.position.y=  (p2[1]-p1[1])/(p2[0]-p1[0])*(x_poses[i]-p1[0])+p1[1];
+  //   local_traj_test_msg.waypoints.push_back(waypoint_tmp);
+  // }
   
-  local_traj_pub.publish(local_traj_test_msg);
-      if(visualize_path){
-          viz_local_path(local_traj_test_msg);
-          l_traj_viz_pub.publish(local_traj_marker_arrary);
-      }
-  pub_autoware_traj(local_traj_test_msg);
+  // local_traj_pub.publish(local_traj_test_msg);
+  //     if(visualize_path){
+  //         viz_local_path(local_traj_test_msg);
+  //         l_traj_viz_pub.publish(local_traj_marker_arrary);
+  //     }
+  // pub_autoware_traj(local_traj_test_msg);
   //////////////////////// //////////////////////// //////////////////////// ////////////////////////
-    // if(global_traj_available){
-    //   compute_local_path();
-    // }    
+    if(global_traj_available){
+      compute_local_path();
+    }    
 }
 
 
