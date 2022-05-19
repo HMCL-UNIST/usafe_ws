@@ -67,17 +67,17 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
   nh_traj.param<double>("lf", lf, 1.2);
   nh_traj.param<double>("lr", lr, 1.4);
-  nh_traj.param<double>("mass", mass, 1650);    
+  nh_traj.param<double>("mass", mass, 1750);    
   nh_traj.param<double>("dt", dt, 0.04); 
   nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.12); 
   nh_traj.param<double>("lag_tau", lag_tau, 0.12); 
-  nh_traj.param<int>("preview_step", preview_step, 40); 
+  nh_traj.param<int>("preview_step", preview_step, 50); 
 
   nh_traj.param<double>("Q_ey", Q_ey, 5.0); 
   nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
   nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
-  nh_traj.param<double>("R_weight", R_weight, 1500); 
+  nh_traj.param<double>("R_weight", R_weight, 3000); 
   
   
 
@@ -181,7 +181,7 @@ void PreviewCtrl::simstatusCallback(const carla_msgs::CarlaEgoVehicleStatusConst
 
 void PreviewCtrl::ControlLoop()
 {
-    ros::Rate loop_rate(25); // rate  
+    ros::Rate loop_rate(20); // rate  
 
     while (ros::ok()){         
         auto start = std::chrono::steady_clock::now();        
