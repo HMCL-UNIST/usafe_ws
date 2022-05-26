@@ -63,17 +63,17 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 10);
   nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
   nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
-  nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 1); // rad/s 
+  nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 0.5); // rad/s 
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
-  nh_traj.param<double>("lf", lf, 1.2);
-  nh_traj.param<double>("lr", lr, 1.4);
+  nh_traj.param<double>("lf", lf, 1.3);
+  nh_traj.param<double>("lr", lr, 1.3);
   nh_traj.param<double>("mass", mass, 1750);    
   nh_traj.param<double>("dt", dt, 0.04); 
-  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.12); 
-  nh_traj.param<double>("lag_tau", lag_tau, 0.12); 
+  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.14); 
+  nh_traj.param<double>("lag_tau", lag_tau, 0.14); 
   nh_traj.param<int>("preview_step", preview_step, 50); 
 
-  nh_traj.param<double>("Q_ey", Q_ey, 5.0); 
+  nh_traj.param<double>("Q_ey", Q_ey, 3.0); 
   nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
   nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
@@ -219,7 +219,7 @@ void PreviewCtrl::ControlLoop()
         }                  
         // concatenate via angular limit
         double diff_delta = delta_cmd-prev_delta_cmd;
-        
+        debug_msg.pose.position.z = fabs(diff_delta)/dt;    
         if( fabs(diff_delta)/dt > angle_rate_limit ){
           if(diff_delta>0){
               delta_cmd = prev_delta_cmd + angle_rate_limit*dt;
@@ -251,6 +251,7 @@ void PreviewCtrl::ControlLoop()
         steering_frame.is_extended = false;
         steering_frame.is_rtr = false;        
         short steer_value = (short)(delta_cmd*15.0*180/PI*10);
+        ROS_INFO("delta_cmd = %f", delta_cmd);
         prev_delta_cmd = delta_cmd;
         steering_frame.data[0] = (steer_value & 0b11111111);
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
@@ -327,8 +328,8 @@ bool PreviewCtrl::stateSetup(){
       eydot = lpf_lateral_error_.filter(eydot);
       epsidot = lpf_yaw_error_.filter(epsidot);    
       Xk = Eigen::VectorXd::Zero(delay_step+5,1);      
-      err_lat = lpf_ey.filter(err_lat);
-      yaw_err = lpf_epsi.filter(yaw_err);      
+      // err_lat = lpf_ey.filter(err_lat);
+      // yaw_err = lpf_epsi.filter(yaw_err);      
       Xk(0) = err_lat;
       Xk(1) = eydot;
       Xk(2) = yaw_err;

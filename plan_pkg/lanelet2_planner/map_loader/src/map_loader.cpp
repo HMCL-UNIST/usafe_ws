@@ -782,7 +782,7 @@ void MapLoader::curve_fitting(std::vector<std::vector<double>>& g_points, hmcl_m
             waypoint_tmp.pose.pose.orientation.y = q_tmp[1];
             waypoint_tmp.pose.pose.orientation.z = q_tmp[2];
             waypoint_tmp.pose.pose.orientation.w = q_tmp[3];
-
+            waypoint_tmp.twist.twist.linear.x = 7;
             local_traj_msg_fit.waypoints.push_back(waypoint_tmp);            
           }
           local_traj_msg = local_traj_msg_fit;

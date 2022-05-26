@@ -60,7 +60,7 @@ class Fix2Pose
 private:
 ros::NodeHandle nh_;
 ros::Subscriber fixgnssPoseSub, headingSub;
-ros::Publisher  worldGnssPosePub;
+ros::Publisher  worldGnssPosePub, debugPub;
 tf::TransformBroadcaster gnss_to_map_br;
 
 double heading_in_rad;
@@ -69,7 +69,8 @@ bool ahrs_heading_switch;
 GeographicLib::LocalCartesian enu_gnss_;   /// Object to put lat/lon coordinates into local cartesian
 
 double latOrigin, lonOrigin, altOrigin;
-
+bool gnss_recieved;
+double init_x, init_y;
 public:
 Fix2Pose();
 ~Fix2Pose();

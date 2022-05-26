@@ -37,7 +37,8 @@
 
 
 Fix2Pose::Fix2Pose() :  
-  nh_("~") 
+  nh_("~"),
+  gnss_recieved(false) 
 {
   // temporary variables to retrieve parameters
   double l_to_g_sensor_x, l_to_g_sensor_y, l_to_g_sensor_z, l_to_g_sensor_roll, l_to_g_sensor_pich, l_to_g_sensor_yaw;
@@ -54,6 +55,7 @@ Fix2Pose::Fix2Pose() :
   heading_in_rad = 0.0;
   
   worldGnssPosePub = nh_.advertise<geometry_msgs::PoseStamped>("/gnss_pose_world", 1);  
+  debugPub = nh_.advertise<geometry_msgs::PoseStamped>("/gnss/debug", 1);  
 
   fixgnssPoseSub = nh_.subscribe("/gnss_h_pose", 100, &Fix2Pose::fixgnssPoseSubCallback, this);  
 
@@ -65,6 +67,8 @@ Fix2Pose::~Fix2Pose()
 {}
 
 void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
+  
+  
   double gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z;  
   enu_gnss_.Forward(pose->pose.position.x, pose->pose.position.y, pose->pose.position.z, gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z);
   geometry_msgs::PoseStamped global_gnss_pose;
@@ -90,6 +94,23 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   }
   worldGnssPosePub.publish(global_gnss_pose);    
   ahrs_heading_switch = false;
+  
+  
+  
+  if(!gnss_recieved){
+    gnss_recieved = true;
+    init_x = global_gnss_pose.pose.position.x;
+    init_y = global_gnss_pose.pose.position.y;    
+  }else{
+  double debug_gradients = (global_gnss_pose.pose.position.y-init_y) / (global_gnss_pose.pose.position.x-init_x);
+  geometry_msgs::PoseStamped debug_msg;
+  debug_msg = global_gnss_pose; 
+  debug_msg.pose.position.x = debug_gradients;
+  
+  debugPub.publish(debug_msg);
+  }
+  
+  
   // tf::Transform transform;
   // // transform.setOrigin( tf::Vector3(gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z) );
   // // tf::Quaternion q(pose->pose.orientation.x,pose->pose.orientation.y,pose->pose.orientation.z,pose->pose.orientation.w);

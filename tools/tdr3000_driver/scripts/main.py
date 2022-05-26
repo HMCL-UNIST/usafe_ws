@@ -102,7 +102,7 @@ class TcpCommunicator(threading.Thread):
                     # print("gnss health = " + str(self.gnss_health))
                     self.num_gnss = int(item_list[7])
                     # print("number of gnss = " + str(self.num_gnss))
-                    self.altitude = float(item_list[9])  
+                    self.altitude = float(item_list[9])   
                 elif item_list[0] == '$GNHDT':
                     if not float(item_list[1]) == 180.0 or item_list[1] == '':
                         self.heading = (90.0-float(item_list[1]))*math.pi/180                        
