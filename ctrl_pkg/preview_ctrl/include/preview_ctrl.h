@@ -134,6 +134,9 @@ void odomCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg);
 bool stateSetup();
 
+void reschedule_weight(double speed);
+void steering_rate_reset(double speed);
+
 void convertTrajToMarker(const Trajectory &traj, visualization_msgs::Marker &marker,
                                       std::string ns, double r, double g, double b, double z);
 

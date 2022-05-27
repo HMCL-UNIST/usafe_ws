@@ -186,7 +186,7 @@ double VehicleModel::computeGain(){
     delta = delta + delay_state_feedback(0,0) + preview_feedback(0,0);
     debug_state_feedback   = delay_state_feedback(0,0)*180/M_PI;
     debug_preview_feedback = preview_feedback(0,0)*180/M_PI;
-    ROS_INFO("delta = %f, stataFeedback = %f, previewFeedback = %f",delta, delay_state_feedback(0,0) , preview_feedback(0,0));
+    // ROS_INFO("delta = %f, stataFeedback = %f, previewFeedback = %f",delta, delay_state_feedback(0,0) , preview_feedback(0,0));
 
     return delta;
 }

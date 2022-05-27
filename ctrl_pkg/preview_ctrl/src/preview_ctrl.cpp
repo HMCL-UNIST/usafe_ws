@@ -118,8 +118,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
   ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
 
-  AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);  
+  AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
 
+  
    
 
 
@@ -151,6 +152,60 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
     my_odom_ok_ = true;
 }
 
+
+void PreviewCtrl::reschedule_weight(double speed){
+
+  std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  if (speed *3.6 >= 0 && speed *3.6 < 10) {
+      Qweight[0] = 7;
+      R_weight = 1000;
+    }
+
+    if (speed *3.6 >= 10 && speed *3.6 < 20) {
+      Qweight[0] = 4;      
+      R_weight = 2500;
+    }
+
+    if (speed *3.6 >= 20 && speed *3.6 < 30) {
+      Qweight[0] = 3.5;     
+      R_weight = 3000;
+    }
+
+    if (speed *3.6 >= 30 && speed *3.6 < 40) {
+      Qweight[0] = 3.5;
+      R_weight = 3000;      
+    }
+
+    if (speed *3.6 >= 40) {
+      Qweight[0] = 3;
+      R_weight = 3500;
+    }
+      VehicleModel_.setWeight( Qweight, R_weight);
+  
+
+}
+
+void PreviewCtrl::steering_rate_reset(double speed){
+    if (speed *3.6 >= 0 && speed *3.6 < 10) {
+      angle_rate_limit = 0.5;
+    }
+
+    if (speed *3.6 >= 10 && speed *3.6 < 20) {
+      angle_rate_limit = 0.4;
+    }
+
+    if (speed *3.6 >= 20 && speed *3.6 < 30) {
+      angle_rate_limit = 0.3;
+    }
+
+    if (speed *3.6 >= 30 && speed *3.6 < 40) {
+      angle_rate_limit = 0.2;
+    }
+
+    if (speed *3.6 >= 40) {
+      angle_rate_limit = 0.1;
+    }
+}
 // void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
 //   vehicle_status_.header = msg->header;
 //   vehicle_status_.pose = msg->pose;
@@ -160,17 +215,9 @@ void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
   // recieve longitudinal velocity and steering 
    
    double wheel_speed = msg->wheelspeed.wheel_speed;
-
-  // if it overs 30 km/h 
-  if (wheel_speed *3.6 > 30 && wheel_speed *3.6 < 40) {
-  std::vector<double> Qweight_tmp = {Q_ey-0.5, Q_eydot, Q_epsi+0.5, Q_epsidot};
-  VehicleModel_.setWeight( Qweight_tmp, R_weight);
-  }
+    reschedule_weight(wheel_speed);
+    steering_rate_reset(wheel_speed);
   
-  if (wheel_speed *3.6 > 40 && wheel_speed *3.6 < 50) {
-    std::vector<double> Qweight_tmp = {Q_ey-1, Q_eydot, Q_epsi+1, Q_epsidot};
-    VehicleModel_.setWeight( Qweight_tmp, R_weight);
-  }
       // if(wheel_speed > 0){
         // vehicle_status_.twist.linear.x = wheel_speed;
         // if(fabs(vehicle_status_.twist.linear.x - wheel_speed) > 3){
