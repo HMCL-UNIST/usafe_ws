@@ -102,7 +102,7 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
     init_x = global_gnss_pose.pose.position.x;
     init_y = global_gnss_pose.pose.position.y;    
   }else{
-  double debug_gradients = (global_gnss_pose.pose.position.y-init_y) / (global_gnss_pose.pose.position.x-init_x);
+  double debug_gradients = atan2((global_gnss_pose.pose.position.y-init_y) / (global_gnss_pose.pose.position.x-init_x))*180/PI;
   geometry_msgs::PoseStamped debug_msg;
   debug_msg = global_gnss_pose; 
   debug_msg.pose.position.x = debug_gradients;

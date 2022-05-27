@@ -77,6 +77,7 @@ hmcl_msgs::VehicleGear gear_info_;
 can_msgs::Frame steering_frame, scc_frame, gear_frame, light_frame;
 
 double gear_ratio = 15.0;
+int steering_offset = 8;         
 
 // variables for dynamic configure 
 bool Master_Switch, AD_STR_MODE_CMD, AD_SCC_TAKEOVER_CMD, AD_LEFT_TURNLAMP_STAT;

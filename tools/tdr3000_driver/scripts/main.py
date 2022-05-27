@@ -58,7 +58,7 @@ class TcpCommunicator(threading.Thread):
 
     def _readData(self, client_socket):
         while True:
-            time.sleep(0.02)
+            time.sleep(0.05)
             try:
                 data = client_socket.recv(10000)                
                 line = str(data)
@@ -105,7 +105,8 @@ class TcpCommunicator(threading.Thread):
                     self.altitude = float(item_list[9])   
                 elif item_list[0] == '$GNHDT':
                     if not float(item_list[1]) == 180.0 or item_list[1] == '':
-                        self.heading = (90.0-float(item_list[1]))*math.pi/180                        
+                        # self.heading = (90.0-float(item_list[1]))*math.pi/180                        
+                        self.heading = (float(item_list[1]))*math.pi/180                        
                         # print("NED heading = " + str(float(item_list[1])))
                         # print("ENU heading = " + str(self.heading*180/math.pi))
                         self.valid_heading = True
@@ -175,7 +176,7 @@ if __name__ == '__main__':
                 
                
                 heading_raw_msg = Float64()
-                heading_raw_msg.data = heading*180/3.14195
+                heading_raw_msg.data = heading*180/math.pi
                 heading_raw_pub.publish(heading_raw_msg)
 
                 fix_viz_msg.header = fix_msg.header
