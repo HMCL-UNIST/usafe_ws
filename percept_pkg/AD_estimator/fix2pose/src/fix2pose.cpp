@@ -97,18 +97,18 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   
   
   
-  if(!gnss_recieved){
-    gnss_recieved = true;
-    init_x = global_gnss_pose.pose.position.x;
-    init_y = global_gnss_pose.pose.position.y;    
-  }else{
-  double debug_gradients = atan2((global_gnss_pose.pose.position.y-init_y) / (global_gnss_pose.pose.position.x-init_x))*180/PI;
-  geometry_msgs::PoseStamped debug_msg;
-  debug_msg = global_gnss_pose; 
-  debug_msg.pose.position.x = debug_gradients;
+// if(!gnss_recieved){
+//     gnss_recieved = true;
+//     init_x = global_gnss_pose.pose.position.x;
+//     init_y = global_gnss_pose.pose.position.y;    
+//   }else{
+//   double debug_gradients = atan2((global_gnss_pose.pose.position.y-init_y) , (global_gnss_pose.pose.position.x-init_x))*180/PI;
+//   geometry_msgs::PoseStamped debug_msg;
+//   debug_msg = global_gnss_pose; 
+//   debug_msg.pose.position.x = debug_gradients;
   
-  debugPub.publish(debug_msg);
-  }
+//   debugPub.publish(debug_msg);
+//   }
   
   
   // tf::Transform transform;

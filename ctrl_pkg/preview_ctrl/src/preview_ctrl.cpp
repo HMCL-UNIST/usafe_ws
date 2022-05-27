@@ -60,14 +60,14 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
   
   
-  nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 10);
+  nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 1);
   nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
   nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
   nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 0.5); // rad/s 
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
-  nh_traj.param<double>("lf", lf, 1.3);
-  nh_traj.param<double>("lr", lr, 1.3);
-  nh_traj.param<double>("mass", mass, 1750);    
+  nh_traj.param<double>("lf", lf, 1.35);
+  nh_traj.param<double>("lr", lr, 1.25);
+  nh_traj.param<double>("mass", mass, 1580);    
   nh_traj.param<double>("dt", dt, 0.04); 
   nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.14); 
   nh_traj.param<double>("lag_tau", lag_tau, 0.14); 
@@ -160,6 +160,17 @@ void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
   // recieve longitudinal velocity and steering 
    
    double wheel_speed = msg->wheelspeed.wheel_speed;
+
+  // if it overs 30 km/h 
+  if (wheel_speed *3.6 > 30 && wheel_speed *3.6 < 40) {
+  std::vector<double> Qweight_tmp = {Q_ey-0.5, Q_eydot, Q_epsi+0.5, Q_epsidot};
+  VehicleModel_.setWeight( Qweight_tmp, R_weight);
+  }
+  
+  if (wheel_speed *3.6 > 40 && wheel_speed *3.6 < 50) {
+    std::vector<double> Qweight_tmp = {Q_ey-1, Q_eydot, Q_epsi+1, Q_epsidot};
+    VehicleModel_.setWeight( Qweight_tmp, R_weight);
+  }
       // if(wheel_speed > 0){
         // vehicle_status_.twist.linear.x = wheel_speed;
         // if(fabs(vehicle_status_.twist.linear.x - wheel_speed) > 3){
@@ -250,7 +261,7 @@ void PreviewCtrl::ControlLoop()
         steering_frame.is_error = false;
         steering_frame.is_extended = false;
         steering_frame.is_rtr = false;        
-        short steer_value = (short)(delta_cmd*15.0*180/PI*10);
+        short steer_value = (short)(delta_cmd*15.0*180/PI*10+steering_offset);
         ROS_INFO("delta_cmd = %f", delta_cmd);
         prev_delta_cmd = delta_cmd;
         steering_frame.data[0] = (steer_value & 0b11111111);
@@ -268,7 +279,7 @@ void PreviewCtrl::ControlLoop()
         steer_msg.header.stamp = ros::Time::now();
         steer_msg.steering_angle = delta_cmd;        
 
-        steerPub.publish(steer_msg);
+        // steerPub.publish(steer_msg);
         ///////////////////////////////////////////////////////
         // record control inputs 
         delta_buffer.push_back(delta_cmd);

@@ -35,7 +35,7 @@ class TcpCommunicator(threading.Thread):
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.listen(4)
         self.client_soc, self.addr = self.server_socket.accept()
-
+        self.offset_degree = 0.3
         self.UTC_time = 0.0 
         self.activity_status = ""
         self.latitude = 0.0
@@ -105,8 +105,8 @@ class TcpCommunicator(threading.Thread):
                     self.altitude = float(item_list[9])   
                 elif item_list[0] == '$GNHDT':
                     if not float(item_list[1]) == 180.0 or item_list[1] == '':
-                        # self.heading = (90.0-float(item_list[1]))*math.pi/180                        
-                        self.heading = (float(item_list[1]))*math.pi/180                        
+                        self.heading = (90.0-float(item_list[1])-self.offset_degree)*math.pi/180                        
+                        # self.heading = (float(item_list[1])+self.offset_degree)*math.pi/180                        
                         # print("NED heading = " + str(float(item_list[1])))
                         # print("ENU heading = " + str(self.heading*180/math.pi))
                         self.valid_heading = True
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
     heading_raw_pub = rospy.Publisher('heading_ned', Float64, queue_size=1)
     rospy.init_node('tdr3000', anonymous=True)
-    rate = rospy.Rate(10) # 10hz
+    rate = rospy.Rate(5) # 10hz
     fix_msg = NavSatFix()
     fix_viz_msg = Path()
     init_update = True

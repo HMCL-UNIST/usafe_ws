@@ -344,8 +344,8 @@ void VehicleBridge::AcanSender()
       AcanPub.publish(gear_frame);
       usleep(1000);     
       AcanPub.publish(light_frame);      
-      usleep(1000);
-      AcanPub.publish(steering_frame);
+      // usleep(1000);
+      // AcanPub.publish(steering_frame);
       /// test
       // double weight = 0.01*(test_count*2+1);
       
@@ -400,7 +400,7 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
   if(Master_Switch){
-  short steer_value = (short)((msg->steering_angle+steering_offset)*gear_ratio*180/PI*10);
+  short steer_value = (short)((msg->steering_angle)*gear_ratio*180/PI*10)+steering_offset;
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
@@ -478,11 +478,11 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   steering_frame.dlc = 3;
   // if( steering_angle_test > 0.1)
   // steering_angle_test = steering_angle_test + 10 
-  short steer_value = (short)(AD_STR_POS_CMD+steering_offset) ; // input  in radian, convert into degree
-  steering_frame.data[0] = (steer_value & 0b11111111);
-	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+  // short steer_value = (short)(AD_STR_POS_CMD+steering_offset) ; // input  in radian, convert into degree
+  // steering_frame.data[0] = (steer_value & 0b11111111);
+	// steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
-  // AcanPub.publish(steering_frame);
+  AcanPub.publish(steering_frame);
   // scc_frame.header.stamp = ros::Time::now();
   // scc_frame.id = 0x303;
   // scc_frame.dlc = 4;

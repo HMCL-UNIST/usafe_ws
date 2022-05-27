@@ -5,7 +5,8 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Status1
-      Splitter Ratio: 0.36176469922065735
+        - /localization1/Pose1
+      Splitter Ratio: 0.5441176295280457
     Tree Height: 549
   - Class: rviz/Selection
     Name: Selection
@@ -94,7 +95,7 @@ Visualization Manager:
           Marker Topic: /global_traj_lanelets_viz
           Name: globalpathsegment
           Namespaces:
-            center_lane_line: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -102,7 +103,7 @@ Visualization Manager:
           Marker Topic: /local_traj_viz
           Name: Lpath
           Namespaces:
-            ltraj: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -160,10 +161,10 @@ Visualization Manager:
           Color: 115; 210; 22
           Enabled: true
           Head Length: 2
-          Head Radius: 4
+          Head Radius: 1
           Name: Pose
           Shaft Length: 2
-          Shaft Radius: 2
+          Shaft Radius: 1
           Shape: Arrow
           Topic: /gnss_pose_world
           Unreliable: false
@@ -256,7 +257,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Scale: 24.886762619018555
+      Scale: 11.557512283325195
       Target Frame: map
       Value: TopDownOrtho (rviz)
       X: 678.0789184570312

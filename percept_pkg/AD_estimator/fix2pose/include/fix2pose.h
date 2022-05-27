@@ -26,6 +26,7 @@
 #include <queue>
 #include <boost/filesystem.hpp>
 #include <boost/thread/thread.hpp>
+#include <math.h>
 
 #include <ros/ros.h>
 #include <ros/time.h>

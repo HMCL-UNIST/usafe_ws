@@ -53,6 +53,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   goal_available = false;
   pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
   goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
+  vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
+  
 
   nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
   nh_p_.getParam("osm_file_name", osm_file_name);
@@ -63,8 +65,16 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_p_.param<bool>("visualize_path", visualize_path, true);
   nh_p_.param<double>("map_road_resolution", map_road_resolution, 1.0);
   nh_p_.param<float>("local_path_length", local_path_length, 20.0);
-  nh_p_.param<float>("weight_decay_rate", weight_decay_rate, 0.85);
+  nh_p_.param<float>("weight_decay_rate", weight_decay_rate, 0.95);
   nh_p_.param<bool>("continuious_global_replan", continuious_global_replan, false);
+
+  nh_p_.param<double>("min_local_path_length", min_local_path_length, 5.0);
+  nh_p_.param<double>("max_local_path_length", max_local_path_length, 30.0);
+  nh_p_.param<double>("local_path_scale", local_path_scale, 1.0);
+
+  
+   
+ 
   
   
   
@@ -350,6 +360,18 @@ void MapLoader::compute_global_path(){
 
 }
 
+
+
+void MapLoader::callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg){
+  current_speed = msg->wheelspeed.wheel_speed; // in m/s
+  if (current_speed > 0){
+    double tmp_add_path_length = current_speed*local_path_scale;
+    local_path_length = std::min(min_local_path_length + tmp_add_path_length,max_local_path_length);
+  }else{
+    local_path_length = min_local_path_length;
+  }
+
+}
 
 void MapLoader::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg){
   cur_goal = msg->pose;
@@ -859,12 +881,14 @@ void MapLoader::local_traj_handler(const ros::TimerEvent& time){
   //     }
   // pub_autoware_traj(local_traj_test_msg);
   //////////////////////// //////////////////////// //////////////////////// ////////////////////////
+  mu_mtx.lock();
     if(global_traj_available){
       // std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
         compute_local_path();
   //     std::chrono::duration<double> sec = std::chrono::system_clock::now() - start;
   // std::cout << "loop iteration time = " << sec.count() << " seconds" << std::endl;
     }    
+    mu_mtx.unlock();
 }
 
 

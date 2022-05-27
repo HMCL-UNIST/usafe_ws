@@ -31,9 +31,17 @@
       <param name="visualize_path" value="True"/> 
       <param name="map_fix" value="True"/> 
       <param name="map_road_resolution" value="1.0"/> 
-      <param name="local_path_length" value="30.0"/> 
-      <param name="weight_decay_rate" value="0.98"/> 
+      <!-- <param name="local_path_length" value="30.0"/>  -->
+      <param name="weight_decay_rate" value="0.99"/> 
       <param name="continuious_global_replan" value="False"/> 
+
+      <param name="local_path_scale" value="1.0"/> 
+      <param name="min_local_path_length" value="5.0"/> 
+      <param name="max_local_path_length" value="30.0"/> 
+      
+      
+
+      
       
   </node>
 

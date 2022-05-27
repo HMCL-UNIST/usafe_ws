@@ -112,7 +112,7 @@ Butterworth2dFilter lpf_ey;
 Butterworth2dFilter lpf_epsi; 
 Butterworth2dFilter steer_filter; 
 
-
+int steering_offset = 8;
 bool state_received;
 ros::Time state_time, prev_state_time;
 
