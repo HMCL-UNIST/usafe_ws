@@ -16,7 +16,7 @@ terminator -l usafe
 sleep 1;
 gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src/tools/path_debug/launch; roslaunch path_debug.launch; exec bash"
 
-# github token : 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
+# github token : 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
 # rostopic echo --filter "m.id==771"  /a_can_h2l 
 # rosbag record /bias_gyro /bias_acc /wheel_info /wheel_odom /pose_estimate /scc_info /imu/data /vehicle_status /fix /gnss_h_pose /heading_ned 
 
