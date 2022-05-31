@@ -47,7 +47,6 @@ add_executable(purepursuit src/purepursuit.cpp)
 target_link_libraries(purepursuit ${catkin_LIBRARIES})
 add_dependencies(purepursuit ${catkin_EXPORTED_TARGETS})
 
-
 install(
   TARGETS
   purepursuit    

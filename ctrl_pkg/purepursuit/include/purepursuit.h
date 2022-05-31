@@ -33,6 +33,7 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <geometry_msgs/Quaternion.h>
 #include <eigen3/Eigen/Geometry>
 #include <can_msgs/Frame.h>
 // #include <tf/tf.h>
@@ -79,24 +80,26 @@ class PurePursuit
     DubinsPath dubins_path;
     // hmcl_msgs::Lane 
     geometry_msgs::Point closest_waypoint;
-    geometry_msgs::Point p1;
+    geometry_msgs::Point desired_waypoint;
     geometry_msgs::Point state;
-    hmcl_msgs::Waypoint wp;
-    std_msgs::Float64 lat_dev;
+    geometry_msgs::Quaternion quat_msg;
+    tf::Quaternion quat;
+    
     hmcl_msgs::Lane ref_path;
      
     double gear_ratio = 14.5;
-    double distance = 0;
+    double distance = 0;9
     double cross_track_err;
 
     // PP variables
     float vel_cmd;
     float r_min_v;
     // PP tunning param
+    const float turning_radius = 5.6;
     const float e_MAX = 0;
     const float f_MAX = 0.4;
-    const float alpha_MAX = 0.0;
-    const float beta_MAX = 0.0;
+    const float alpha_MAX = 5.0;
+    const float beta_MAX = 0.2;
 
     ros::Time Acan_callback_time;
     ros::Time Ccan_callback_time;
@@ -105,16 +108,13 @@ public:
     PurePursuit(ros::NodeHandle& nh_);
     ~PurePursuit();
 
-    dubins_shortest_path( &dubins_path, q0, q1, turning_radius);
-    // void ctrlPub(); 
+    void ctrlPub(); 
     void poseCallback(const geometry_msgs::PoseStamped& pose);
     void trajCallback(const hmcl_msgs::Lane& traj);
     void cteCallback(const std_msgs::Float64& cte);
-    void velcmdCallback(const std_msgs::Float64& msg);
+    void velcmdCallback(const hmcl_msgs::VehicleWheelSpeed& msg);
 
-    // double selectDesiredPoint(const geometry_msgs::Point& p0_,
-    // 		const geometry_msgs::Point& p1_,
-    // 		const geometry_msgs::Point& state_);
+    void selectDesiredPoint();
 };
 
 
