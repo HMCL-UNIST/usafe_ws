@@ -87,6 +87,7 @@ void PidObject::setpointCallback(const std_msgs::Float64& setpoint_msg)
   setpoint_ = setpoint_msg.data;
   last_setpoint_msg_time_ = ros::Time::now();
   new_state_or_setpt_ = true;
+  ROS_INFO("Set_point : %f", setpoint_);
 }
 
 void PidObject::plantStateCallback(const hmcl_msgs::VehicleWheelSpeed& state_msg)

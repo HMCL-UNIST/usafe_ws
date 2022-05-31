@@ -1,6 +1,4 @@
 port : "/dev/ttyACM0"
 imu_data_rate: 200
-filter_data_rate: 200
+filter_data_rate: 150
 filter_frame_id: "imu_link"
-device_setup : False
-use_ros_time: True

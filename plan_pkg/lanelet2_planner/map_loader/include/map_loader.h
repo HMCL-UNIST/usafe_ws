@@ -169,7 +169,7 @@ void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_
 void fix_and_save_osm();
 
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
-void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg);
+void curve_fitting(std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg);
 
 void compute_global_path();
 void compute_local_path();

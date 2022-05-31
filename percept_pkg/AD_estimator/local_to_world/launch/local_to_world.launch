@@ -1,31 +1,28 @@
 <?xml version="1.0"?>
 
 <launch>
-<node pkg="tf" type="static_transform_publisher" name="tmp_map_to_gnss" args="0.0 0 0.0 0 0 0 1 map gnss_link 100" />
 
 
   <node name="local_to_world" pkg="local_to_world" type="local_to_world" output="screen">      
         <!-- <remap from="AA" to="BB"/> -->
       <remap from="/gps" to="/fix"/>
-      <remap from="/pose" to="/localizer_pose"/>
+      <remap from="/pose" to="/current_pose"/>
 
 <!-- to run icp, let's put some value greater than 5~ -->
-      <param name="num_of_gpsPose_for_icp" value="100"/>
+      <param name="num_of_gpsPose_for_icp" value="10"/>
       
   <!-- in metre -->
-      <param name="gnss_skip_distance" value="0.5"/> 
+      <param name="gnss_skip_distance" value="3"/> 
 
- 
-      <param name="latOrigin" value="35.57083743"/> 
-      <param name="lonOrigin" value="129.188112768"/>  
-      <param name="altOrigin" value="55.494"/> 
-
+        <param name="latOrigin" value="35.575307085"/> 
+      <param name="lonOrigin" value="129.190738787"/>  
+      <param name="altOrigin" value="36.918"/> 
       
       <param name="record_transform" value="false"/>      
-      <param name="file_name" value="/home/hojin/ADplatform/usafe_lhj/src/usafe_ws/percept_pkg/AD_estimator/local_to_world/maps/unist_testv5.csv"/>
+      <param name="file_name" value="/home/hojin/ADplatform/state_est/src/AD_estimator/local_to_world/cfg/carla_test_v1.csv"/>
       
-      <param name="local_sensor_frame" value="map"/>
-      <param name="global_sensor_frame" value="gnss_link"/>
+      <param name="local_sensor_frame" value="lidar"/>
+      <param name="global_sensor_frame" value="ins"/>
     
   </node>
 </launch>

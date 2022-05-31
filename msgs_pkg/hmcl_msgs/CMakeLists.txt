@@ -22,7 +22,7 @@ add_message_files(
     VehicleStatus.msg
     VehicleSteering.msg
     VehicleWheelSpeed.msg
-    CtrlVehicleStates.msg    
+    WaypointArray.msg
 )
 
 # add_service_files(

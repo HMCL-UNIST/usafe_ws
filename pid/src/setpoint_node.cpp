@@ -44,7 +44,7 @@ double velCMD_KPH = 0;
 void callback(pid::PidConfig &config, uint32_t level)
 {
   velCMD_KPH = config.set_velocity_KPH;
-  // ROS_INFO("Velocity reconfigure request: set_velocity: %f", velCMD_KPH);
+  ROS_INFO("Velocity reconfigure request: set_velocity: %f", velCMD_KPH);
 }
 
 int main(int argc, char** argv)

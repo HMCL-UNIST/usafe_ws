@@ -39,34 +39,33 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   nh_acc_(nh_acc),
   nh_steer_(nh_steer),
   nh_light_(nh_light),
-  Acan_recv_status(false), 
-  Ccan_recv_status(false), 
-  emergency_count(0),
-  emergency_stop_activate(false)
+  Acan_recv_status(true), 
+  Ccan_recv_status(false)
 {
   Acan_callback_time = ros::Time::now();
   
   InitCanmsg();
   test_count = 0; 
-  AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
-  CcanSub = nh_light_.subscribe("/c_can_l2h", 100, &VehicleBridge::CcanCallback, this);
-  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 10);  
+  AcanSub = nh_light_.subscribe("/a_can_l2h", 1, &VehicleBridge::AcanCallback, this);
+  CcanSub = nh_light_.subscribe("/c_can_l2h", 1, &VehicleBridge::CcanCallback, this);
+  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 10);
   statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 5);    
   sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 5);    
   steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 5);    
   wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);
-  AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 2, &VehicleBridge::AccCmdCallback, this);
-  ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 2, &VehicleBridge::ShiftCmdCallback, this);
-  LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 2, &VehicleBridge::LightCmdCallback, this);
-  VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);
-  emergency_stopSub = nh_acc.subscribe("/emer", 2, &VehicleBridge::emergencyRemoteCallback, this);
+  // SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
+  // AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
+  // SCCmdSub = nh_acc_.subscribe("/sc_trigger", 1, &VehicleBridge::SCCallback, this);
+  // ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 1, &VehicleBridge::ShiftCmdCallback, this);
+  // LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 1, &VehicleBridge::LightCmdCallback, this);
+  // VelSub = nh_acc.subscribe("control_effort", 1, &VehicleBridge::controlEffortCallback, this);
+
   
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
-  boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
+  // boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
  
   
   f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
@@ -76,27 +75,6 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
 VehicleBridge::~VehicleBridge()
 {}
 
-void VehicleBridge::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
-    int thres = 5;
-    if(msg->data > 0.5){
-      emergency_count++;
-    }else{
-      emergency_count--;
-    }
-    
-    if(emergency_count > thres){
-      emergency_stop_activate = true;           
-    }else{
-      emergency_stop_activate = false;            
-    }
-    
-    if( emergency_count > thres*10 ){
-      emergency_count = thres+1;
-    }
-    if(emergency_count < 0 ){
-      emergency_count = 0;
-    }
-}
 
 void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
 { 
@@ -116,7 +94,7 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
       steering_info_.header = acan_data->header;
       steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
       steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
-      steering_info_.steering_angle = (((short)((acan_data->data[2]  << 8)+acan_data->data[1]-steering_offset)*0.1)*PI/180.0)/gear_ratio;      
+      steering_info_.steering_angle = (((short)((acan_data->data[2]  << 8)+acan_data->data[1])*0.1)*PI/180.0)/gear_ratio;      
       vehicle_status_.steering_info = steering_info_; 
       // a = acan_data->data[4]; //(Reserved) 
       // a = acan_data->data[5]; //AD_STR_ALIVE_COUNT 
@@ -214,15 +192,19 @@ void VehicleBridge::CcanCallback(can_msgs::FrameConstPtr ccan_data)
       fr = ((unsigned int)(ccan_data->data[2] + ((ccan_data->data[3] & 0b00111111) << 8)))*0.03125; // whl speed front right
       rl = ((unsigned int)(ccan_data->data[4] + ((ccan_data->data[5] & 0b00111111) << 8)))*0.03125; // whl speed rear left
       rr = ((unsigned int)(ccan_data->data[6] + ((ccan_data->data[7] & 0b00111111) << 8)))*0.03125; // whl speed rear right
-      whl_speed_mean = (fl+fr+rl+rr)/4; // 
+      whl_speed_mean = (fl+fr+rl+rr)/4; // kph
       // wheel_info_.wheel_speed = clamp(whl_speed_mean,0, 511.96875);
-      wheel_info_.wheel_speed = whl_speed_mean/3.6; // m/s
+      // wheel_info_.wheel_speed = whl_speed_mean/3.6; // m/s
+      wheel_info_.wheel_speed = velCMD_KPH; // cmd info (km/h)
+      whl_speed_mean_mps = round(whl_speed_mean*100);
+      // ROS_INFO("wheel speed : %d",whl_speed_mean_mps);
       wheel_info_.fl = fl;
       wheel_info_.fr = fr;
       wheel_info_.rr = rr;
       wheel_info_.rl = rl;
       vehicle_status_.wheelspeed = wheel_info_;
-      
+      sc_scc_frame.data[3] = (whl_speed_mean_mps & 0b11111111);
+	    sc_scc_frame.data[4] = ((whl_speed_mean_mps >> 8)&0b11111111);
       // mtx_.unlock();
       break;
       
@@ -238,7 +220,7 @@ void VehicleBridge::InitCanmsg(){
   steering_frame.is_error = false;
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
-  short steer_value = (short)(0.0+steering_offset) ; // input  in radian, convert into degree
+  short steer_value = (short)(0.0) ; // input  in radian, convert into degree
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)0 & 0b11111111;
@@ -249,11 +231,26 @@ void VehicleBridge::InitCanmsg(){
   scc_frame.is_error = false;
   scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
-  accel_value = (0.0*100);
+  accel_value = 0;
   scc_frame.data[0] = (unsigned int)0 & 0b11111111;
   scc_frame.data[1] = (accel_value & 0b11111111);
 	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
   scc_frame.data[3] = (unsigned int)0 & 0b11111111;
+
+  // secondary controller(sc)
+  sc_scc_frame.header.stamp = ros::Time::now();
+  sc_scc_frame.id = 0x700;
+  sc_scc_frame.dlc = 6;
+  sc_scc_frame.is_error = false;
+  sc_scc_frame.is_extended = false;
+  sc_scc_frame.is_rtr = false;
+  unsigned int vel_cmd = (unsigned int)(0);
+  sc_scc_frame.data[0] = (unsigned int)0 & 0b11111111; //sc on/off
+  sc_scc_frame.data[1] = (vel_cmd & 0b11111111);
+	sc_scc_frame.data[2] = ((vel_cmd >> 8)&0b11111111);
+  sc_scc_frame.data[3] = (0 & 0b11111111);
+	sc_scc_frame.data[4] = ((0 >> 8)&0b11111111);
+  sc_scc_frame.data[5] = (unsigned int)0 & 0b11111111; // takeover
   
   gear_frame.header.stamp = ros::Time::now();
   gear_frame.id = 0x304;
@@ -294,7 +291,7 @@ void VehicleBridge::AcanWatchdog()
       //  if(duration_accl.toSec() > 0.5){        
       //   ROS_WARN("acceleration command is not arrived for %lf secs", duration_accl.toSec());
       //   mtx_.lock();
-      //   short accel_value = (short)(-1*100);
+      //   accel_value = -100;
       //   scc_frame.data[1] = (accel_value & 0b11111111);
 	    //   scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
       //   mtx_.unlock();
@@ -312,65 +309,23 @@ void VehicleBridge::AcanSender()
     if(Acan_recv_status){
       // publish vehicle info 
       steerPub.publish(steering_info_);
-      statusPub.publish(vehicle_status_);
-      if(emergency_stop_activate){
-        scc_frame.header.stamp = ros::Time::now();
-        scc_frame.id = 0x303;
-        scc_frame.dlc = 4;
-        scc_frame.is_error = false;
-        scc_frame.is_extended = false;
-        scc_frame.is_rtr = false;
-        accel_value = (-3*100);
-        scc_frame.data[0] = (unsigned int)2 & 0b11111111;
-        scc_frame.data[1] = (accel_value & 0b11111111);
-        scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
-        scc_frame.data[3] = (unsigned int)0 & 0b11111111;
-        ROS_WARN("Emergency activated !!!");
-      }
+      statusPub.publish(vehicle_status_); 
       sccPub.publish(scc_info_);    
       wheelPub.publish(wheel_info_);  
 
-      // AcanPub.publish(steering_frame);
+      AcanPub.publish(steering_frame);
       usleep(1000);
       AcanPub.publish(scc_frame);
       usleep(1000);
-      // publish vehicle command 
-      // std_msgs::UInt8MultiArray debug_msg;
-      // for(int i=0;i < 8; i++){
-      //   debug_msg.data.push_back(i);
-      // }
-      // debug_pub.publish(debug_msg);
-      // usleep(1000);
+      AcanPub.publish(sc_scc_frame);
+      usleep(1000);
       AcanPub.publish(gear_frame);
-      usleep(1000);     
+      usleep(1000);
       AcanPub.publish(light_frame);      
-      // usleep(1000);
-      // AcanPub.publish(steering_frame);
-      /// test
-      // double weight = 0.01*(test_count*2+1);
-      
-      // if(steering_info_.steering_angle > 0.45){
-      //   sign = -1;
-      //   test_count=test_count+0.03;
-      // }else if(steering_info_.steering_angle < -0.45) {
-      //   sign = 1;
-      //   test_count=test_count+0.05;
-      // }
-      // if(test_count > 20){
-      //   test_count = 0;
-      // }
-      
-      // double target_angle = steering_info_.steering_angle + weight*sign; 
-      // short steer_value = (short)(target_angle*gear_ratio*180/PI*10);
-      // steering_frame.data[0] = (steer_value & 0b11111111);
-      // steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
-      
-      // std_msgs::Float64 tt; 
-      // tt.data = target_angle;
-      // test_pub.publish(tt);
-
+      usleep(1000);
     }
     loop_rate.sleep();
+    
   }
 }
 
@@ -384,12 +339,12 @@ void VehicleBridge::controlEffortCallback(const std_msgs::Float64& control_effor
   scc_frame.is_error = false;
   scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
-  accel_value = (control_effort*100);
+  accel_value = control_effort*100;
   scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
   scc_frame.data[1] = (accel_value & 0b11111111);
 	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
   scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
-  // cout << control_effort << endl;
+  ROS_INFO("control_effort : %d", control_effort);
 }
 
 void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
@@ -400,13 +355,39 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
   if(Master_Switch){
-  short steer_value = (short)((msg->steering_angle)*gear_ratio*180/PI*10)+steering_offset;
+  short steer_value = (short)(msg->steering_angle*gear_ratio*180/PI*10);
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
-   AcanPub.publish(steering_frame);
+  //  AcanPub.publish(steering_frame);
   }
  
+}
+
+void VehicleBridge::SCCallback(std_msgs::Int64 msg){
+  // secondary controller(sc)
+  sc_scc_frame.header.stamp = ros::Time::now();
+  sc_scc_frame.id = 0x700;
+  sc_scc_frame.dlc = 6;
+  sc_scc_frame.is_error = false;
+  sc_scc_frame.is_extended = false;
+  sc_scc_frame.is_rtr = false;
+  unsigned int vel_cmd = velCMD_KPH;
+  sc_scc_frame.data[0] = (unsigned int)msg.data & 0b11111111; //sc on/off
+  sc_scc_frame.data[5] = (unsigned int)0 & 0b11111111; // takeover
+  
+  if(Master_Switch){
+  sc_scc_frame.data[1] = (vel_cmd & 0b11111111);
+	sc_scc_frame.data[2] = ((vel_cmd >> 8)&0b11111111);
+  sc_scc_frame.data[3] = (whl_speed_mean_mps & 0b11111111);
+	sc_scc_frame.data[4] = ((whl_speed_mean_mps >> 8)&0b11111111);
+  }else{
+  vel_cmd = 0;
+  scc_frame.data[1] = (vel_cmd & 0b11111111);
+	scc_frame.data[2] = ((vel_cmd >> 8)&0b11111111);
+  sc_scc_frame.data[3] = (whl_speed_mean_mps & 0b11111111);
+	sc_scc_frame.data[4] = ((whl_speed_mean_mps >> 8)&0b11111111);
+  }
 }
 
 void VehicleBridge::AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg){
@@ -417,12 +398,21 @@ void VehicleBridge::AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg){
   scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
   double filtered_accel = min(msg->acceleration,2.0);  
-  accel_value = (filtered_accel*100);
+  short accel_value = (short)(filtered_accel*100);
   // scc_frame.data[0] = (unsigned int)msg->scc_mode & 0b11111111;
+  
+  if(Master_Switch){
   scc_frame.data[1] = (accel_value & 0b11111111);
 	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
   // scc_frame.data[3] = (unsigned int)msg->scc_takeover & 0b11111111;
-  
+  // AcanPub.publish(scc_frame);
+  }else{
+    accel_value = -0.2;
+  scc_frame.data[1] = (accel_value & 0b11111111);
+	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+  // scc_frame.data[3] = (unsigned int)msg->scc_takeover & 0b11111111;
+  // AcanPub.publish(scc_frame);  
+  }
 }
 
 void VehicleBridge::ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg){
@@ -460,8 +450,8 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   config.AD_HAZARD_STAT?"True":"False",
   config.AD_GEAR_POS_CMD,
   config.AD_SCC_MODE_CMD);
+
   Master_Switch         = config.Master_Switch;
-  
   AD_STR_MODE_CMD       = config.AD_STR_MODE_CMD;
   AD_STR_POS_CMD        = config.AD_STR_POS_CMD;
   AD_SCC_ACCEL_CMD      = config.AD_SCC_ACCEL_CMD;
@@ -471,43 +461,61 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   AD_HAZARD_STAT        = config.AD_HAZARD_STAT;
   AD_GEAR_POS_CMD       = config.AD_GEAR_POS_CMD;
   AD_SCC_MODE_CMD       = config.AD_SCC_MODE_CMD;
+  velCMD_KPH            = config.set_velocity_KPH;
 
-  if(Master_Switch){
   steering_frame.header.stamp = ros::Time::now();
   steering_frame.id = 0x300;
   steering_frame.dlc = 3;
-  // if( steering_angle_test > 0.1)
-  // steering_angle_test = steering_angle_test + 10 
-  // short steer_value = (short)(AD_STR_POS_CMD+steering_offset) ; // input  in radian, convert into degree
-  short steer_value = (short)steering_info_.steering_angle;
+  steering_frame.is_error = false;
+  steering_frame.is_extended = false;
+  steering_frame.is_rtr = false;
+  short steer_value = (short)(AD_STR_POS_CMD*0.1) ; // input  in radian, convert into degree
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
-  AcanPub.publish(steering_frame);
-  // scc_frame.header.stamp = ros::Time::now();
-  // scc_frame.id = 0x303;
-  // scc_frame.dlc = 4;
-  // short accel_value = (short)(AD_SCC_ACCEL_CMD*100);
-  scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+  
+  scc_frame.header.stamp = ros::Time::now();
+  scc_frame.id = 0x303;
+  scc_frame.dlc = 4;
+  scc_frame.is_error = false;
+  scc_frame.is_extended = false;
+  scc_frame.is_rtr = false;
+  accel_value = AD_SCC_ACCEL_CMD;
+  // // ROS_INFO("%d",accel_value);
+  scc_frame.data[0] = AD_SCC_MODE_CMD & 0b11111111;
   // scc_frame.data[1] = (accel_value & 0b11111111);
 	// scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
-  scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+  scc_frame.data[3] = AD_SCC_TAKEOVER_CMD & 0b11111111;
+
+  sc_scc_frame.header.stamp = ros::Time::now();
+  sc_scc_frame.id = 0x700;
+  sc_scc_frame.dlc = 6;
+  sc_scc_frame.is_error = false;
+  sc_scc_frame.is_extended = false;
+  sc_scc_frame.is_rtr = false;
+  unsigned int vel_cmd = velCMD_KPH;
+  sc_scc_frame.data[0] = (unsigned int)1 & 0b11111111;
+  sc_scc_frame.data[1] = (vel_cmd & 0b11111111);
+	sc_scc_frame.data[2] = ((vel_cmd >> 8)&0b11111111);
+  
 
   gear_frame.header.stamp = ros::Time::now();
   gear_frame.id = 0x304;
   gear_frame.dlc = 1;
+  gear_frame.is_error = false;
+  gear_frame.is_extended = false;
+  gear_frame.is_rtr = false;
   gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111; 
 
+  light_frame.header.stamp = ros::Time::now();
+  light_frame.id = 0x306;
+  light_frame.dlc = 3;
+  light_frame.is_error = false;
+  light_frame.is_extended = false;
+  light_frame.is_rtr = false;
   light_frame.data[0] = (unsigned int)AD_LEFT_TURNLAMP_STAT & 0b11111111;  
   light_frame.data[1] = (unsigned int)AD_RIGHT_TURNLAMP_STAT & 0b11111111;  
   light_frame.data[2] = (unsigned int)AD_HAZARD_STAT & 0b11111111;  
-
-
-  }else{
-    // steering_frame.data[2] = (unsigned int)0 & 0b11111111;
-    scc_frame.data[0] = (unsigned int)0 & 0b11111111;
-  }
-  // cout << AD_STR_MODE_CMD << endl;
 }
 
 int main (int argc, char** argv)
@@ -534,6 +542,7 @@ int main (int argc, char** argv)
     ros::SingleThreadedSpinner spinner_acc;
     spinner_acc.spin(&callback_queue_acc);
   });
+  
 
   std::thread spinner_thread_steer([&callback_queue_steer]() {
     ros::SingleThreadedSpinner spinner_steer;

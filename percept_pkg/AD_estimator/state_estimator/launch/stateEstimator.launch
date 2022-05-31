@@ -29,8 +29,8 @@
       <param name="GyroSigma" value="8.73e-5"/>
       <param name="AccelBiasSigma" value="3.9e-4"/>
       <param name="GyroBiasSigma" value="4.8e-05"/>
-      <param name="GPSSigma" value="0.05"/>
-      <param name="localPoseSigma" value="0.05"/>      
+      <param name="GPSSigma" value="0.1"/>
+      <param name="localPoseSigma" value="0.1"/>      
        <!--<param name="SensorTransformX" value="0.076"/>
       <param name="SensorTransformY" value="-0.0246"/>
       <param name="SensorTransformZ" value="-0.020"/>-->

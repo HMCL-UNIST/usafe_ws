@@ -8,7 +8,7 @@
     <param name="debug" value="false" />
     <!-- time_delay applies to the angular velocity calculation that lines data up with state estimator - only debug mode -->
     <!-- <param name="time_delay" value="0.2714" /> -->
-    <param name="time_delay" value="0.1" />
+    <param name="time_delay" value="0.0" />
     
     <remap from="pose_estimate" to="/pose_estimate"/>
  </node>

@@ -15,29 +15,35 @@
   limitations under the License.
 -->
 <package>
-  <name>fix2pose</name>
+  <name>path_debug</name>
   <version>0.1.0</version>
-  <description>convert Local frame pose into world frame pose</description>
+  <description>debug local path</description>
 
-  <maintainer email="hojinlee@unist.ac.kr">Hojin Lee</maintainer>
+  <maintainer email="minu@unist.ac.kr">Minu shin</maintainer>
 
-  <author email="hojinlee@unist.ac.kr">Hojin Lee</author>
+  <author email="minu@unist.ac.kr">Minu shin</author>
 
   <license>BSD</license>
 
-  <author>Hojin Lee</author>
+  <author>Minu shin</author>
 
   <buildtool_depend>catkin</buildtool_depend>
 
  
   <build_depend>roscpp</build_depend>
+  <build_depend>rospy</build_depend>
   <build_depend>std_msgs</build_depend>
   <build_depend>sensor_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
   <build_depend>cmake_modules</build_depend> 
   <build_depend>tf</build_depend> 
+  <build_depend>hmcl_msgs</build_depend>   
+  <build_depend>can_msgs</build_depend>   
+  <build_depend>dynamic_reconfigure</build_depend>
   
+  <run_depend>can_msgs</run_depend>  
+  <run_depend>hmcl_msgs</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>sensor_msgs</run_depend>
@@ -45,6 +51,7 @@
   <run_depend>nav_msgs</run_depend>
   <run_depend>cmake_modules</run_depend>
   <run_depend>tf</run_depend>
-  
+  <run_depend>dynamic_reconfigure</run_depend>
+  <run_depend>rospy</run_depend>
 
 </package>

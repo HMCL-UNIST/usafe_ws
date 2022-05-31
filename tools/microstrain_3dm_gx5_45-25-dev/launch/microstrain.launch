@@ -14,7 +14,7 @@
     <param name="port" value="/dev/ttyACM0" type="str" />
     <param name="baudrate" value="115200" type="int" />
 
-    <param name="device_setup" value="false" type="bool" />
+    <param name="device_setup" value="true" type="bool" />
     <param name="readback_settings" value="true" type="bool" />
     <param name="save_settings" value="true" type="bool" />
     <param name="auto_init" value="true" type="bool" />
@@ -38,7 +38,7 @@
   </node>
 
   <!-- Diagnostics -->
-  <!-- <node pkg="rqt_topic" type="rqt_topic" name="rqt_topic"/> -->
+  <node pkg="rqt_topic" type="rqt_topic" name="rqt_topic"/>
   <!--<node pkg="rqt_plot" type="rqt_plot" name="pid_setpoints"
       args="/yaw_pid_debug/Setpoint /vel_pid_debug/Setpoint"/>-->
   

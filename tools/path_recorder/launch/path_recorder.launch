@@ -16,14 +16,14 @@
       <param name="map_origin_lon" value="129.188112768"/>  
       <param name="map_origin_att" value="55.494"/> 
 
-      <param name="road_length_half" value="1.6"/> 
+      <param name="road_length_half" value="1.4"/> 
 
       
       
 
-      <param name="osm_file_name" value="$(find path_recorder)/maps/unist_outv1.osm"/> 
+      <param name="osm_file_name" value="$(find path_recorder)/maps/unist_0424_test_r.osm"/> 
       <param name="visualize_path" value="True"/> 
-      <param name="line_resolution" value="30.0"/> 
+      <param name="line_resolution" value="50.0"/> 
       <param name="point_resolution" value="1.0"/> 
 
       

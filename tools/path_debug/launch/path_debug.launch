@@ -8,7 +8,7 @@
   <node pkg="tf" type="static_transform_publisher" name="base_link_to_os" args="0.0 0 0.0 0 0 0 1 base_link os_sensor 1" />
 
 
-  <node name="vehicle_bridge" pkg="vehicle_bridge" type="vehicle_bridge" output="screen">      
+  <node name="path_debug" pkg="path_debug" type="path_debug" output="screen">      
         <!-- <remap from="AA" to="BB"/> -->
   </node>
   

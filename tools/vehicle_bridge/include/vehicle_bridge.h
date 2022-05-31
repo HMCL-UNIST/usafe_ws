@@ -25,6 +25,7 @@
 #include <ros/ros.h>
 #include <ros/time.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Int64.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
 
@@ -54,8 +55,8 @@ class VehicleBridge
 private:
 ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
-ros::Subscriber AcanSub, CcanSub, emergency_stopSub;
-ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub;
+ros::Subscriber AcanSub, CcanSub;
+ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub;
 ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
@@ -65,8 +66,6 @@ dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
 bool can_recv_status;
 bool Acan_recv_status;
 bool Ccan_recv_status;
-bool emergency_stop_activate;
-int emergency_count;
 
 hmcl_msgs::VehicleStatus vehicle_status_;
 hmcl_msgs::VehicleSCC scc_info_;
@@ -74,19 +73,19 @@ hmcl_msgs::VehicleSteering steering_info_;
 hmcl_msgs::VehicleWheelSpeed wheel_info_;
 hmcl_msgs::VehicleGear gear_info_;
 
-can_msgs::Frame steering_frame, scc_frame, gear_frame, light_frame;
+can_msgs::Frame steering_frame, scc_frame, gear_frame, light_frame, sc_scc_frame;
 
-double gear_ratio = 15.0;
-int steering_offset = 8;         
+double gear_ratio = 14.5;
 
 // variables for dynamic configure 
 bool Master_Switch, AD_STR_MODE_CMD, AD_SCC_TAKEOVER_CMD, AD_LEFT_TURNLAMP_STAT;
 bool AD_RIGHT_TURNLAMP_STAT, AD_HAZARD_STAT;
 int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;       
-double control_effort;    
+short accel_value;
+double control_effort, velCMD_KPH;    
 double sign = 1;
 double test_count; 
-short accel_value;
+int whl_speed_mean_mps;
 ros::Time Acan_callback_time;
 ros::Time Ccan_callback_time;
 public:
@@ -105,10 +104,7 @@ void AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg);
 void ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg);
 void LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg);
 void controlEffortCallback(const std_msgs::Float64& control_effort_input);
-
-void emergencyRemoteCallback(std_msgs::Float64ConstPtr msg);
-
-
+void SCCallback(std_msgs::Int64 msg);
 };
 
 

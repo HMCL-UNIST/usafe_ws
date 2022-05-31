@@ -9,10 +9,10 @@
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
-      <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_vel.osm"/> 
+      <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_path_0416.osm"/>  -->
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/r_Town03_hj_traffic.osm"/>  -->
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_0424_test_oneway.osm"/>  -->
-      <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_finall.osm"/>  -->
+      <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_finall.osm"/> 
       
       <!-- <param name="map_origin_lat" value="0.002330359333808985"/> 
       <param name="map_origin_lon" value="4.5103238454623815"/>   -->

@@ -646,7 +646,7 @@ void MapLoader::compute_local_path(){
   
 
     std::vector<std::vector<double>> global_points;
-    std::vector<double> speed_lim;
+
     // extract local trajectory from "global_lane_array_for_local" to -- >  "local_traj"
     // If we found lane change, we add linstrtings upto the next of the lane which has lane change signal
     int init_l_lane_idx, init_point_idx;  
@@ -712,14 +712,9 @@ void MapLoader::compute_local_path(){
                 }
                 local_traj_msg.waypoints.push_back(waypoint_tmp);
                 std::vector<double> tmp_points; 
-                
                 tmp_points.push_back(waypoint_tmp.pose.pose.position.x);
                 tmp_points.push_back(waypoint_tmp.pose.pose.position.y);
-                global_points.push_back(tmp_points);                    
-                
-                
-                speed_lim.push_back(waypoint_tmp.twist.twist.linear.x);            
-
+                global_points.push_back(tmp_points);                                
                 double lane_dist_= sqrt(pow((prev_pose.position.x - waypoint_tmp.pose.pose.position.x),2) + pow((prev_pose.position.y - waypoint_tmp.pose.pose.position.y),2));      
                 lane_dist_cumulative = lane_dist_cumulative + lane_dist_;
                 prev_pose.position.x = waypoint_tmp.pose.pose.position.x;
@@ -738,7 +733,7 @@ void MapLoader::compute_local_path(){
   ////////////////////////////////////////////////////
   // curve fitting   
   
-  curve_fitting(speed_lim,global_points, local_traj_msg);
+  curve_fitting(global_points, local_traj_msg);
   
   /////////////////////////
 
@@ -752,8 +747,8 @@ void MapLoader::compute_local_path(){
 }
 
 
-void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg){
-      if(g_points.size() < 6){
+void MapLoader::curve_fitting(std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg){
+      if(g_points.size() < 10){
         ROS_WARN("polyfit is not done as number of points are not enough");
         return;
       } 
@@ -791,9 +786,7 @@ void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vec
       poly_error = f.getMSE();         
       float init_s = 0.0;
       if(poly_error < 10){                    
-          std::vector<double> speed_limits = linspaces(float(speed_lim.front()),float(speed_lim.back()),int(local_path_length/map_road_resolution));
           std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));
-          
           std::vector<double> yval = f.evalPoly(xeval);             
           
           hmcl_msgs::Lane local_traj_msg_fit;
@@ -811,7 +804,7 @@ void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vec
             waypoint_tmp.pose.pose.orientation.y = q_tmp[1];
             waypoint_tmp.pose.pose.orientation.z = q_tmp[2];
             waypoint_tmp.pose.pose.orientation.w = q_tmp[3];
-            waypoint_tmp.twist.twist.linear.x = speed_limits[i];
+            waypoint_tmp.twist.twist.linear.x = 7;
             local_traj_msg_fit.waypoints.push_back(waypoint_tmp);            
           }
           local_traj_msg = local_traj_msg_fit;
