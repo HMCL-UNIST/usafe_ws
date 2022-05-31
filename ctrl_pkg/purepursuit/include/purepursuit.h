@@ -21,7 +21,7 @@
 #include <mutex> 
 #include <thread> 
 #include <boost/thread/thread.hpp>
-
+#include <vector>
 #include <ros/ros.h>
 #include <ros/time.h>
 #include <std_msgs/Float64.h>
@@ -55,6 +55,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2/transform_datatypes.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <std_msgs/Float64MultiArray.h>
 #include <iostream>
 #ifdef __cplusplus
 extern "C"
@@ -75,22 +76,26 @@ class PurePursuit
     ros::NodeHandle nh_;
     std::mutex mtx_;
     ros::Subscriber local_traj_sub, pose_sub, cross_track_err_sub,
-                    vel_cmd_sub;
-    ros::Publisher  ctrl_pub;
+                    vel_cmd_sub, curvature_sub;
+    ros::Publisher  steer_pub;
     DubinsPath dubins_path;
     // hmcl_msgs::Lane 
     geometry_msgs::Point closest_waypoint;
     geometry_msgs::Point desired_waypoint;
+    geometry_msgs::Point fixed_waypoint;
     geometry_msgs::Point state;
     geometry_msgs::Quaternion quat_msg;
+    std_msgs::Float64 steer_cmd;
     tf::Quaternion quat;
     
     hmcl_msgs::Lane ref_path;
-     
+    vector<double> curvature; 
     double gear_ratio = 14.5;
-    double distance = 0;9
-    double cross_track_err;
-
+    double distance = 0;
+    double cross_track_err = 0;
+    int minElementIndex = 0;
+    double Lf = 0;
+    double steerCmd = 0; 
     // PP variables
     float vel_cmd;
     float r_min_v;
@@ -100,7 +105,7 @@ class PurePursuit
     const float f_MAX = 0.4;
     const float alpha_MAX = 5.0;
     const float beta_MAX = 0.2;
-
+    const float L = 2.6; 
     ros::Time Acan_callback_time;
     ros::Time Ccan_callback_time;
 
@@ -111,10 +116,12 @@ public:
     void ctrlPub(); 
     void poseCallback(const geometry_msgs::PoseStamped& pose);
     void trajCallback(const hmcl_msgs::Lane& traj);
+    void curvCallback(const std_msgs::Float64MultiArray& msg);
     void cteCallback(const std_msgs::Float64& cte);
     void velcmdCallback(const hmcl_msgs::VehicleWheelSpeed& msg);
 
     void selectDesiredPoint();
+    void selectOutOfPath();
 };
 
 
