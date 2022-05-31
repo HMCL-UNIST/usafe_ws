@@ -57,6 +57,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<std::string>("odom_topic", odom_topic, "pose_estimate");
 
   nh_traj.param<std::string>("steer_cmd_topic", steer_cmd_topic, "/usafe_steer_cmd");
+  nh_traj.param<std::string>("vel_cmd_topic", vel_cmd_topic, "/setpoint");
   
   
   
@@ -114,7 +115,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
   
   debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
-  steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);    
+  steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);   
+  velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
+  
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
   ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
 
@@ -286,17 +289,36 @@ void PreviewCtrl::ControlLoop()
           }
         }
         
-    
+        // extract target velocity  (avg of local segments)
+        double avg_speed_sum = std::accumulate(std::begin(traj_.vx), std::end(traj_.vx), 0.0);
+        double avg_speed =  avg_speed_sum / traj_.vx.size();
+        // curvature and maximum lateral accerlation filtering 
+        double alat_lim = 0.2;
+        double kappa = 0;
+        double cur_lim_vel = sqrt(alat_lim/kappa);
+        double target_speed = std::min(avg_speed,cur_lim_vel);
+        // filter by error , 0.3 m is margin 
+        // 1m error -> reduce to 20%
+        // 0.5m error -> reduce to 60%
+        // Y = -0.8X + 1
+        double l_lim= 0.2;        
+        double filter_ratio = -0.8*std::max(l_lim, Xk(0))+1;
+        filter_ratio = std::max(l_lim,std::min(filter_ratio,1.0));
+        target_speed = target_speed*filter_ratio;
+
+        ROS_INFO("target_speed = %f", target_speed);
+        std_msgs::Float64 vel_msg;
+        vel_msg.data = target_speed;
+        velPub.publish(vel_msg);
+
         delta_cmd = steer_filter.filter(delta_cmd);            
         
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
         ackermann_msgs::AckermannDrive ctrl_msg;
-        ctrl_msg.acceleration = 1.0;
-        
+        ctrl_msg.acceleration = 1.0;        
        
         
         ctrl_msg.steering_angle = delta_cmd;
-
         
         ackmanPub.publish(ctrl_msg);
         
@@ -357,14 +379,14 @@ bool PreviewCtrl::stateSetup(){
   geometry_msgs::Pose nearest_pose;
   if (!calcNearestPoseInterp(traj_, vehicle_status_.pose, nearest_pose, nearest_index, dist_err, yaw_err, nearest_traj_time))
   {
-    ROS_WARN("[MPC] calculateMPC: error in calculating nearest pose. stop mpc.");
+    ROS_WARN("error in calculating nearest pose. stop mpc.");
     return false;
   };
 
   double err_x = vehicle_status_.pose.position.x - nearest_pose.position.x;
   double err_y = vehicle_status_.pose.position.y - nearest_pose.position.y;
   double sp_yaw = tf2::getYaw(nearest_pose.orientation);
-  double err_lat = -sin(sp_yaw) * err_x + cos(sp_yaw) * err_y;
+  double err_lat = -sin(sp_yaw) * err_x + cos(sp_yaw) * err_y;  
   double steer = vehicle_status_.tire_angle_rad;
   state_time = vehicle_status_.header.stamp;
    /* get steering angle */

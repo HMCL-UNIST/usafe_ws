@@ -320,7 +320,7 @@ void VehicleBridge::AcanSender()
         scc_frame.is_error = false;
         scc_frame.is_extended = false;
         scc_frame.is_rtr = false;
-        accel_value = (-2*100);
+        accel_value = (-3*100);
         scc_frame.data[0] = (unsigned int)2 & 0b11111111;
         scc_frame.data[1] = (accel_value & 0b11111111);
         scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
@@ -479,8 +479,9 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   // if( steering_angle_test > 0.1)
   // steering_angle_test = steering_angle_test + 10 
   // short steer_value = (short)(AD_STR_POS_CMD+steering_offset) ; // input  in radian, convert into degree
-  // steering_frame.data[0] = (steer_value & 0b11111111);
-	// steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+  short steer_value = (short)steering_info_.steering_angle;
+  steering_frame.data[0] = (steer_value & 0b11111111);
+	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
   AcanPub.publish(steering_frame);
   // scc_frame.header.stamp = ros::Time::now();

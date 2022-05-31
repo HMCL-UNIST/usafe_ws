@@ -20,6 +20,7 @@
 #include <queue>
 #include <mutex> 
 #include <thread> 
+#include <numeric>
 #include <boost/thread/thread.hpp>
 
 #include <ros/ros.h>
@@ -53,6 +54,7 @@
 #include <preview_ctrl/testConfig.h>
 #include "vehicle_model_dynamics.h"
 #include <std_msgs/UInt8MultiArray.h>
+#include <std_msgs/Float64.h>
 #include "lowpass_filter.h"
 #include "trajectory.h"
 #include "utils.h"
@@ -80,7 +82,7 @@ bool my_steering_ok_,my_position_ok_, my_odom_ok_;
 double angle_rate_limit, prev_delta_cmd;   
 std::mutex mtx_;
 ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub;
-ros::Publisher  ackmanPub, steerPub, pub_debug_filtered_traj_, debugPub, AcanPub;
+ros::Publisher  velPub, ackmanPub, steerPub, pub_debug_filtered_traj_, debugPub, AcanPub;
 
 Trajectory traj_;
 hmcl_msgs::Lane current_waypoints_;
@@ -104,7 +106,7 @@ double dt, wheelbase, lf, lr, mass;
 double debug_yaw;
 
 double error_deriv_lpf_curoff_hz;
-std::string control_topic, pose_topic, vehicle_states_topic, waypoint_topic, odom_topic, status_topic, simstatus_topic, steer_cmd_topic;
+std::string vel_cmd_topic, control_topic, pose_topic, vehicle_states_topic, waypoint_topic, odom_topic, status_topic, simstatus_topic, steer_cmd_topic;
 
 Butterworth2dFilter lpf_lateral_error_;
 Butterworth2dFilter lpf_yaw_error_; 
