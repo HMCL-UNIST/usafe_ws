@@ -15,9 +15,9 @@
   limitations under the License.
 -->
 <package>
-  <name>path_debug</name>
+  <name>purepursuit</name>
   <version>0.1.0</version>
-  <description>debug local path</description>
+  <description>Accurate path tracking using pp</description>
 
   <maintainer email="minu@unist.ac.kr">Minu shin</maintainer>
 

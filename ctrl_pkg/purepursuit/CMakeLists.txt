@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(path_debug)
+project(purepursuit)
 
 find_package(Eigen3 REQUIRED)
 
@@ -43,14 +43,14 @@ include_directories(
 # target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(path_debug src/path_debug.cpp)
-target_link_libraries(path_debug ${catkin_LIBRARIES})
-add_dependencies(path_debug ${catkin_EXPORTED_TARGETS})
+add_executable(purepursuit src/purepursuit.cpp)
+target_link_libraries(purepursuit ${catkin_LIBRARIES})
+add_dependencies(purepursuit ${catkin_EXPORTED_TARGETS})
 
 
 install(
   TARGETS
-  path_debug    
+  purepursuit    
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

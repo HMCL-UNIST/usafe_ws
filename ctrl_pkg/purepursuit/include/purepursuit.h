@@ -54,40 +54,67 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 #include <tf2/transform_datatypes.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <iostream>
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "dubins.h"
+#ifdef __cplusplus
+}
+#endif
 #define PI 3.14159265358979323846264338
 
+using namespace std;
 
-class PathDebug 
+class PurePursuit 
 {
    private:
     ros::NodeHandle nh_;
     std::mutex mtx_;
-    ros::Subscriber local_traj_sub, pose_sub;
-    ros::Publisher  debug_pub;
-
+    ros::Subscriber local_traj_sub, pose_sub, cross_track_err_sub,
+                    vel_cmd_sub;
+    ros::Publisher  ctrl_pub;
+    DubinsPath dubins_path;
     // hmcl_msgs::Lane 
-    geometry_msgs::Point p0;
+    geometry_msgs::Point closest_waypoint;
     geometry_msgs::Point p1;
     geometry_msgs::Point state;
     hmcl_msgs::Waypoint wp;
     std_msgs::Float64 lat_dev;
-
+    hmcl_msgs::Lane ref_path;
+     
     double gear_ratio = 14.5;
     double distance = 0;
+    double cross_track_err;
+
+    // PP variables
+    float vel_cmd;
+    float r_min_v;
+    // PP tunning param
+    const float e_MAX = 0;
+    const float f_MAX = 0.4;
+    const float alpha_MAX = 0.0;
+    const float beta_MAX = 0.0;
 
     ros::Time Acan_callback_time;
     ros::Time Ccan_callback_time;
 
 public:
-PathDebug(ros::NodeHandle& nh_);
-~PathDebug();
+    PurePursuit(ros::NodeHandle& nh_);
+    ~PurePursuit();
 
-void debugPub(); 
-void poseCallback(const geometry_msgs::PoseStamped& pose);
-void trajCallback(const hmcl_msgs::Lane& traj);
-double linearInterpolationDistance2D(const geometry_msgs::Point& p0_,
-		const geometry_msgs::Point& p1_,
-		const geometry_msgs::Point& state_);
+    dubins_shortest_path( &dubins_path, q0, q1, turning_radius);
+    // void ctrlPub(); 
+    void poseCallback(const geometry_msgs::PoseStamped& pose);
+    void trajCallback(const hmcl_msgs::Lane& traj);
+    void cteCallback(const std_msgs::Float64& cte);
+    void velcmdCallback(const std_msgs::Float64& msg);
+
+    // double selectDesiredPoint(const geometry_msgs::Point& p0_,
+    // 		const geometry_msgs::Point& p1_,
+    // 		const geometry_msgs::Point& state_);
 };
 
 
