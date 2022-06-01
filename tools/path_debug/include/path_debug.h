@@ -70,7 +70,7 @@ class PathDebug
     geometry_msgs::Point p1;
     geometry_msgs::Point state;
     hmcl_msgs::Waypoint wp;
-    std_msgs::Float64 lat_dev;
+    geometry_msgs::PointStamped lat_dev;
 
     double gear_ratio = 14.5;
     double distance = 0;

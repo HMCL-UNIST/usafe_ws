@@ -39,7 +39,7 @@ PathDebug::PathDebug(ros::NodeHandle& nh_):
 {  
   local_traj_sub = nh_.subscribe("/local_traj", 1, &PathDebug::trajCallback, this);
   pose_sub = nh_.subscribe("/geo_pose_estimate", 1, &PathDebug::poseCallback, this);
-  debug_pub = nh_.advertise<std_msgs::Float64>("/path_debug_info", 10);
+  debug_pub = nh_.advertise<geometry_msgs::PointStamped>("/path_debug_info", 10);
   // statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 5);    
 
   ROS_INFO("Init Traj Debugger");
@@ -55,7 +55,8 @@ void PathDebug::debugPub()
   while (ros::ok())
   {      
     double distance = linearInterpolationDistance2D(p0, p1, state);
-    lat_dev.data = distance;
+    lat_dev.header.stamp = ros::Time::now();
+    lat_dev.point.x = distance;
     // publish vehicle info 
     debug_pub.publish(lat_dev);
     loop_rate.sleep();
