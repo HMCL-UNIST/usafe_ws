@@ -100,15 +100,16 @@ void PurePursuit::curvCallback(const std_msgs::Float64MultiArray& msg)
   selectOutOfPath();
 }
 
-void PurePursuit::cteCallback(const std_msgs::Float64& cte)
+void PurePursuit::cteCallback(const geometry_msgs::PointStamped& cte)
 {
-  cross_track_err = cte.data; 
+  cross_track_err = cte.point.x; 
+  cout << "cross_track_err : " << cross_track_err << endl;
 }
 
 void PurePursuit::velcmdCallback(const hmcl_msgs::VehicleWheelSpeed& msg)
 {
   vel_cmd = msg.wheel_speed; // km/h
-  r_min_v = pow(vel_cmd, 2) / (127 * (e_MAX + f_MAX));
+  r_min_v = pow(vel_cmd/3.6, 2) / (9.79 * (e_MAX + f_MAX));
   if (r_min_v < 5.6) { r_min_v = 5.6; } 
 }
 
@@ -184,16 +185,22 @@ void PurePursuit::selectOutOfPath() {
 
   double p_wd = sqrt(pow((closest_waypoint.x - desired_waypoint.x),2) + pow((closest_waypoint.y - desired_waypoint.y),2));
   double thetaWd = atan2((desired_waypoint.y - closest_waypoint.y),(desired_waypoint.x - closest_waypoint.x));
-  double theta = thetaWd -state.z;
+  // double thetaWd = atan2((state.y - closest_waypoint.y),(state.x - closest_waypoint.x));
+  double theta = state.z - thetaWd;
+  
+
   if (theta >= 0) { sign = 1; }
   else { sign = -1; }
   double thetaDl = thetaWd - sign * PI/2;
   double pDl = p_wd * tan(abs(theta));
   fixed_waypoint.x = desired_waypoint.x + tau * pDl * cos(thetaDl);
   fixed_waypoint.y = desired_waypoint.y + tau * pDl * sin(thetaDl);
+  
+
   Lf = sqrt(pow((fixed_waypoint.x - state.x),2) + pow((fixed_waypoint.y - state.y),2)); 
   // calc steering angle
-  steerCmd = atan2(2*L*sin(theta), Lf) * 180/PI * gear_ratio * 10 + steering_offset;
+  steerCmd = (atan2(2*L*sin(theta), Lf) * 180/PI * gear_ratio * 10 + steering_offset) + (-cross_track_err * 200);
+  // (-cross_track_err * 100)
 }
 
 int main (int argc, char** argv)

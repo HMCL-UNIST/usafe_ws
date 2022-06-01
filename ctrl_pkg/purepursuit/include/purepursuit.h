@@ -118,7 +118,7 @@ public:
     void poseCallback(const geometry_msgs::PoseStamped& pose);
     void trajCallback(const hmcl_msgs::Lane& traj);
     void curvCallback(const std_msgs::Float64MultiArray& msg);
-    void cteCallback(const std_msgs::Float64& cte);
+    void cteCallback(const geometry_msgs::PointStamped& cte);
     void velcmdCallback(const hmcl_msgs::VehicleWheelSpeed& msg);
 
     void selectDesiredPoint();

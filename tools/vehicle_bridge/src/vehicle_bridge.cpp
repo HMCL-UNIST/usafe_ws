@@ -356,6 +356,7 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.is_rtr = false;
   
   short steer_value = (short)(msg->steering_angle);
+  ROS_INFO("steer value : %d", steer_value);
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
