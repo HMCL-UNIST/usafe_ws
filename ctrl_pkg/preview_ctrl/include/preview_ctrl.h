@@ -94,7 +94,7 @@ VehicleModel VehicleModel_;
 std::vector<double> delta_buffer;
 int path_filter_moving_ave_num_, curvature_smoothing_num_, path_smoothing_times_;
 
-
+hmcl_msgs::VehicleSteering ctrl_msg;
 int delay_step, preview_step;
 double delay_in_sec, lag_tau;
 double Q_ey, Q_eydot, Q_epsi, Q_epsidot, R_weight;

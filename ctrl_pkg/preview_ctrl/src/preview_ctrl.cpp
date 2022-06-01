@@ -119,7 +119,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
   
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
-  ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
+  ackmanPub = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>("/usafe_steer_cmd", 1);
 
   AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
 
@@ -312,44 +312,17 @@ void PreviewCtrl::ControlLoop()
         velPub.publish(vel_msg);
 
         delta_cmd = steer_filter.filter(delta_cmd);            
+        short steer_value = (short)(delta_cmd*15.0*180/PI*10+steering_offset);             
         
-        //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
-        ackermann_msgs::AckermannDrive ctrl_msg;
-        ctrl_msg.acceleration = 1.0;        
-       
-        
-        ctrl_msg.steering_angle = delta_cmd;
+        ctrl_msg.header.stamp = ros::Time::now();
+        ctrl_msg.steering_angle = steer_value;
         
         ackmanPub.publish(ctrl_msg);
+              
         
-        //////////////////
-        can_msgs::Frame steering_frame;
-        steering_frame.header.stamp = ros::Time::now();
-        steering_frame.id = 0x300;
-        steering_frame.dlc = 3;
-        steering_frame.is_error = false;
-        steering_frame.is_extended = false;
-        steering_frame.is_rtr = false;        
-        short steer_value = (short)(delta_cmd*15.0*180/PI*10+steering_offset);
         ROS_INFO("delta_cmd = %f", delta_cmd);
         prev_delta_cmd = delta_cmd;
-        steering_frame.data[0] = (steer_value & 0b11111111);
-	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
-        steering_frame.data[2] = (unsigned int)1 & 0b11111111;
-        AcanPub.publish(steering_frame);
-          
-
-        ///////////
-        
-        
-        
-        hmcl_msgs::VehicleSteering steer_msg;
-        
-        steer_msg.header.stamp = ros::Time::now();
-        steer_msg.steering_angle = delta_cmd;        
-
-        // steerPub.publish(steer_msg);
-        ///////////////////////////////////////////////////////
+             
         // record control inputs 
         delta_buffer.push_back(delta_cmd);
         if(delta_buffer.size()>delay_step){
