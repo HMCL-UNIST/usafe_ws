@@ -43,7 +43,7 @@ PurePursuit::PurePursuit(ros::NodeHandle& nh_):
   cross_track_err_sub = nh_.subscribe("/path_debug_info", 1, &PurePursuit::cteCallback, this);
   vel_cmd_sub = nh_.subscribe("/wheel_info", 1, &PurePursuit::velcmdCallback, this);
   curvature_sub = nh_.subscribe("/curvature", 1, &PurePursuit::curvCallback, this);
-  steer_pub = nh_.advertise<std_msgs::Float64>("/steer_cmd", 1);
+  steer_pub = nh_.advertise<hmcl_msgs::VehicleSteering>("/usafe_steer_cmd", 1);
 
   ROS_INFO("Init Pure Pursuit");
   boost::thread PurePursuitNode(&PurePursuit::ctrlPub,this); 
@@ -57,7 +57,8 @@ void PurePursuit::ctrlPub()
   ros::Rate loop_rate(50);    
   while (ros::ok())
   {      
-    steer_cmd.data = steerCmd;
+    steer_cmd.header.stamp = ros::Time::now();
+    steer_cmd.steering_angle = steerCmd;
     // publish vehicle info 
     steer_pub.publish(steer_cmd);
 
@@ -192,7 +193,7 @@ void PurePursuit::selectOutOfPath() {
   fixed_waypoint.y = desired_waypoint.y + tau * pDl * sin(thetaDl);
   Lf = sqrt(pow((fixed_waypoint.x - state.x),2) + pow((fixed_waypoint.y - state.y),2)); 
   // calc steering angle
-  steerCmd = atan2(2*L*sin(theta), Lf) * 180/PI * gear_ratio;
+  steerCmd = atan2(2*L*sin(theta), Lf) * 180/PI * gear_ratio * 10 + steering_offset;
 }
 
 int main (int argc, char** argv)

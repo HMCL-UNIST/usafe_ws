@@ -55,12 +55,12 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  // SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
+  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 1, &VehicleBridge::SteeringCmdCallback, this);
   // AccCmdSub = nh_acc_.subscribe("/usafe_acc_cmd", 1, &VehicleBridge::AccCmdCallback, this);
   // SCCmdSub = nh_acc_.subscribe("/sc_trigger", 1, &VehicleBridge::SCCallback, this);
   // ShiftCmdSub = nh_light_.subscribe("/usafe_shift_cmd", 1, &VehicleBridge::ShiftCmdCallback, this);
   // LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 1, &VehicleBridge::LightCmdCallback, this);
-  // VelSub = nh_acc.subscribe("control_effort", 1, &VehicleBridge::controlEffortCallback, this);
+  // VelSub = nh_acc.subscribe("control_effort", 1, &VehicleBridge::controlEffortCallback, this);.
 
   
   ROS_INFO("Init A-CAN Handler");
@@ -354,14 +354,12 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.is_error = false;
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
-  if(Master_Switch){
-  short steer_value = (short)(msg->steering_angle*gear_ratio*180/PI*10);
+  
+  short steer_value = (short)(msg->steering_angle);
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
   //  AcanPub.publish(steering_frame);
-  }
- 
 }
 
 void VehicleBridge::SCCallback(std_msgs::Int64 msg){
@@ -470,8 +468,8 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
   short steer_value = (short)(AD_STR_POS_CMD*0.1) ; // input  in radian, convert into degree
-  steering_frame.data[0] = (steer_value & 0b11111111);
-	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+  // steering_frame.data[0] = (steer_value & 0b11111111);
+	// steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
   
   scc_frame.header.stamp = ros::Time::now();

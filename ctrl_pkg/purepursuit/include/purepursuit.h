@@ -85,12 +85,13 @@ class PurePursuit
     geometry_msgs::Point fixed_waypoint;
     geometry_msgs::Point state;
     geometry_msgs::Quaternion quat_msg;
-    std_msgs::Float64 steer_cmd;
+    hmcl_msgs::VehicleSteering steer_cmd;
     tf::Quaternion quat;
     
     hmcl_msgs::Lane ref_path;
     vector<double> curvature; 
-    double gear_ratio = 14.5;
+    double gear_ratio = 15.0;
+    int steering_offset = 8;
     double distance = 0;
     double cross_track_err = 0;
     int minElementIndex = 0;
