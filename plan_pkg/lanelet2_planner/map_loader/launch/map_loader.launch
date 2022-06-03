@@ -16,10 +16,16 @@
       
       <!-- <param name="map_origin_lat" value="0.002330359333808985"/> 
       <param name="map_origin_lon" value="4.5103238454623815"/>   -->
-      <param name="map_origin_lat" value="35.57083743"/> 
-      <param name="map_origin_lon" value="129.188112768"/>  
-      <param name="map_origin_att" value="55.494"/> 
       
+      <!-- UNIST MAP  -->
+      <!-- <param name="map_origin_lat" value="35.57083743"/> 
+      <param name="map_origin_lon" value="129.188112768"/>  
+      <param name="map_origin_att" value="55.494"/>  -->
+      
+      <!-- KIAPI -->
+      <param name="map_origin_lat" value="35.6470671983"/> 
+      <param name="map_origin_lon" value="128.401913578"/>  
+      <param name="map_origin_att" value="25.797"/>  
 
       <!-- <param name="map_origin_lat" value="0.0"/> 
       <param name="map_origin_lon" value="0.0"/>        

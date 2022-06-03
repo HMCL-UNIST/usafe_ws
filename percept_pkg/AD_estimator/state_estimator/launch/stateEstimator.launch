@@ -66,10 +66,17 @@
       <!-- currently using approximate ccrf location -->    
 
 
-
-      <param name="latOrigin" value="35.57083743"/> 
+      <!-- UNIST MAP  -->
+      <!-- <param name="latOrigin" value="35.57083743"/> 
       <param name="lonOrigin" value="129.188112768"/>  
-      <param name="altOrigin" value="55.494"/> 
+      <param name="altOrigin" value="55.494"/>  -->
+
+      <!-- KIAPI MAP  -->
+      <param name="latOrigin" value="35.6470671983"/> 
+      <param name="lonOrigin" value="128.401913578"/>  
+      <param name="altOrigin" value="25.797"/> 
+
+
       
       <!-- flag for whether to use the wheel odometry messages -->
       <param name="UseOdom" value="false"/>
