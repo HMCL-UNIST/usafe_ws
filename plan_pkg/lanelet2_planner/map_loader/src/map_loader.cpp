@@ -48,6 +48,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);
   g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);  
   autoware_lane_pub = nh_.advertise<autoware_msgs::Lane>("/local_traj_auto", 2, true);
+
+  debug_pub = nh_.advertise<geometry_msgs::PoseStamped>("/maploader_debug", 2, true);
   
   pose_init = false; 
   goal_available = false;
@@ -646,6 +648,9 @@ void MapLoader::compute_local_path(){
   
 
     std::vector<std::vector<double>> global_points;
+
+    
+
     std::vector<double> speed_lim;
     // extract local trajectory from "global_lane_array_for_local" to -- >  "local_traj"
     // If we found lane change, we add linstrtings upto the next of the lane which has lane change signal
@@ -659,6 +664,20 @@ void MapLoader::compute_local_path(){
     local_traj_msg.lane_change_flag = global_lane_array_for_local.lanes[init_l_lane_idx].lane_change_flag;
     local_traj_msg.trafficlights = global_lane_array_for_local.lanes[init_l_lane_idx].trafficlights;
     local_traj_msg.speedbumps = global_lane_array_for_local.lanes[init_l_lane_idx].speedbumps;
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+    // insert current pose 
+    hmcl_msgs::Waypoint current_pose_waypoint;    
+    current_pose_waypoint.pose = cur_pose;
+    local_traj_msg.waypoints.push_back(current_pose_waypoint);    
+    std::vector<double> cur_points;                 
+    cur_points.push_back(current_pose_waypoint.pose.pose.position.x);
+    cur_points.push_back(current_pose_waypoint.pose.pose.position.y);
+    global_points.push_back(cur_points);                                    
+    speed_lim.push_back(current_speed);  
+    ////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
     double lane_weight =1.0;
     float lane_dist_cumulative = 0;   
     bool lane_change_found = false;
@@ -711,8 +730,7 @@ void MapLoader::compute_local_path(){
                   }
                 }
                 local_traj_msg.waypoints.push_back(waypoint_tmp);
-                std::vector<double> tmp_points; 
-                
+                std::vector<double> tmp_points;                 
                 tmp_points.push_back(waypoint_tmp.pose.pose.position.x);
                 tmp_points.push_back(waypoint_tmp.pose.pose.position.y);
                 global_points.push_back(tmp_points);                    
@@ -790,7 +808,12 @@ void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vec
 
       poly_error = f.getMSE();         
       float init_s = 0.0;
-      if(poly_error < 10){                    
+      geometry_msgs::PoseStamped debug_msg;
+      debug_msg.header.stamp = ros::Time::now();
+      debug_msg.pose.position.x = poly_error;
+      debug_pub.publish(debug_msg);
+
+      if(poly_error < 0.03){                    
           std::vector<double> speed_limits = linspaces(float(speed_lim.front()),float(speed_lim.back()),int(local_path_length/map_road_resolution));
           std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));
           

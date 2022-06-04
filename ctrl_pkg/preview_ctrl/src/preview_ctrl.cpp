@@ -68,7 +68,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
   nh_traj.param<double>("lf", lf, 1.35);
   nh_traj.param<double>("lr", lr, 1.25);
-  nh_traj.param<double>("mass", mass, 1580);    
+  nh_traj.param<double>("mass", mass, 1750);    
   nh_traj.param<double>("dt", dt, 0.04); 
   nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.14); 
   nh_traj.param<double>("lag_tau", lag_tau, 0.14); 
@@ -159,55 +159,66 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
 void PreviewCtrl::reschedule_weight(double speed){
 
   std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
-  if (speed *3.6 >= 0 && speed *3.6 < 10) {
-      Qweight[0] = 7;
-      R_weight = 1000;
-    }
+  // if (speed *3.6 >= 0 && speed *3.6 < 10) {
+  //     Qweight[0] = 7;
+  //     R_weight = 1000;
+  //   }
 
-    if (speed *3.6 >= 10 && speed *3.6 < 20) {
-      Qweight[0] = 4;      
-      R_weight = 2500;
-    }
+  //   if (speed *3.6 >= 10 && speed *3.6 < 20) {
+  //     Qweight[0] = 4;      
+  //     R_weight = 2500;
+  //   }
 
-    if (speed *3.6 >= 20 && speed *3.6 < 30) {
-      Qweight[0] = 3.5;     
-      R_weight = 3000;
-    }
+  //   if (speed *3.6 >= 20 && speed *3.6 < 30) {
+  //     Qweight[0] = 3.5;     
+  //     R_weight = 3000;
+  //   }
 
-    if (speed *3.6 >= 30 && speed *3.6 < 40) {
-      Qweight[0] = 3.5;
-      R_weight = 3000;      
-    }
+  //   if (speed *3.6 >= 30 && speed *3.6 < 40) {
+  //     Qweight[0] = 3.5;
+  //     R_weight = 3000;      
+  //   }
 
-    if (speed *3.6 >= 40) {
-      Qweight[0] = 3;
-      R_weight = 3500;
-    }
+  //   if (speed *3.6 >= 40) {
+  //     Qweight[0] = 3;
+  //     R_weight = 3500;
+  //   }
+      double tmp_q = -0.1*speed*3.6 + 7;
+      tmp_q = std::min(std::max(tmp_q,3.0),7.0);
+      double tmp_r = 80*speed*3.6 + 500;
+      tmp_r = std::min(std::max(tmp_r,1000.0),4000.0);
+
+      Qweight[0] = tmp_q;
+      R_weight = tmp_r;
       VehicleModel_.setWeight( Qweight, R_weight);
   
 
 }
 
 void PreviewCtrl::steering_rate_reset(double speed){
-    if (speed *3.6 >= 0 && speed *3.6 < 10) {
-      angle_rate_limit = 0.5;
-    }
+    // if (speed *3.6 >= 0 && speed *3.6 < 10) {
+    //   angle_rate_limit = 0.5;
+    // }
 
-    if (speed *3.6 >= 10 && speed *3.6 < 20) {
-      angle_rate_limit = 0.4;
-    }
+    // if (speed *3.6 >= 10 && speed *3.6 < 20) {
+    //   angle_rate_limit = 0.4;
+    // }
 
-    if (speed *3.6 >= 20 && speed *3.6 < 30) {
-      angle_rate_limit = 0.3;
-    }
+    // if (speed *3.6 >= 20 && speed *3.6 < 30) {
+    //   angle_rate_limit = 0.3;
+    // }
 
-    if (speed *3.6 >= 30 && speed *3.6 < 40) {
-      angle_rate_limit = 0.2;
-    }
+    // if (speed *3.6 >= 30 && speed *3.6 < 40) {
+    //   angle_rate_limit = 0.2;
+    // }
 
-    if (speed *3.6 >= 40) {
-      angle_rate_limit = 0.1;
-    }
+    // if (speed *3.6 >= 40) {
+    //   angle_rate_limit = 0.1;
+    // }
+
+    angle_rate_limit = -0.01*speed*3.6 +0.6;
+    angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
+
 }
 // void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
 //   vehicle_status_.header = msg->header;

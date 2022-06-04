@@ -99,7 +99,7 @@ class MapLoader
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
 
-ros::Publisher map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
+ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
 
 ros::Publisher way_pub;
 
@@ -142,6 +142,7 @@ geometry_msgs::Pose cur_goal;
 lanelet::Lanelets road_lanelets;
 lanelet::ConstLanelets road_lanelets_const;
 
+geometry_msgs::PoseStamped debug_msg;
 
 double poly_error;
 bool polyfit_error;
