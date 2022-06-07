@@ -31,6 +31,7 @@
 #include <boost/thread/thread.hpp>
 #include <vector>
 #include "map_loader.h"
+
 // macro for getting the time stamp of a ros message
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
@@ -51,12 +52,14 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   
   pose_init = false; 
   goal_available = false;
+  objs_sub = nh_.subscribe("/detection/lidar_tracker/objects",1, &MapLoader::objsCallback,this);
   pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
+  vel_sub = nh_.subscribe("/current_velocity", 1, &MapLoader::twistCallback,this);
   goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
   vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
   
 
-  nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
+  nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town03.osm");
   nh_p_.getParam("osm_file_name", osm_file_name);
   nh_p_.param<double>("test_direction", test_direction, 1.0);
   nh_p_.param<double>("map_origin_lat", origin_lat, 0.0);
@@ -71,13 +74,6 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_p_.param<double>("min_local_path_length", min_local_path_length, 5.0);
   nh_p_.param<double>("max_local_path_length", max_local_path_length, 30.0);
   nh_p_.param<double>("local_path_scale", local_path_scale, 1.0);
-
-  
-   
- 
-  
-  
-  
 
   if(visualize_path){    
     g_traj_lanelet_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/global_traj_lanelets_viz", 1, true);
@@ -103,12 +99,13 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   construct_lanelets_with_viz();
   rp_.setMap(map);
 
-
   local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_handler,this);    
   if(continuious_global_replan){
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
-  
+  ROS_INFO("behaviortimer");
+  behavior_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::behavior_handler,this);
+
   boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
 }
 
@@ -140,6 +137,7 @@ void MapLoader::global_traj_handler(const ros::TimerEvent& time){
   }  
 
   if(global_traj_available){
+    ROS_INFO("globalpub");
     way_pub.publish(global_lane_array);  
   }  
 
@@ -303,7 +301,7 @@ void MapLoader::compute_global_path(){
                   }else{
                     tl_.valid_stop_line = false;                      
                     ROS_WARN("Stop line is not defined .... !!!");
-                  } 
+                  }
                   ll_.trafficlights.push_back(tl_);
                 }
               }              
@@ -360,7 +358,22 @@ void MapLoader::compute_global_path(){
 
 }
 
+void MapLoader::get_next_behavior(){
+  currentBehavior = decisionMaker.getCurrentBehavior();
+  decisionMaker.updateParameter(global_lane_array, objects, cur_pose, cur_vel);
+  ROS_INFO("start: %d, isFront: %d, needLC: %d, psbLC: %d, doneLC: %d, isEmergency: %d",decisionMaker.getParam(1),decisionMaker.getParam(2),decisionMaker.getParam(3),decisionMaker.getParam(4),decisionMaker.getParam(5),decisionMaker.getParam(6));
+  decisionMaker.updateBehaviorState();
+  nextBehavior = decisionMaker.getCurrentBehavior();
+}
 
+void MapLoader::behavior_handler(const ros::TimerEvent& time){
+  mu_mtx.lock();
+    if(global_traj_available){
+      get_next_behavior();
+    }
+  mu_mtx.unlock();
+  ROS_INFO("currentbehavior: %d, nextbehavior: %d", currentBehavior, nextBehavior);
+}
 
 void MapLoader::callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg){
   current_speed = msg->wheelspeed.wheel_speed; // in m/s
@@ -422,6 +435,15 @@ void MapLoader::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){
   pose_y = msg->pose.position.y;
   pose_z = msg->pose.position.z;
 }
+
+void MapLoader::twistCallback(const geometry_msgs::TwistStampedConstPtr& msg){
+  cur_vel = msg->twist;
+}
+
+void MapLoader::objsCallback(const autoware_msgs::DetectedObjectArray& msg){
+  objects = msg;
+}
+
 
 void MapLoader::construct_lanelets_with_viz(){
   ROS_INFO("constructing lanelets viz ..... ");

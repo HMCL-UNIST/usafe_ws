@@ -5,30 +5,30 @@
 
   <node name="map_loader" pkg="map_loader" type="map_loader" output="screen">      
       
-      <remap from="/current_pose" to="/gnss_pose_world"/>  
+      <!-- <remap from="/current_pose" to="/gnss_pose_world"/>   -->
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
-      <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_vel.osm"/> 
-      <!-- <param name="osm_file_name" value="$(find map_loader)/maps/r_Town03_hj_traffic.osm"/>  -->
+      <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_vel.osm"/>  -->
+      <param name="osm_file_name" value="$(find map_loader)/maps/r_Town03_hj_traffic.osm"/> 
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_0424_test_oneway.osm"/>  -->
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_finall.osm"/>  -->
       
       <!-- <param name="map_origin_lat" value="0.002330359333808985"/> 
       <param name="map_origin_lon" value="4.5103238454623815"/>   -->
-      <param name="map_origin_lat" value="35.57083743"/> 
+      <!-- <param name="map_origin_lat" value="35.57083743"/> 
       <param name="map_origin_lon" value="129.188112768"/>  
-      <param name="map_origin_att" value="55.494"/> 
+      <param name="map_origin_att" value="55.494"/>  -->
       
 
-      <!-- <param name="map_origin_lat" value="0.0"/> 
+      <param name="map_origin_lat" value="0.0"/> 
       <param name="map_origin_lon" value="0.0"/>        
-      <param name="map_origin_att" value="0.0"/>  -->
+      <param name="map_origin_att" value="0.0"/> 
 
-      <param name="test_direction" value="1.0"/> 
+      <!-- <param name="test_direction" value="1.0"/>  -->
       
      
-      <param name="visualize_path" value="True"/> 
+      <param name="visuㅣalize_path" value="True"/> 
       <param name="map_fix" value="True"/> 
       <param name="map_road_resolution" value="1.0"/> 
       <!-- <param name="local_path_length" value="30.0"/>  -->

@@ -41,13 +41,14 @@
 
 
 #include <nav_msgs/Odometry.h>
+#include <geometry_msgs/TwistStamped.h> //add for current velocity
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <autoware_msgs/Lane.h>
 #include <autoware_msgs/Waypoint.h>
-
+#include <autoware_msgs/DetectedObjectArray.h> //add for object array
 
 #include <GeographicLib/LocalCartesian.hpp>
 #include "BlockingQueue.h"
@@ -82,6 +83,7 @@
 #include <route_planner.h>
 #include <autoware_lanelet2_msgs/MapBin.h>
 #include <hmcl_msgs/VehicleStatus.h>
+#include "DecisionMaker.h"
 
 #include <lanelet2_extension/utility/message_conversion.h>
 #include <polyfit.h>
@@ -103,15 +105,16 @@ ros::Publisher map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub
 
 ros::Publisher way_pub;
 
-ros::Subscriber pose_sub, goal_sub, vehicle_status_sub;
+ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, vel_sub, objs_sub;
 
-ros::Timer viz_timer, g_traj_timer, local_traj_timer;
+ros::Timer viz_timer, g_traj_timer, local_traj_timer, behavior_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary;
 
 double test_direction;
 bool visualize_path, continuious_global_replan;
 
-
+DecisionMaker decisionMaker;
+BehaviorState currentBehavior, nextBehavior;
 std::mutex mu_mtx;
 RoutePlanner rp_;
 lanelet::LaneletMapPtr map;
@@ -125,8 +128,6 @@ bool global_traj_available;
 bool goal_available;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local;
 
-
-
 std::string osm_file_name;
 double map_road_resolution;
 
@@ -138,7 +139,8 @@ double pose_x,pose_y,pose_z;
 bool pose_init;
 geometry_msgs::Pose cur_pose, prev_pose;
 geometry_msgs::Pose cur_goal;
-
+geometry_msgs::Twist cur_vel;
+autoware_msgs::DetectedObjectArray objects;
 lanelet::Lanelets road_lanelets;
 lanelet::ConstLanelets road_lanelets_const;
 
@@ -159,7 +161,10 @@ void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
+void behavior_handler(const ros::TimerEvent& time);
 void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+void twistCallback(const geometry_msgs::TwistStampedConstPtr& msg);
+void objsCallback(const autoware_msgs::DetectedObjectArray& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
@@ -173,6 +178,7 @@ void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>
 
 void compute_global_path();
 void compute_local_path();
+void get_next_behavior();
 
 void lanelet_ros_convert_loop();
 
