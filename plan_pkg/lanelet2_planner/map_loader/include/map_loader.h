@@ -67,6 +67,8 @@
 #include <vector>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/geometry/LaneletMap.h>
+
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
@@ -115,6 +117,7 @@ bool visualize_path, continuious_global_replan;
 std::mutex mu_mtx;
 RoutePlanner rp_;
 lanelet::LaneletMapPtr map;
+
 lanelet::routing::RoutingGraphUPtr routingGraph;
 bool map_loaded;
 float local_path_length;
@@ -160,7 +163,7 @@ void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
-void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+void poseCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 

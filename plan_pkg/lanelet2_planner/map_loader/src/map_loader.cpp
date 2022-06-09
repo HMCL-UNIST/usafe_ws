@@ -415,14 +415,14 @@ unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLi
   return closest_idx;
 }
 
-void MapLoader::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){  
+void MapLoader::poseCallback(const nav_msgs::OdometryConstPtr& msg){  
   if(!pose_init){
     pose_init = true;
   }
-  cur_pose = msg->pose;
-  pose_x = msg->pose.position.x;
-  pose_y = msg->pose.position.y;
-  pose_z = msg->pose.position.z;
+  cur_pose = msg->pose.pose;
+  pose_x = msg->pose.pose.position.x;
+  pose_y = msg->pose.pose.position.y;
+  pose_z = msg->pose.pose.position.z;
 }
 
 void MapLoader::construct_lanelets_with_viz(){
@@ -666,14 +666,14 @@ void MapLoader::compute_local_path(){
     local_traj_msg.speedbumps = global_lane_array_for_local.lanes[init_l_lane_idx].speedbumps;
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
     // insert current pose 
-    hmcl_msgs::Waypoint current_pose_waypoint;    
-    current_pose_waypoint.pose = cur_pose;
-    local_traj_msg.waypoints.push_back(current_pose_waypoint);    
-    std::vector<double> cur_points;                 
-    cur_points.push_back(current_pose_waypoint.pose.pose.position.x);
-    cur_points.push_back(current_pose_waypoint.pose.pose.position.y);
-    global_points.push_back(cur_points);                                    
-    speed_lim.push_back(current_speed);  
+    // hmcl_msgs::Waypoint current_pose_waypoint;    
+    // current_pose_waypoint.pose = cur_pose;
+    // local_traj_msg.waypoints.push_back(current_pose_waypoint);    
+    // std::vector<double> cur_points;                 
+    // cur_points.push_back(current_pose_waypoint.pose.pose.position.x);
+    // cur_points.push_back(current_pose_waypoint.pose.pose.position.y);
+    // global_points.push_back(cur_points);                                    
+    // speed_lim.push_back(current_speed);  
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -729,6 +729,39 @@ void MapLoader::compute_local_path(){
                   waypoint_tmp.pose.pose.position.y =  global_lane_array_for_local.lanes[i].waypoints[j].pose.pose.position.y*lane_weight+ global_lane_array_for_local.lanes[i+1].waypoints[j].pose.pose.position.y*(1-lane_weight);
                   }
                 }
+                
+
+                ///////////////////////////////////////////////////
+                ///////////////////////////////////////////////////
+                ///////////////////////////////////////////////////
+                ///////////////// for smooth lane change  ////////////////////////////
+                lanelet::Point3d cur_point(lanelet::utils::getId(), cur_pose.position.x, cur_pose.position.y, cur_pose.position.z);              
+                // lanelet::Lanelet target_ll = map->laneletLayer.get(global_lane_array_for_local.lanes[i].lane_id);   
+                // auto llts = map->laneletLayer.nearest(cur_point, 1);
+                auto llts = lanelet::geometry::findWithin3d(map->laneletLayer, cur_point);
+                ROS_INFO("llts size  =  %d", llts.size());
+                if(llts.size() <1){
+                  return;
+                }
+                auto target_ll = llts.front().second;
+                int target_ll_id = target_ll.id();
+                ROS_INFO("target_ll_id =  %d", target_ll_id);
+                double dist_to_left_boundary = lanelet::geometry::distance(cur_point, target_ll.leftBound());
+                double dist_to_right_boundary = lanelet::geometry::distance(cur_point, target_ll.rightBound());
+                ROS_INFO("right bound = %f",dist_to_right_boundary);
+                ROS_INFO("left bound = %f",dist_to_left_boundary);
+                // if(dist_to_right_boundary < dist_to_left_boundary){
+                //     ROS_INFO("right bound is closer");
+                // }else{
+                //     ROS_INFO("right bound is closer");
+                // }
+                
+                // auto dP2Line3d = geometry::distance(point, lsHybrid);
+                // lanelet.leftBound(global_lane_array_for_local.lanes[i])
+                
+                ////////////////////////////////////////////////////////
+                ///////////////////////////////////////////////////
+                
                 local_traj_msg.waypoints.push_back(waypoint_tmp);
                 std::vector<double> tmp_points;                 
                 tmp_points.push_back(waypoint_tmp.pose.pose.position.x);
