@@ -136,7 +136,7 @@ double map_road_resolution;
 // transform from local sensor frame to global sensor frame
 tf::StampedTransform l_sensor_to_g_sensor;
 tf::TransformListener local_transform_listener;
-float weight_decay_rate;
+float weight_decay_rate, lane_weight_decay_rate;
 double pose_x,pose_y,pose_z;
 bool pose_init;
 geometry_msgs::Pose cur_pose, prev_pose;
