@@ -112,29 +112,29 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
   
-  boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
+  // boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
 }
 
 MapLoader::~MapLoader()
 {}
 
-void MapLoader::lanelet_ros_convert_loop(){
-ros::Rate loop_rate(0.1); // rate  
-  while (ros::ok())
-  { if(map_loaded){
-      autoware_lanelet2_msgs::MapBin map_bin_msg;
-      map_bin_msg.header.stamp = ros::Time::now();
-      map_bin_msg.header.frame_id = "map";
-      map_bin_msg.format_version = "v1";
-      map_bin_msg.map_version = "v1";
-      lanelet::utils::conversion::toBinMsg(map, &map_bin_msg);
+// void MapLoader::lanelet_ros_convert_loop(){
+// ros::Rate loop_rate(0.1); // rate  
+//   while (ros::ok())
+//   { if(map_loaded){
+//       autoware_lanelet2_msgs::MapBin map_bin_msg;
+//       map_bin_msg.header.stamp = ros::Time::now();
+//       map_bin_msg.header.frame_id = "map";
+//       map_bin_msg.format_version = "v1";
+//       map_bin_msg.map_version = "v1";
+//       lanelet::utils::conversion::toBinMsg(map, &map_bin_msg);
       
-      map_bin_pub.publish(map_bin_msg);
-    }
-  loop_rate.sleep();
-  }
+//       map_bin_pub.publish(map_bin_msg);
+//     }
+//   loop_rate.sleep();
+//   }
 
-}
+// }
 
 
 void MapLoader::global_traj_handler(const ros::TimerEvent& time){
@@ -685,10 +685,20 @@ void MapLoader::compute_local_path(){
     float lane_dist_cumulative = 0;   
     bool lane_change_found = false;
     bool lane_change_init = false;
-    bool lane_ratio_init = false;
+    bool lane_ratio_init = true;
     int nearest_point_to_prev_lane = 0;
     bool complete_loops = false;
+    // double smoothed_x =  cur_point.x();
+    // double smoothed_y =  cur_point.y();
+    double lane_half_width = 1.7;
+    std::vector<std::pair<double, lanelet::Lanelet>> nearest_lanelet = lanelet::geometry::findNearest(map->laneletLayer, lanelet::BasicPoint2d(0.0, 0.0), 1);
+    for (auto const& item : nearest_lanelet)
+    {
+      lane_half_width = lanelet::geometry::distance3d(item.second.centerline(),item.second.leftBound());
+    }    
+    double dist = lane_half_width;
     for(int i=init_l_lane_idx; i < global_lane_array_for_local.lanes.size(); i++){
+      
           if(global_lane_array_for_local.lanes[i].lane_change_flag){
                 lane_change_found = true;            
                 // compute the nearest index to the preious lane                 
@@ -700,11 +710,12 @@ void MapLoader::compute_local_path(){
                     nearest_point_to_prev_lane = k;
                     min_dist_ =  dist_;  }  
                 }
-          }    
+          }   
+            
           for(int j = 0 ; j < global_lane_array_for_local.lanes[i].waypoints.size(); j++){
-              if (i == 0 && j == 0){
-                continue;  // this waypoints is the same as current position.  so skip 
-              }
+              // if (i == 0 && j == 0){
+              //   continue;  // this waypoints is the same as current position.  so skip 
+              // }
               if ( i == init_l_lane_idx &&  j < init_point_idx){
                   continue;
                 }
@@ -738,21 +749,38 @@ void MapLoader::compute_local_path(){
                 ///////////////////////////////////////////////////
                 ///////////////// for smooth lane change  ////////////////////////////
                 else{
-                  
-                // auto nearest = geometry::findNearest(map->lineStringLayer, BasicPoint2d(0, 0), NumSearch);
                   // initialize lane_weight 
-                      if(!lane_ratio_init){                        
-                          lane_weight= 1;                        
-                          lane_ratio_init = true;
+                      if(lane_ratio_init){                        
+                        std::vector<std::pair<double, lanelet::Lanelet>> nearest_lanelet = lanelet::geometry::findNearest(map->laneletLayer, lanelet::BasicPoint2d(waypoint_tmp.pose.pose.position.x,waypoint_tmp.pose.pose.position.y), 1);
+                        for (auto const& item : nearest_lanelet)
+                        {  
+                          // dist is absolute need vector 
+                          dist = lanelet::geometry::distance2d(item.second.centerline(),lanelet::BasicPoint2d(cur_point.x(), cur_point.y()));
+                          double dist_to_left = lanelet::geometry::distance2d(item.second.leftBound(),lanelet::BasicPoint2d(cur_point.x(), cur_point.y()));
+                          double dist_to_right = lanelet::geometry::distance2d(item.second.rightBound(),lanelet::BasicPoint2d(cur_point.x(), cur_point.y()));
+                          if (dist_to_left < dist_to_right){
+                            dist = abs(dist);
+                          } else{
+                            dist = -1*abs(dist);
+                          }
+                          lane_weight = dist / lane_half_width;
+                        }          
+                          lane_ratio_init = false;
                       }else{ 
-                          lane_weight = lane_weight*lane_weight_decay_rate;  
+                        dist = dist*lane_weight_decay_rate;  
+                      } 
+
+                      if(abs(dist) > 0.2){
+                          double rt, pt, yt;
+                          tf::Quaternion quatt(waypoint_tmp.pose.pose.orientation.x,waypoint_tmp.pose.pose.orientation.y, waypoint_tmp.pose.pose.orientation.z, waypoint_tmp.pose.pose.orientation.w);
+                          tf::Matrix3x3(quatt).getRPY(rt, pt, yt);
+                          double xt_rot = 0*cos(yt)-dist*sin(yt);                        
+                          double yt_rot = 0*sin(yt)+dist*cos(yt);
+
+                          waypoint_tmp.pose.pose.position.x += xt_rot;
+                          waypoint_tmp.pose.pose.position.y += yt_rot;
                       }
-                  
-                  lane_weight = std::min(std::max(0.0,lane_weight),1.0);
-                  waypoint_tmp.pose.pose.position.x =  cur_point.x()*lane_weight+ waypoint_tmp.pose.pose.position.x*(1-lane_weight);
-                  waypoint_tmp.pose.pose.position.y =  cur_point.y()*lane_weight+ waypoint_tmp.pose.pose.position.y*(1-lane_weight);
-                
-                }
+                    }
                 ///////////////// for smooth lane change END ////////////////////////////                
                 ////////////////////////////////////////////////////////
                 ///////////////////////////////////////////////////
