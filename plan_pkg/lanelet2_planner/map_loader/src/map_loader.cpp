@@ -112,29 +112,29 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
   
-  // boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
+  boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
 }
 
 MapLoader::~MapLoader()
 {}
 
-// void MapLoader::lanelet_ros_convert_loop(){
-// ros::Rate loop_rate(0.1); // rate  
-//   while (ros::ok())
-//   { if(map_loaded){
-//       autoware_lanelet2_msgs::MapBin map_bin_msg;
-//       map_bin_msg.header.stamp = ros::Time::now();
-//       map_bin_msg.header.frame_id = "map";
-//       map_bin_msg.format_version = "v1";
-//       map_bin_msg.map_version = "v1";
-//       lanelet::utils::conversion::toBinMsg(map, &map_bin_msg);
+void MapLoader::lanelet_ros_convert_loop(){
+ros::Rate loop_rate(0.1); // rate  
+  while (ros::ok())
+  { if(map_loaded){
+      autoware_lanelet2_msgs::MapBin map_bin_msg;
+      map_bin_msg.header.stamp = ros::Time::now();
+      map_bin_msg.header.frame_id = "map";
+      map_bin_msg.format_version = "v1";
+      map_bin_msg.map_version = "v1";
+      lanelet::utils::conversion::toBinMsg(map, &map_bin_msg);
       
-//       map_bin_pub.publish(map_bin_msg);
-//     }
-//   loop_rate.sleep();
-//   }
+      map_bin_pub.publish(map_bin_msg);
+    }
+  loop_rate.sleep();
+  }
 
-// }
+}
 
 
 void MapLoader::global_traj_handler(const ros::TimerEvent& time){
