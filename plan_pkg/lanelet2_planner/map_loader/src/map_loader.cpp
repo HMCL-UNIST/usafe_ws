@@ -68,7 +68,6 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_p_.param<double>("map_road_resolution", map_road_resolution, 1.0);
   nh_p_.param<float>("local_path_length", local_path_length, 20.0);
   nh_p_.param<float>("weight_decay_rate", weight_decay_rate, 0.95);
-  nh_p_.param<float>("lane_weight_decay_rate", lane_weight_decay_rate, 0.85);
   nh_p_.param<bool>("continuious_global_replan", continuious_global_replan, false);
 
   nh_p_.param<double>("min_local_path_length", min_local_path_length, 5.0);
@@ -416,14 +415,14 @@ unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLi
   return closest_idx;
 }
 
-void MapLoader::poseCallback(const nav_msgs::OdometryConstPtr& msg){  
+void MapLoader::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){  
   if(!pose_init){
     pose_init = true;
   }
-  cur_pose = msg->pose.pose;
-  pose_x = msg->pose.pose.position.x;
-  pose_y = msg->pose.pose.position.y;
-  pose_z = msg->pose.pose.position.z;
+  cur_pose = msg->pose;
+  pose_x = msg->pose.position.x;
+  pose_y = msg->pose.position.y;
+  pose_z = msg->pose.position.z;
 }
 
 void MapLoader::construct_lanelets_with_viz(){
@@ -624,8 +623,6 @@ void MapLoader::viz_local_path(hmcl_msgs::Lane &lane_){
                 }                  
 }
 
-
-
 void MapLoader::findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx)
 {  //input is usually the center line
   closest_lane_idx = 0;
@@ -652,7 +649,7 @@ void MapLoader::compute_local_path(){
 
     std::vector<std::vector<double>> global_points;
 
-    lanelet::Point3d cur_point(lanelet::utils::getId(), cur_pose.position.x, cur_pose.position.y, cur_pose.position.z);              
+    
 
     std::vector<double> speed_lim;
     // extract local trajectory from "global_lane_array_for_local" to -- >  "local_traj"
@@ -670,7 +667,7 @@ void MapLoader::compute_local_path(){
     ////////////////////////////////////////////////////////////////////////////////////////////////////////
     // insert current pose 
     // hmcl_msgs::Waypoint current_pose_waypoint;    
-    // current_pose_waypoint.pose = cur_pose;
+    // current_pose_waypoint.pose.pose = cur_pose;
     // local_traj_msg.waypoints.push_back(current_pose_waypoint);    
     // std::vector<double> cur_points;                 
     // cur_points.push_back(current_pose_waypoint.pose.pose.position.x);
@@ -685,20 +682,9 @@ void MapLoader::compute_local_path(){
     float lane_dist_cumulative = 0;   
     bool lane_change_found = false;
     bool lane_change_init = false;
-    bool lane_ratio_init = true;
     int nearest_point_to_prev_lane = 0;
     bool complete_loops = false;
-    // double smoothed_x =  cur_point.x();
-    // double smoothed_y =  cur_point.y();
-    double lane_half_width = 1.7;
-    std::vector<std::pair<double, lanelet::Lanelet>> nearest_lanelet = lanelet::geometry::findNearest(map->laneletLayer, lanelet::BasicPoint2d(0.0, 0.0), 1);
-    for (auto const& item : nearest_lanelet)
-    {
-      lane_half_width = lanelet::geometry::distance3d(item.second.centerline(),item.second.leftBound());
-    }    
-    double dist = lane_half_width;
     for(int i=init_l_lane_idx; i < global_lane_array_for_local.lanes.size(); i++){
-      
           if(global_lane_array_for_local.lanes[i].lane_change_flag){
                 lane_change_found = true;            
                 // compute the nearest index to the preious lane                 
@@ -710,12 +696,11 @@ void MapLoader::compute_local_path(){
                     nearest_point_to_prev_lane = k;
                     min_dist_ =  dist_;  }  
                 }
-          }   
-            
+          }    
           for(int j = 0 ; j < global_lane_array_for_local.lanes[i].waypoints.size(); j++){
-              // if (i == 0 && j == 0){
-              //   continue;  // this waypoints is the same as current position.  so skip 
-              // }
+              if (i == 0 && j == 0){
+                continue;  // this waypoints is the same as current position.  so skip 
+              }
               if ( i == init_l_lane_idx &&  j < init_point_idx){
                   continue;
                 }
@@ -744,47 +729,6 @@ void MapLoader::compute_local_path(){
                   waypoint_tmp.pose.pose.position.y =  global_lane_array_for_local.lanes[i].waypoints[j].pose.pose.position.y*lane_weight+ global_lane_array_for_local.lanes[i+1].waypoints[j].pose.pose.position.y*(1-lane_weight);
                   }
                 }
-                ///////////////////////////////////////////////////
-                ///////////////////////////////////////////////////
-                ///////////////////////////////////////////////////
-                ///////////////// for smooth lane change  ////////////////////////////
-                else{
-                  // initialize lane_weight 
-                      if(lane_ratio_init){                        
-                        std::vector<std::pair<double, lanelet::Lanelet>> nearest_lanelet = lanelet::geometry::findNearest(map->laneletLayer, lanelet::BasicPoint2d(waypoint_tmp.pose.pose.position.x,waypoint_tmp.pose.pose.position.y), 1);
-                        for (auto const& item : nearest_lanelet)
-                        {  
-                          // dist is absolute need vector 
-                          dist = lanelet::geometry::distance2d(item.second.centerline(),lanelet::BasicPoint2d(cur_point.x(), cur_point.y()));
-                          double dist_to_left = lanelet::geometry::distance2d(item.second.leftBound(),lanelet::BasicPoint2d(cur_point.x(), cur_point.y()));
-                          double dist_to_right = lanelet::geometry::distance2d(item.second.rightBound(),lanelet::BasicPoint2d(cur_point.x(), cur_point.y()));
-                          if (dist_to_left < dist_to_right){
-                            dist = abs(dist);
-                          } else{
-                            dist = -1*abs(dist);
-                          }
-                          lane_weight = dist / lane_half_width;
-                        }          
-                          lane_ratio_init = false;
-                      }else{ 
-                        dist = dist*lane_weight_decay_rate;  
-                      } 
-
-                      if(abs(dist) > 0.2){
-                          double rt, pt, yt;
-                          tf::Quaternion quatt(waypoint_tmp.pose.pose.orientation.x,waypoint_tmp.pose.pose.orientation.y, waypoint_tmp.pose.pose.orientation.z, waypoint_tmp.pose.pose.orientation.w);
-                          tf::Matrix3x3(quatt).getRPY(rt, pt, yt);
-                          double xt_rot = 0*cos(yt)-dist*sin(yt);                        
-                          double yt_rot = 0*sin(yt)+dist*cos(yt);
-
-                          waypoint_tmp.pose.pose.position.x += xt_rot;
-                          waypoint_tmp.pose.pose.position.y += yt_rot;
-                      }
-                    }
-                ///////////////// for smooth lane change END ////////////////////////////                
-                ////////////////////////////////////////////////////////
-                ///////////////////////////////////////////////////
-                
                 local_traj_msg.waypoints.push_back(waypoint_tmp);
                 std::vector<double> tmp_points;                 
                 tmp_points.push_back(waypoint_tmp.pose.pose.position.x);
@@ -827,7 +771,7 @@ void MapLoader::compute_local_path(){
 
 
 void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg){
-      if(g_points.size() < 10){
+      if(g_points.size() < 6){
         ROS_WARN("polyfit is not done as number of points are not enough");
         return;
       } 
@@ -869,7 +813,7 @@ void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vec
       debug_msg.pose.position.x = poly_error;
       debug_pub.publish(debug_msg);
 
-      if(poly_error < 0.5){                    
+      if(poly_error < 0.03){                    
           std::vector<double> speed_limits = linspaces(float(speed_lim.front()),float(speed_lim.back()),int(local_path_length/map_road_resolution));
           std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));
           

@@ -67,8 +67,6 @@
 #include <vector>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
-#include <lanelet2_core/geometry/LaneletMap.h>
-
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
@@ -117,7 +115,6 @@ bool visualize_path, continuious_global_replan;
 std::mutex mu_mtx;
 RoutePlanner rp_;
 lanelet::LaneletMapPtr map;
-
 lanelet::routing::RoutingGraphUPtr routingGraph;
 bool map_loaded;
 float local_path_length;
@@ -136,7 +133,7 @@ double map_road_resolution;
 // transform from local sensor frame to global sensor frame
 tf::StampedTransform l_sensor_to_g_sensor;
 tf::TransformListener local_transform_listener;
-float weight_decay_rate, lane_weight_decay_rate;
+float weight_decay_rate;
 double pose_x,pose_y,pose_z;
 bool pose_init;
 geometry_msgs::Pose cur_pose, prev_pose;
@@ -163,7 +160,7 @@ void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
-void poseCallback(const nav_msgs::OdometryConstPtr& msg);
+void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
