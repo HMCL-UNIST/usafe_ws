@@ -174,6 +174,7 @@ void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>
 
 void compute_global_path();
 void compute_local_path();
+void current_lanefollow();
 
 void lanelet_ros_convert_loop();
 

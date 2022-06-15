@@ -9,7 +9,7 @@
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
-      <param name="osm_file_name" value="$(find map_loader)/maps/kiapi_qualifiers_v2_fix.osm"/> 
+      <param name="osm_file_name" value="$(find map_loader)/maps/kiapi_qualifiers_v3.osm"/> 
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/kiapi_highspeed_local_path_v1_lanechange.osm"/>  -->
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_vel.osm"/>  -->
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/r_Town03_hj_traffic.osm"/>  -->
@@ -42,7 +42,7 @@
       <!-- <param name="local_path_length" value="30.0"/>  -->
       <!-- <param name="weight_decay_rate" value="0.9975"/>  -->
       <param name="weight_decay_rate" value="0.99"/> 
-      <param name="continuious_global_replan" value="False"/> 
+      <param name="continuious_global_replan" value="True"/> 
 
       <param name="local_path_scale" value="1.0"/> 
       <param name="min_local_path_length" value="15.0"/> 
