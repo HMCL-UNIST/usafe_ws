@@ -40,7 +40,9 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path)  
 {
   // using namespace lanelet;
-
+  left_change_signal = false;
+  right_change_signal = false;
+  lane_change_state = LaneChangeState::Follow;
   map_bin_pub = nh_.advertise<autoware_lanelet2_msgs::MapBin>("/lanelet_map_bin", 1, true);
   
   map_loaded = false;
@@ -51,11 +53,15 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   debug_pub = nh_.advertise<geometry_msgs::PoseStamped>("/maploader_debug", 2, true);
   
+  
+  
   pose_init = false; 
   goal_available = false;
   pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
   goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
   vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
+  lanechange_left_sub  = nh_.subscribe("/left_lanechange",2,&MapLoader::leftLancechangeCallback,this);
+  lanechange_right_sub = nh_.subscribe("/right_lanechange",2,&MapLoader::rightLancechangeCallback,this);
   
 
   nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
@@ -74,6 +80,10 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_p_.param<double>("max_local_path_length", max_local_path_length, 30.0);
   nh_p_.param<double>("local_path_scale", local_path_scale, 1.0);
 
+  nh_p_.param<double>("lane_change_in_sec", lane_change_in_sec, 2.0);
+  nh_p_.param<double>("lanechange_fsm_period", lanechange_fsm_period, 0.1);
+  
+    
   
    
  
@@ -107,15 +117,96 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
 
   local_traj_timer = nh_local_path_.createTimer(ros::Duration(0.1), &MapLoader::local_traj_handler,this);    
+  
   if(continuious_global_replan){
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
   
   boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
+  boost::thread lane_change_state_machine(&MapLoader::LaneChangeStateMachine,this); 
 }
 
 MapLoader::~MapLoader()
 {}
+
+void MapLoader::LaneChangeStateMachine(){
+  ros::Rate lc_loop_rate(1/lanechange_fsm_period); // rate  
+  double lane_change_weight_delta = 1/(lane_change_in_sec/lanechange_fsm_period);
+  prev_lane_change_state = lane_change_state;
+  while (ros::ok())
+  {    
+    ROS_INFO("LaneChangeStatus = %s",stateToString(lane_change_state));
+    ROS_INFO("lane_change_weight = %f",lane_change_weight);
+    LaneChangeState tmp_state = lane_change_state;
+    switch(lane_change_state){      
+        case LaneChangeState::LeftChange:
+            if( prev_lane_change_state != LaneChangeState::LeftChange)
+            {lane_change_weight = 0.0;
+              ROS_INFO("Left lane change init ");
+            }else{              
+              lane_change_weight = lane_change_weight+lane_change_weight_delta;
+            }
+          break;  
+
+        case LaneChangeState::Follow:
+            if( prev_lane_change_state != LaneChangeState::Follow){
+                lane_change_state =  LaneChangeState::Pending;
+            }
+
+            if(left_change_signal){
+              lane_change_state = LaneChangeState::LeftChange; 
+                           
+            }
+            if(right_change_signal){
+              lane_change_state = LaneChangeState::RightChange;              
+            }
+            lane_change_weight = 0.0;
+          break;
+        
+        case LaneChangeState::RightChange:
+             if( prev_lane_change_state != LaneChangeState::RightChange)
+            {lane_change_weight = 0.0;
+              ROS_INFO("Right lane change init ");
+            }else{              
+              lane_change_weight = lane_change_weight+lane_change_weight_delta;
+            }            
+          break;
+          
+        case LaneChangeState::Pending:
+            if(prev_lane_change_state != LaneChangeState::Pending)
+            {lane_change_weight = 0.0;
+              ROS_INFO("Pending init");
+            }else{              
+              lane_change_weight = lane_change_weight+lane_change_weight_delta;
+            }
+            
+            break;  
+
+        default:
+        ROS_INFO("Lance Change default Mode");
+        break; 
+    }
+
+    // do not stuck in any state 
+    if(lane_change_weight > 2){
+              lane_change_state = LaneChangeState::Pending; 
+    }
+    prev_lane_change_state = lane_change_state;   
+    // trigger reset 
+    left_change_signal = false;   
+    right_change_signal = false;
+    lc_loop_rate.sleep();
+  }
+
+}
+
+void MapLoader::leftLancechangeCallback(const std_msgs::BoolConstPtr &msg){
+  left_change_signal = msg->data;
+}
+void MapLoader::rightLancechangeCallback(const std_msgs::BoolConstPtr &msg){
+  right_change_signal = msg->data;
+}
+
 
 void MapLoader::lanelet_ros_convert_loop(){
 ros::Rate loop_rate(0.1); // rate  
@@ -150,12 +241,16 @@ void MapLoader::global_traj_handler(const ros::TimerEvent& time){
 
 
 void MapLoader::current_lanefollow(){
+    
+    
     float lane_dist_cumulative = 0;   
     hmcl_msgs::Lane local_traj_msg;
     std::vector<std::vector<double>> global_points;    
     std::vector<double> speed_lim;    
     std::vector<std::pair<double, lanelet::Lanelet>> nearest_lanelet = lanelet::geometry::findNearest(map->laneletLayer, lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y), 1);
     std::vector<lanelet::ConstLanelet> lanes;
+
+    
     for (auto const& item : nearest_lanelet)
     { double dist_to_lanelet = lanelet::geometry::distance2d(item.second.centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
       // check if lanelet near the current position
@@ -164,6 +259,47 @@ void MapLoader::current_lanefollow(){
             auto lanelet_init = item.second;
             lanes.push_back(local_path);
             int number_lane_count = 0;
+            ////////////// check if lane change required ///////////
+            
+            // double dist_c = lanelet::geometry::distance2d(lanes.front().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
+            dist_to_target = dist_to_lanelet;
+            double dist_l = lanelet::geometry::distance2d(lanes.front().leftBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));              
+            double dist_r = lanelet::geometry::distance2d(lanes.front().rightBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
+            auto left_next_lane = routingGraph->left(lanes.front());                                              
+            auto right_next_lane = routingGraph->right(lanes.front());
+            
+              if(lane_change_state == LaneChangeState::LeftChange){
+                if(left_next_lane){
+                    ROS_INFO("left lane found");  
+                    dist_to_target = lanelet::geometry::distance2d(left_next_lane.get().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));                      
+                }else{         
+                    ROS_INFO("Left lane not found");  
+                  lane_change_state = LaneChangeState::Pending;
+                } 
+              }else if(lane_change_state == LaneChangeState::RightChange){
+                  if(right_next_lane){
+                    ROS_INFO("right lane found");                                                                                                                      
+                    dist_to_target = lanelet::geometry::distance2d(right_next_lane.get().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
+                  }else{
+                    ROS_INFO("Right lane not found");  
+                    lane_change_state = LaneChangeState::Pending;
+                  }
+              }
+              // re calculate dist_to_garget if no changable lane found pending 
+              if(lane_change_state == LaneChangeState::Pending){         
+                  // if close enough to center line -> switch to follow(force)
+                  if(abs(dist_to_target) < 0.4){
+                    ROS_INFO("close enough switch to Follow");
+                    lane_change_state = LaneChangeState::Follow; 
+                    prev_lane_change_state = LaneChangeState::Follow;                    
+                  }             
+                    // dist_to_target = lanelet::geometry::distance2d(lanes.front().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));                                            
+              }
+            
+
+           
+            ////////////// check if lane change required END ///////////
+            
             while(lane_dist_cumulative < local_path_length){
               number_lane_count++;
               if(number_lane_count > 10){
@@ -211,6 +347,37 @@ void MapLoader::current_lanefollow(){
                       wp_.pose.pose.orientation.w = q[3];
                       wp_.twist.twist.linear.x = speed_limit;
                       
+
+                  ///////////////// if  Lane change mode activated 
+                  
+                  // lane_change_weight : 0 -> 1
+                  double lcweight =  lane_change_weight;
+                  lcweight = std::min(1.0,std::max(lcweight,0.0));
+                  double delta_x = 0.0; 
+                  double delta_y= 0.0 ;
+                  if( lane_change_state != LaneChangeState::Follow){
+                      if(lane_change_state == LaneChangeState::LeftChange){
+                            // (0,dist_to_target) -> yaw_tmp        
+                            dist_to_target = abs(dist_to_target);                            
+                      }else if(lane_change_state == LaneChangeState::RightChange){
+                        // (0,-1*dist_to_target) -> yaw_tmp                              
+                            dist_to_target = -1*abs(dist_to_target);                            
+                      }else if(lane_change_state == LaneChangeState::Pending){                            
+                            // vehicle on the left side of center line  --> 
+                            lcweight = 1-lcweight;  
+                            if(dist_r > dist_l){                              
+                              dist_to_target = -1*abs(dist_to_target);
+                            }else{                              
+                              dist_to_target = abs(dist_to_target);
+                            }                            
+                      }
+                      delta_x = lcweight*dist_to_target*cos(yaw_tmp)-lcweight*dist_to_target*sin(yaw_tmp);
+                      delta_y = lcweight*dist_to_target*sin(yaw_tmp)+lcweight*dist_to_target*cos(yaw_tmp);                                                    
+                      wp_.pose.pose.position.x = wp_.pose.pose.position.x + delta_x;
+                      wp_.pose.pose.position.y = wp_.pose.pose.position.y + delta_y;
+                  }
+
+                ////////////////////////// Lance change mode end
                       hmcl_msgs::Waypoint waypoint_tmp =  wp_;                
                       local_traj_msg.waypoints.push_back(waypoint_tmp);
                       std::vector<double> tmp_points;                 
@@ -242,7 +409,7 @@ void MapLoader::current_lanefollow(){
   ////////////////////////////////////////////////////
   // curve fitting   
   
-  curve_fitting(speed_lim,global_points, local_traj_msg);
+  // curve_fitting(speed_lim,global_points, local_traj_msg);
   
   /////////////////////////
 

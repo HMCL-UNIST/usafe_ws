@@ -46,7 +46,11 @@
 
       <param name="local_path_scale" value="1.0"/> 
       <param name="min_local_path_length" value="15.0"/> 
-      <param name="max_local_path_length" value="35.0"/> 
+      <param name="max_local_path_length" value="45.0"/> 
+
+
+      <param name="lane_change_in_sec" value="2.0"/> 
+      <param name="lanechange_fsm_period" value="0.1"/> 
       
       
 

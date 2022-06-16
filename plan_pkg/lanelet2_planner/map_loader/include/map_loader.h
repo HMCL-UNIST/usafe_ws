@@ -33,6 +33,7 @@
 #include <ros/package.h>
 
 #include <std_msgs/Float64.h>
+#include <std_msgs/Bool.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/LaneArray.h>
@@ -89,7 +90,21 @@
 // #include <lanelet2_extension/visualization/visualization.h>
 // #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
 
+enum struct LaneChangeState {LeftChange = 0, Follow = 1, RightChange = 2, Pending = 3}; 
 
+
+inline const char* stateToString(LaneChangeState v)
+{
+    switch (v)
+    {
+        case LaneChangeState::LeftChange:   return "LeftChange";
+        case LaneChangeState::Follow:   return "Follow";
+        case LaneChangeState::RightChange: return "RightChange";
+        case LaneChangeState::Pending: return "Pending";
+        default:      return "[Unknown LaneChangeState]";
+    }
+}
+// typedef enum{LeftChange, Follow, RightChange} LaneChangeState;
 
 #define PI 3.14159265358979323846264338
 
@@ -104,12 +119,14 @@ ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lane
 ros::Publisher way_pub;
 
 ros::Subscriber pose_sub, goal_sub, vehicle_status_sub;
+ros::Subscriber lanechange_left_sub,lanechange_right_sub;
 
 ros::Timer viz_timer, g_traj_timer, local_traj_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary;
 
 double test_direction;
 bool visualize_path, continuious_global_replan;
+
 
 
 std::mutex mu_mtx;
@@ -142,6 +159,12 @@ geometry_msgs::Pose cur_goal;
 lanelet::Lanelets road_lanelets;
 lanelet::ConstLanelets road_lanelets_const;
 
+bool left_change_signal, right_change_signal;
+LaneChangeState lane_change_state, prev_lane_change_state;
+double lane_change_weight;
+double dist_to_target;
+double lane_change_in_sec, lanechange_fsm_period;
+
 geometry_msgs::PoseStamped debug_msg;
 
 double poly_error;
@@ -164,6 +187,9 @@ void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
+void leftLancechangeCallback(const std_msgs::BoolConstPtr &msg);
+void rightLancechangeCallback(const std_msgs::BoolConstPtr &msg);
+
 double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
 unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_);
 void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx);
@@ -175,6 +201,8 @@ void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>
 void compute_global_path();
 void compute_local_path();
 void current_lanefollow();
+
+void LaneChangeStateMachine();
 
 void lanelet_ros_convert_loop();
 
