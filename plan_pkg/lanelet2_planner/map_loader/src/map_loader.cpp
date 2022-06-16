@@ -179,7 +179,11 @@ void MapLoader::LaneChangeStateMachine(){
             }else{              
               lane_change_weight = lane_change_weight+lane_change_weight_delta;
             }
-            
+
+            if(lane_change_weight > 1){
+              lane_change_state = LaneChangeState::Follow; 
+              tmp_state = LaneChangeState::Follow; 
+            }           
             break;  
 
         default:
@@ -191,7 +195,7 @@ void MapLoader::LaneChangeStateMachine(){
     if(lane_change_weight > 2){
               lane_change_state = LaneChangeState::Pending; 
     }
-    prev_lane_change_state = lane_change_state;   
+    prev_lane_change_state = tmp_state;   
     // trigger reset 
     left_change_signal = false;   
     right_change_signal = false;
@@ -366,16 +370,17 @@ void MapLoader::current_lanefollow(){
                             // vehicle on the left side of center line  --> 
                             lcweight = 1-lcweight;  
                             if(dist_r > dist_l){                              
-                              dist_to_target = -1*abs(dist_to_target);
-                            }else{                              
                               dist_to_target = abs(dist_to_target);
+                            }else{                              
+                              dist_to_target = -1*abs(dist_to_target);
                             }                            
                       }
-                      delta_x = lcweight*dist_to_target*cos(yaw_tmp)-lcweight*dist_to_target*sin(yaw_tmp);
-                      delta_y = lcweight*dist_to_target*sin(yaw_tmp)+lcweight*dist_to_target*cos(yaw_tmp);                                                    
+                      delta_x = 0.0*cos(yaw_tmp)-lcweight*dist_to_target*sin(yaw_tmp);
+                      delta_y = 0.0*sin(yaw_tmp)+lcweight*dist_to_target*cos(yaw_tmp);                                                                                                                              
                       wp_.pose.pose.position.x = wp_.pose.pose.position.x + delta_x;
                       wp_.pose.pose.position.y = wp_.pose.pose.position.y + delta_y;
                   }
+                      
 
                 ////////////////////////// Lance change mode end
                       hmcl_msgs::Waypoint waypoint_tmp =  wp_;                
