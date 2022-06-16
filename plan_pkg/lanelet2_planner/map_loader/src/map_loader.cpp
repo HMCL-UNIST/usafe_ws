@@ -124,10 +124,13 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   
   boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
   boost::thread lane_change_state_machine(&MapLoader::LaneChangeStateMachine,this); 
+  boost::thread simulated_obj_generator(&MapLoader::SimulatedObj,this); 
 }
 
 MapLoader::~MapLoader()
 {}
+
+
 
 void MapLoader::LaneChangeStateMachine(){
   ros::Rate lc_loop_rate(1/lanechange_fsm_period); // rate  
@@ -202,6 +205,28 @@ void MapLoader::LaneChangeStateMachine(){
     lc_loop_rate.sleep();
   }
 
+}
+
+void MapLoader::SimulatedObj(){  
+  // check if the object detection updated
+   ros::Rate lc_loop_rate(1/lanechange_fsm_period); // rate  
+  double lane_change_weight_delta = 1/(lane_change_in_sec/lanechange_fsm_period);
+  prev_lane_change_state = lane_change_state;
+  while (ros::ok())
+  {
+    
+   ros::Time elapsed_time = objects.header.stamp -prev_objects.header.stamp;
+  
+  // prev object update
+  prev_objects = objects;
+}
+void MapLoader::objsCallback(const autoware_msgs::DetectedObjectArray& msg){
+  if(msg->objects.size() > 0){
+    objects = msg;
+  }
+
+  
+  
 }
 
 void MapLoader::leftLancechangeCallback(const std_msgs::BoolConstPtr &msg){

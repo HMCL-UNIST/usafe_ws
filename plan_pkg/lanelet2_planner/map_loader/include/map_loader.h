@@ -82,6 +82,7 @@
 #include <amathutils.hpp>
 #include <route_planner.h>
 #include <autoware_lanelet2_msgs/MapBin.h>
+#include <autoware_msgs/DetectedObjectArray.h>
 #include <hmcl_msgs/VehicleStatus.h>
 
 #include <lanelet2_extension/utility/message_conversion.h>
@@ -127,7 +128,7 @@ visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_
 double test_direction;
 bool visualize_path, continuious_global_replan;
 
-
+autoware_msgs::DetectedObjectArray objects, prev_objects; 
 
 std::mutex mu_mtx;
 RoutePlanner rp_;
@@ -189,6 +190,7 @@ void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
 void leftLancechangeCallback(const std_msgs::BoolConstPtr &msg);
 void rightLancechangeCallback(const std_msgs::BoolConstPtr &msg);
+void objsCallback(const autoware_msgs::DetectedObjectArray& msg);
 
 double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
 unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_);
@@ -205,6 +207,7 @@ void current_lanefollow();
 void LaneChangeStateMachine();
 
 void lanelet_ros_convert_loop();
+void SimulatedObj();
 
 void viz_local_path(hmcl_msgs::Lane &lane_);
 
