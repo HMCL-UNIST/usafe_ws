@@ -41,12 +41,12 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
-add_executable(dynamic_reconfigure_node src/obj_simulation.cpp)
+add_executable(dynamic_reconfigure_node src/obj_simulation.cpp src/Amathutils.cpp)
 add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
 target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(obj_simulation src/obj_simulation.cpp)
+add_executable(obj_simulation src/obj_simulation.cpp src/Amathutils.cpp)
 target_link_libraries(obj_simulation ${catkin_LIBRARIES})
 add_dependencies(obj_simulation ${catkin_EXPORTED_TARGETS})
 

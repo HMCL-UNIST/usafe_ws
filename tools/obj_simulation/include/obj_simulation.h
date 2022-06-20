@@ -38,27 +38,44 @@
 #include <tf/transform_broadcaster.h>
 #include <tf/transform_datatypes.h>
 #include <tf/transform_listener.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+#include <visualization_msgs/Marker.h>
 
 #include <dynamic_reconfigure/server.h>
 #include <obj_simulation/testConfig.h>
 #include <std_msgs/UInt8MultiArray.h>
 #include <autoware_msgs/DetectedObjectArray.h>
-#define PI 3.14159265358979323846264338
+#include <hmcl_msgs/Lane.h> 
+#include <amathutils.hpp>
 
+#define PI 3.14159265358979323846264338
+#define PRINT_MAT(X) std::cout << #X << ":\n" << X << std::endl << std::endl
 
 class ObjSimulation 
 {  
 private:
 ros::NodeHandle nh_;
 std::mutex mtx_;
-ros::Subscriber  emergency_stopSub;
+ros::Subscriber  traj_sub;
 ros::Publisher objPub;
+ros::Publisher target_vis_pub;
 
+double dt;
+hmcl_msgs::Lane ego_lane;
+double target_vehicle_speed;
+double distance_to_target;
+bool target_visible;
+double sim_dt;
+bool sim_pose_reset;
 dynamic_reconfigure::Server<obj_simulation::testConfig> srv;
 dynamic_reconfigure::Server<obj_simulation::testConfig>::CallbackType f;
 
+Eigen::MatrixXd A, B;
+Eigen::VectorXd target_state; 
 
+
+std::vector<double> target_pose;
 
 bool emergency_stop_activate;
 int emergency_count;
@@ -69,7 +86,9 @@ ObjSimulation(ros::NodeHandle& nh_);
 
 void dyn_callback(obj_simulation::testConfig& config, uint32_t level);
 void emergencyRemoteCallback(std_msgs::Float64ConstPtr msg);
-
+void localTrajCallback(const hmcl_msgs::LaneConstPtr msg);
+void set_target_state(Eigen::VectorXd new_state);
+void simulationCallback();
 
 };
 
