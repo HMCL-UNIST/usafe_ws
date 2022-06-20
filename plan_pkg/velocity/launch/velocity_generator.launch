@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+
+
+  <node name="velocity_generator" pkg="velocity" type="velocity_generator" output="screen">        
+  </node>
+
+  <node name="acc_node" pkg="velocity" type="acc_node" output="screen">        
+  </node>
+
+
+  
+</launch>
