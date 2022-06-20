@@ -26,10 +26,6 @@ class KalmanFilter {
 
 public:
 
-KalmanFilter(); 
-~KalmanFilter();
-
-  
 	/**
 	* Create a Kalman filter with the specified matrices.
 	*   A - System dynamics matrix
@@ -48,14 +44,7 @@ KalmanFilter();
 			const Eigen::MatrixXd& P
 	);
 
-	void init_kalman(
-			const Eigen::MatrixXd& A,
-			const Eigen::MatrixXd& B,
-			const Eigen::MatrixXd& C,
-			const Eigen::MatrixXd& Q,
-			const Eigen::MatrixXd& R,
-			const Eigen::MatrixXd& P
-	);
+
 	/**
 	* Initialize the filter with initial states as zero.
 	*/

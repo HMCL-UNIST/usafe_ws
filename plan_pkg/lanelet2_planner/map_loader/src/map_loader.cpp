@@ -35,9 +35,17 @@
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
 
+// A_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// C_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// Q_curv << 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01;
+// R_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// P_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+
+
+
 
 MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path) :  
-  nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path)  
+  nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path),cur_filter(A_curv,B_curv,C_curv,Q_curv,R_curv,P_curv)  
 {
   // using namespace lanelet;
   left_change_signal = false;
@@ -133,37 +141,6 @@ MapLoader::~MapLoader()
 
 void MapLoader::init_kalman_filters(){
 
-  Eigen::MatrixXd A_curv = Eigen::MatrixXd::Zero(3, 3); // System dynamics matrix
-  Eigen::MatrixXd B_curv = Eigen::MatrixXd::Zero(3, 1); // Input control matrix
-  Eigen::MatrixXd C_curv = Eigen::MatrixXd::Zero(3, 3); // Output matrix
-  Eigen::MatrixXd Q_curv = Eigen::MatrixXd::Zero(3, 3); // Process noise covariance
-  Eigen::MatrixXd R_curv = Eigen::MatrixXd::Zero(3, 3); // Measurement noise covariance
-  Eigen::MatrixXd P_curv = Eigen::MatrixXd::Zero(3, 3); // Estimate error covariance
-  
-//   double dt = 1.0/30;
-//   // Discrete LTI projectile motion, measuring position only
-  
-  A_curv(0,0) = 1.0;
-  A_curv(1,1) = 1.0;
-  A_curv(2,2) = 1.0;  
-
-  C_curv(0,0) = 1.0;
-  C_curv(1,1) = 1.0;
-  C_curv(2,2) = 1.0;
-
-  Q_curv(0,0) = 0.01;
-  Q_curv(1,1) = 0.01;
-  Q_curv(2,2) = 0.01;
-  
-  R_curv(0,0) = 1.0;
-  R_curv(1,1) = 1.0;
-  R_curv(2,2) = 1.0;
-
-  P_curv(0,0) = 0.1;
-  P_curv(1,1) = 0.1;
-  P_curv(2,2) = 0.1;
-
-  cur_filter.init_kalman(A_curv,B_curv,C_curv,Q_curv,R_curv,P_curv);
   init_cuv_fit = false;
 
 }
@@ -491,7 +468,7 @@ void MapLoader::current_lanefollow(){
   ////////////////////////////////////////////////////
   // curve fitting   
   
-  // curve_fitting(speed_lim,global_points, local_traj_msg);
+  curve_fitting(speed_lim,global_points, local_traj_msg);
   
   /////////////////////////
 
@@ -1159,32 +1136,38 @@ void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vec
       debug_msg.header.stamp = ros::Time::now();
       debug_msg.pose.position.x = poly_error;
       debug_pub.publish(debug_msg);
+      // ROS_INFO("solution fuond ");
+      // if(poly_error < 1.0){
+      //   if(!init_cuv_fit){
+      //     Eigen::VectorXd x0(3);
+      //     x0 << c3,c2,c1;    
+      //     cur_filter.init(x0);  
+          
+      //   }
+      //   init_cuv_fit = true;
+      // }
 
-      if(poly_error < 1){
-        if(!init_cuv_fit){
-          Eigen::VectorXd x0(3);
-          x0 << c3,c2,c1;    
-          cur_filter.init(x0);  
-        }
-        init_cuv_fit = true;
-      }
-
-      if(!init_cuv_fit){
-        return;
-      }
-
-        Eigen::VectorXd y_tmp = Eigen::VectorXd::Zero(3);
-        Eigen::VectorXd u_tmp = Eigen::VectorXd::Zero(3);
+      // if(!init_cuv_fit){
+      //   return;
+      // }
         
-        y_tmp << c3, c2, c1;
-
-        cur_filter.predict(u_tmp);
-	      cur_filter.update(y_tmp);
+      //   Eigen::VectorXd y_tmp(3);
+      //   Eigen::VectorXd u_tmp(3);
         
-        auto updated_state = cur_filter.state().transpose();
-        c3 = updated_state[0];
-        c2 = updated_state[1];
-        c1 = updated_state[2];
+      //   y_tmp << c3, c2, c1;
+      //   u_tmp << 0.0, 0.0, 0.0;
+        
+      //   cur_filter.predict(u_tmp);
+	    //   cur_filter.update(y_tmp);
+      //   ROS_INFO("before");
+      //   ROS_INFO("c3 = %f, c2 = %f,c1 = %f", c3,c2,c1);
+      //   auto updated_state = cur_filter.state().transpose();
+
+      //   c3 = updated_state[0];
+      //   c2 = updated_state[1];
+      //   c1 = updated_state[2];
+      //   ROS_INFO("after");
+      //   ROS_INFO("c3 = %f, c2 = %f,c1 = %f", c3,c2,c1);
 
       if(poly_error < 1){                    
           std::vector<double> speed_limits = linspaces(float(speed_lim.front()),float(speed_lim.back()),int(local_path_length/map_road_resolution));

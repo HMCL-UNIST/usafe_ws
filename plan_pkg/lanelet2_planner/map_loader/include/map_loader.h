@@ -88,13 +88,20 @@
 
 
 
+
 #include <lanelet2_extension/utility/message_conversion.h>
 #include <polyfit.h>
+
 // #include <lanelet2_extension/utility/query.h>
 // #include <lanelet2_extension/visualization/visualization.h>
 // #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
 
 enum struct LaneChangeState {LeftChange = 0, Follow = 1, RightChange = 2, Pending = 3}; 
+
+
+
+
+
 
 
 inline const char* stateToString(LaneChangeState v)
@@ -111,6 +118,21 @@ inline const char* stateToString(LaneChangeState v)
 // typedef enum{LeftChange, Follow, RightChange} LaneChangeState;
 
 #define PI 3.14159265358979323846264338
+
+Eigen::MatrixXd A_curv(3, 3); // System dynamics matrix
+Eigen::MatrixXd B_curv(3, 3); // Input control matrix
+Eigen::MatrixXd C_curv(3, 3); // Output matrix
+Eigen::MatrixXd Q_curv(3, 3); // Process noise covariance
+Eigen::MatrixXd R_curv(3, 3); // Measurement noise covariance
+Eigen::MatrixXd P_curv(3, 3); // Estimate error covariance
+
+// A_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// C_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// Q_curv << 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01;
+// R_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// P_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+
+
 
 class MapLoader 
 {
@@ -183,6 +205,9 @@ double min_local_path_length, max_local_path_length;
 
 
 ///////////////////////////////// Filter definition start  /////////////////////////////////
+
+
+
 KalmanFilter cur_filter;
 bool init_cuv_fit;
 ///////////////////////////////// END /////////////////////////////////
