@@ -25,8 +25,7 @@
 #include <sys/types.h>
 #include <cmath>
 #include <cstdlib>
-#include <chrono>
-#include <random>
+
 
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
@@ -40,14 +39,12 @@ ObjSimulation::ObjSimulation(ros::NodeHandle& nh_):
 {
   
   
-  // objPub = nh_.advertise<autoware_msgs::DetectedObjectArray>("/detected_objs", 5);    
+  objPub = nh_.advertise<autoware_msgs::DetectedObjectArray>("/detected_objs", 5);    
 
   emergency_stopSub = nh_.subscribe("/emer", 2, &ObjSimulation::emergencyRemoteCallback, this);
   local_traj_sub = nh_.subscribe("/local_traj", 1, &ObjSimulation::trajCallback, this);
   global_traj_sub = nh_.subscribe("/global_traj_lanelets_viz", 1, &ObjSimulation::globaltrajCallback, this);
   pose_sub = nh_.subscribe("/geo_pose_estimate", 1, &ObjSimulation::poseCallback, this);
-
-  // targetobjPub = nh_.advertise<hmcl_msgs::objSim>("/obj_sim_info", 1);
 
   ROS_INFO("obj simulation");
   // boost::thread AcanHandler(&ObjSimulation::AcanSender,this); 
@@ -86,13 +83,7 @@ void ObjSimulation::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
 void ObjSimulation::dyn_callback(obj_simulation::testConfig &config, uint32_t level)
 {
   // ROS_INFO("Manual Obj Info Received");
-  
-  // construct a trivial random generator engine from a time-based seed:
-  unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-  default_random_engine generator (seed);
-  normal_distribution<double> distribution (0.0,0.5);
-
-  rel_dist = config.Relative_Distance + distribution(generator);
+  rel_dist = config.Relative_Distance;
   // cout << "rel dist : " << rel_dist << endl;
 }
 
@@ -105,16 +96,14 @@ void ObjSimulation::trajCallback(const hmcl_msgs::Lane& traj)
   // cout << "local traj size : " << local_traj_size << endl; 
   curr_time = ros::Time::now().toSec();
   double Ts = curr_time - prev_time; 
-  double filtered_rel_dist = alpha * rel_dist + (1-alpha) * filtered_rel_dist_prev;
-  rel_vel = (filtered_rel_dist - filtered_rel_dist_prev) / Ts;
+  
+  rel_vel = (rel_dist - rel_dist_prev) / Ts;
 
-  filtered_rel_dist_prev = filtered_rel_dist;
+  rel_dist_prev = rel_dist;
   prev_time = curr_time;
-  cout << "relative distance : " << filtered_rel_dist << "m" << endl;
   cout << "relative velocity : " << rel_vel*3.6 << "km/h" << endl; 
   // cout << "sampling time : " << Ts << endl;
-  // pub_sim_info.relative_distance = filtered_rel_dist; 
-  // pub_sim_info.relative_velocity = rel_vel*3.6;
+  
 }
 
 void ObjSimulation::globaltrajCallback(const visualization_msgs::MarkerArray& global_traj)
