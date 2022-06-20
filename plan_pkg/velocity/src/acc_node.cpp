@@ -26,11 +26,11 @@ ACC::ACC()
     nh_.param<double>("dt", dt, 0.04); 
     nh_.param<double>("lag_tau", lag_tau, 0.6);
     nh_.param<double>("Q_vel", Q_vel, 10.0); 
-    nh_.param<double>("Q_dis", Q_dis, 0.6); 
-    nh_.param<double>("R_weight", r_weight, 3000);
+    nh_.param<double>("Q_dis", Q_dis, 50.0); 
+    nh_.param<double>("R_weight", r_weight, 1);
 
     nh_.param<double>("d_time", d_time, 2.0);
-    nh_.param<double>("d_safe", d_safe, 10.0);
+    nh_.param<double>("d_safe", d_safe, 15.0);
 
     delay_step = (int)(delay_in_sec/dt);
 
@@ -57,7 +57,7 @@ void ACC::CalcVel()
     double diffvel = object_vel - current_vel;
 
     Xk = Eigen::VectorXd::Zero(3,1);
-    Xk(0) = safe_dis + dis2obj;
+    Xk(0) = safe_dis - dis2obj;
     Xk(1) = diffvel;
     Xk(2) = current_acc;
 
@@ -66,6 +66,9 @@ void ACC::CalcVel()
 
 
     double vel_cmd = current_vel + acc_cmd * dt;
+    
+    if (vel_cmd < 0)
+      vel_cmd = 0;
 
     //Publish
     std_msgs::Float64 target_vel;
@@ -82,8 +85,9 @@ void ACC::CalcVel()
     }
 
     debug_msg.header.stamp = ros::Time::now();
-    debug_msg.pose.position.x = safe_dis + dis2obj;
+    debug_msg.pose.position.x = safe_dis - dis2obj;
     debug_msg.pose.position.y = diffvel;
+    debug_msg.pose.position.z = acc_cmd;
     vel_debug.publish(debug_msg);
 
 
@@ -219,7 +223,7 @@ int main (int argc, char** argv)
 
     ros::init(argc, argv, "acc_node");
 
-    ros::Rate loop_rate(20);
+    // ros::Rate loop_rate(20);
     ROS_INFO("Adaptive Cruise Control Initialize");
     ACC acc;
 

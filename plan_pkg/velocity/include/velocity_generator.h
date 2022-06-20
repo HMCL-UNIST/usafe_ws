@@ -34,6 +34,7 @@ class VelocityGenerator
 
     bool new_vel, local_traj_init, visualize, new_target_vel;
     float speed_limit, current_acc, current_vel, target_acc_vel;
+    int ttt;
 
     hmcl_msgs::Lane traj;
     geometry_msgs::PoseStamped debug_msg;

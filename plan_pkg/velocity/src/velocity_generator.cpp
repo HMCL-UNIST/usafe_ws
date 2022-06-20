@@ -22,8 +22,9 @@ VelocityGenerator::VelocityGenerator()
 
     // Prameter
     local_traj_init = false;
-    visualize = false;
+    visualize = true;
     new_vel = false;
+    ttt = 0;
 
     // Subscribe
     local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityGenerator::trajCallback,this);
@@ -41,11 +42,11 @@ VelocityGenerator::VelocityGenerator()
 
 void VelocityGenerator::CalcVel()
 {
-    
+
     std_msgs::Float64 vel_msg;
 
     double v0 = current_vel;
-    double a0 = current_acc;
+    double a0 = 0;
     double a_lon_lim = 1.5;
     double a_lat_lim = 4.0;
     double d_lon_lim = -2.0;
@@ -53,10 +54,19 @@ void VelocityGenerator::CalcVel()
     double P[3] = {1.0,1.0,5.0};
     double xf[3] = {15, v0, 0};
     if (new_target_vel) {
-        double xf[3] = {10, target_acc_vel, 0};
-    }
+        if (target_acc_vel > speed_limit)
+            target_acc_vel = speed_limit;
+        xf[0] = 10;
+        xf[1] = target_acc_vel;
+        xf[2] = 0;
+        // double xf[3] = {10, target_acc_vel, 0};
+        std::cout << "Calculate the velocity: c_vel" << current_vel << " r_vel " << target_acc_vel << "acc" << current_acc << std::endl;
+    } 
     else{
-        double xf[3] = {10, speed_limit, 0};
+        // double xf[3] = {10, speed_limit, 0};
+        xf[0] = 10;
+        xf[1] = speed_limit;
+        xf[2] = 0;
     }
 
     bool fail2solve = false;
@@ -65,11 +75,13 @@ void VelocityGenerator::CalcVel()
     debug_msg.header.stamp = ros::Time::now(); 
     debug_msg.pose.position.x = v0;
     debug_msg.pose.position.y = xf[1];
+    std::cout << "r_vel" << xf[1] <<  std::endl;
     
-    
+
     int k = 0;
     while(1)
-    {
+    {   
+        std::cout << "k is " << k << std::endl;
         double sf = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) + 1/4*P[1]*pow(P[2],4);
         double vf = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
         double af = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
@@ -92,7 +104,7 @@ void VelocityGenerator::CalcVel()
 
             std::vector<double> profile{};
             double tt = 0.0;
-            for (int i = 0; i < N; N++)
+            for (int i = 0; i < N; i++)
             {
                 profile.push_back(v0 + a0*tt + P[0]*pow(tt,2) + P[1]*pow(tt,3));
                 tt = tt + 0.2;   
@@ -102,6 +114,7 @@ void VelocityGenerator::CalcVel()
             {
                 viz_vel_prof(profile);
             }
+            std::cout << "1 sbreak "  << std::endl;
             break;
         }
         else if (k >= 30 || fail2solve) {
@@ -185,7 +198,9 @@ void VelocityGenerator::CalcVel()
                 
             P[0] = P[0]+del_P[0]; P[1]=P[1]+ del_P[1]; P[2] = P[2]+ del_P[2]; 
         }
+
         k = k+1;
+
 
     }
     vel_msg.data = ref_speed;
@@ -195,7 +210,14 @@ void VelocityGenerator::CalcVel()
     vel_debug.publish(debug_msg);
 
     new_vel = false;
-    new_target_vel = false;
+    
+    if (ttt > 5){
+        new_target_vel = false;
+    }
+    
+    ttt++;
+    std::cout << "target" << new_target_vel << std::endl;
+
 
 }
 
@@ -258,7 +280,7 @@ void VelocityGenerator::trajCallback(const hmcl_msgs::Lane& msg)
 
         double dis = sqrt ( pow(x_- _x,2) + pow(y_ -_y,2));
         total_dis = dis + total_dis;
-        speed_limit = msg.waypoints[i+1].twist.twist.linear.x;
+        speed_limit = msg.waypoints[i+1].twist.twist.linear.x/3.6;
         if (total_dis >= 15)
             break;
     }
@@ -279,8 +301,10 @@ void VelocityGenerator::velCallback(const nav_msgs::Odometry& state_msg)
 
 void VelocityGenerator::targetCallback(const std_msgs::Float64& msg)
 {
+//   std::cout << "Get target velocity: "  << std::endl;
   target_acc_vel = msg.data;
   new_target_vel = true;
+  ttt = 0;
 }
 
 
