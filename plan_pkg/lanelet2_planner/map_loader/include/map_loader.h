@@ -81,9 +81,12 @@
 #include <map_loader_utils.h>
 #include <amathutils.hpp>
 #include <route_planner.h>
+#include <kalman_filter.h>
 #include <autoware_lanelet2_msgs/MapBin.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <hmcl_msgs/VehicleStatus.h>
+
+
 
 #include <lanelet2_extension/utility/message_conversion.h>
 #include <polyfit.h>
@@ -145,6 +148,9 @@ hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local;
 
 
 
+
+
+
 std::string osm_file_name;
 double map_road_resolution;
 
@@ -175,6 +181,15 @@ double current_speed;
 double local_path_scale;
 double min_local_path_length, max_local_path_length;
 
+
+///////////////////////////////// Filter definition start  /////////////////////////////////
+KalmanFilter cur_filter;
+bool init_cuv_fit;
+///////////////////////////////// END /////////////////////////////////
+
+
+
+
 public:
 MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path);
 ~MapLoader();
@@ -190,7 +205,7 @@ void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
 void leftLancechangeCallback(const std_msgs::BoolConstPtr &msg);
 void rightLancechangeCallback(const std_msgs::BoolConstPtr &msg);
-void objsCallback(const autoware_msgs::DetectedObjectArray& msg);
+void objsCallback(const autoware_msgs::DetectedObjectArrayConstPtr& msg);
 
 double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
 unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_);
@@ -199,6 +214,9 @@ void fix_and_save_osm();
 
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg);
+
+
+void init_kalman_filters();
 
 void compute_global_path();
 void compute_local_path();

@@ -84,7 +84,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   nh_p_.param<double>("lanechange_fsm_period", lanechange_fsm_period, 0.1);
   
     
-  
+  init_kalman_filters();
    
  
   
@@ -124,12 +124,49 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   
   boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
   boost::thread lane_change_state_machine(&MapLoader::LaneChangeStateMachine,this); 
-  boost::thread simulated_obj_generator(&MapLoader::SimulatedObj,this); 
+  // boost::thread simulated_obj_generator(&MapLoader::SimulatedObj,this); 
 }
 
 MapLoader::~MapLoader()
 {}
 
+
+void MapLoader::init_kalman_filters(){
+
+  Eigen::MatrixXd A_curv = Eigen::MatrixXd::Zero(3, 3); // System dynamics matrix
+  Eigen::MatrixXd B_curv = Eigen::MatrixXd::Zero(3, 1); // Input control matrix
+  Eigen::MatrixXd C_curv = Eigen::MatrixXd::Zero(3, 3); // Output matrix
+  Eigen::MatrixXd Q_curv = Eigen::MatrixXd::Zero(3, 3); // Process noise covariance
+  Eigen::MatrixXd R_curv = Eigen::MatrixXd::Zero(3, 3); // Measurement noise covariance
+  Eigen::MatrixXd P_curv = Eigen::MatrixXd::Zero(3, 3); // Estimate error covariance
+  
+//   double dt = 1.0/30;
+//   // Discrete LTI projectile motion, measuring position only
+  
+  A_curv(0,0) = 1.0;
+  A_curv(1,1) = 1.0;
+  A_curv(2,2) = 1.0;  
+
+  C_curv(0,0) = 1.0;
+  C_curv(1,1) = 1.0;
+  C_curv(2,2) = 1.0;
+
+  Q_curv(0,0) = 0.01;
+  Q_curv(1,1) = 0.01;
+  Q_curv(2,2) = 0.01;
+  
+  R_curv(0,0) = 1.0;
+  R_curv(1,1) = 1.0;
+  R_curv(2,2) = 1.0;
+
+  P_curv(0,0) = 0.1;
+  P_curv(1,1) = 0.1;
+  P_curv(2,2) = 0.1;
+
+  cur_filter.init_kalman(A_curv,B_curv,C_curv,Q_curv,R_curv,P_curv);
+  init_cuv_fit = false;
+
+}
 
 
 void MapLoader::LaneChangeStateMachine(){
@@ -139,7 +176,7 @@ void MapLoader::LaneChangeStateMachine(){
   while (ros::ok())
   {    
     ROS_INFO("LaneChangeStatus = %s",stateToString(lane_change_state));
-    ROS_INFO("lane_change_weight = %f",lane_change_weight);
+    // ROS_INFO("lane_change_weight = %f",lane_change_weight);
     LaneChangeState tmp_state = lane_change_state;
     switch(lane_change_state){      
         case LaneChangeState::LeftChange:
@@ -207,26 +244,28 @@ void MapLoader::LaneChangeStateMachine(){
 
 }
 
-void MapLoader::SimulatedObj(){  
-  // check if the object detection updated
-   ros::Rate lc_loop_rate(1/lanechange_fsm_period); // rate  
-  double lane_change_weight_delta = 1/(lane_change_in_sec/lanechange_fsm_period);
-  prev_lane_change_state = lane_change_state;
-  while (ros::ok())
-  {
-    
-   ros::Time elapsed_time = objects.header.stamp -prev_objects.header.stamp;
+
+// void MapLoader::SimulatedObj(){  
+//   // check if the object detection updated
+//   ros::Rate simulattion_rate(5); // rate  Hz
   
-  // prev object update
-  prev_objects = objects;
-}
-void MapLoader::objsCallback(const autoware_msgs::DetectedObjectArray& msg){
+//   while (ros::ok())
+//   {
+    
+//   ros::Duration elapsed_time = objects.header.stamp -prev_objects.header.stamp;
+  
+//   // prev object update
+//   prev_objects = objects;
+
+//   simulattion_rate.sleep();
+//   }
+// }
+
+void MapLoader::objsCallback(const autoware_msgs::DetectedObjectArrayConstPtr& msg){
   if(msg->objects.size() > 0){
-    objects = msg;
+    objects = *msg;
   }
 
-  
-  
 }
 
 void MapLoader::leftLancechangeCallback(const std_msgs::BoolConstPtr &msg){
@@ -328,16 +367,23 @@ void MapLoader::current_lanefollow(){
 
            
             ////////////// check if lane change required END ///////////
-            
+            auto lanelets_ = routingGraph->following(lanes.back(),false);   
+            auto *lanelets_ptr = &lanelets_;
+            int while_count = 0;
             while(lane_dist_cumulative < local_path_length){
+              while_count++;
+             
               number_lane_count++;
-              if(number_lane_count > 10){
-                ROS_INFO("while loop safety");
+              if(number_lane_count > 1000){
                 break;
               }              
-               auto lanelets_ = routingGraph->following(lanes.back(),false);                          
-              if(lanelets_.size() > 0){                
-                prev_pose = cur_pose;                
+                
+                  
+
+              if(lanelets_.size() > 0){ 
+                 if(while_count ==1 ){               
+                  prev_pose = cur_pose; 
+                 }               
                 local_traj_msg.header.stamp = ros::Time::now();
                 local_traj_msg.header.frame_id = "map";   
                   // for(auto &local_path : local_path_){
@@ -346,7 +392,13 @@ void MapLoader::current_lanefollow(){
                     ///////////////////////// Encode waypoints  /////////////////////////////////////////              
                     auto lstring = lanes.back().centerline();   
                     double yaw_tmp;               
-                    int waypoint_idx_init =getClosestWaypoint(true,lstring,cur_pose);                             
+                    int waypoint_idx_init;
+                    if(while_count ==1 ){
+                         waypoint_idx_init =getClosestWaypoint(true,lstring,cur_pose);                             
+                      }else{
+                         waypoint_idx_init =0;                             
+                      }
+                    
                     int waypoint_idx_finish = lstring.size();
                     
                     //
@@ -416,20 +468,20 @@ void MapLoader::current_lanefollow(){
                       global_points.push_back(tmp_points);                    
                       speed_lim.push_back(waypoint_tmp.twist.twist.linear.x);            
                       double lane_dist_= sqrt(pow((prev_pose.position.x - waypoint_tmp.pose.pose.position.x),2) + pow((prev_pose.position.y - waypoint_tmp.pose.pose.position.y),2));                            
-                      
+                     
                       lane_dist_cumulative = lane_dist_cumulative + lane_dist_;
                       prev_pose.position.x = waypoint_tmp.pose.pose.position.x;
                       prev_pose.position.y = waypoint_tmp.pose.pose.position.y;
-                      if(lane_dist_cumulative > local_path_length){                                      
+                      if(lane_dist_cumulative > local_path_length){                                   
                         break;
                       }    
                     }
                   
               }
+              *lanelets_ptr = routingGraph->following(lanes.back(),false);    
               lanes.push_back(lanelets_[0]); 
             }           
-          }
-          else{
+          }else{
            ROS_WARN("near lanelet is not truly close");      
           }
     }
@@ -1108,7 +1160,33 @@ void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vec
       debug_msg.pose.position.x = poly_error;
       debug_pub.publish(debug_msg);
 
-      if(poly_error < 0.03){                    
+      if(poly_error < 1){
+        if(!init_cuv_fit){
+          Eigen::VectorXd x0(3);
+          x0 << c3,c2,c1;    
+          cur_filter.init(x0);  
+        }
+        init_cuv_fit = true;
+      }
+
+      if(!init_cuv_fit){
+        return;
+      }
+
+        Eigen::VectorXd y_tmp = Eigen::VectorXd::Zero(3);
+        Eigen::VectorXd u_tmp = Eigen::VectorXd::Zero(3);
+        
+        y_tmp << c3, c2, c1;
+
+        cur_filter.predict(u_tmp);
+	      cur_filter.update(y_tmp);
+        
+        auto updated_state = cur_filter.state().transpose();
+        c3 = updated_state[0];
+        c2 = updated_state[1];
+        c1 = updated_state[2];
+
+      if(poly_error < 1){                    
           std::vector<double> speed_limits = linspaces(float(speed_lim.front()),float(speed_lim.back()),int(local_path_length/map_road_resolution));
           std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));
           
