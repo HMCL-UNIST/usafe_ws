@@ -1,7 +1,8 @@
 <?xml version="1.0"?>
 <launch>
   
-  <node name="obj_simulation" pkg="obj_simulation" type="obj_simulation" output="screen">      
+  <!-- <node name="obj_simulation" pkg="obj_simulation" type="obj_simulation" output="screen">      -->
+  <node name="obj_simulation" pkg="obj_simulation" type="obj_simulation" output="screen">    
         <!-- <remap from="AA" to="BB"/> -->
   </node>
   

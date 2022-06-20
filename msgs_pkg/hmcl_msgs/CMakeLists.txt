@@ -23,6 +23,7 @@ add_message_files(
     VehicleSteering.msg
     VehicleWheelSpeed.msg
     CtrlVehicleStates.msg    
+    ObjSim.msg 
 )
 
 # add_service_files(
