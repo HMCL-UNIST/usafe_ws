@@ -69,7 +69,7 @@ private:
   bool validateParameters();
 
   // Primary PID controller input variables
-  double plant_state_;               // current output of plant
+  double plant_state_ = 0;               // current output of plant
   bool pid_enabled_ = true;          // PID is enabled to run
   bool new_state_or_setpt_ = false;  // Indicate that fresh calculations need to be run
   double setpoint_ = 0;              // desired output of plant
@@ -86,7 +86,8 @@ private:
 
   // PID gains
   double Kp_ = 0, Ki_ = 0, Kd_ = 0;
-
+  
+  double fl = 0, fr = 0, rl = 0, rr = 0;
   // Parameters for error calc. with disconinuous input
   bool angle_error_ = false;
   double angle_wrap_ = 2.0 * 3.14159;

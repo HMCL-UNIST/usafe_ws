@@ -92,8 +92,12 @@ void PidObject::setpointCallback(const std_msgs::Float64& setpoint_msg)
 
 void PidObject::plantStateCallback(const hmcl_msgs::VehicleWheelSpeed& state_msg)
 {
-  plant_state_ = state_msg.wheel_speed * 3.6;
-
+  // plant_state_ = state_msg.wheel_speed * 3.6;
+  fl = state_msg.fl;
+  fr = state_msg.fr;
+  rr = state_msg.rr;
+  rl = state_msg.rl;
+  plant_state_ = (fl+fr+rl+rr)/4; // kph
   new_state_or_setpt_ = true;
 }
 
@@ -180,6 +184,30 @@ void PidObject::doCalcs()
   // Do fresh calcs if knowledge of the system has changed.
   if (new_state_or_setpt_)
   {
+    if (plant_state_ >= 0 && plant_state_ <= 20) {
+      // gain scheduling
+      Kp_ = 3;
+      Ki_ = 0;
+      Kd_ = 0.1;
+    }
+    else if (plant_state_ > 20 && plant_state_ <= 40) {
+      // gain scheduling
+      Kp_ = 5;
+      Ki_ = 0;
+      Kd_ = 0.1;
+    }
+    else if (plant_state_ > 40 && plant_state_ <= 60) {
+      // gain scheduling
+      Kp_ = 4;
+      Ki_ = 0.1;
+      Kd_ = 0.1;
+    }
+    else {
+      // gain scheduling
+      Kp_ = 4;
+      Ki_ = 0.1;
+      Kd_ = 0.1;
+    }
     if (!((Kp_ <= 0. && Ki_ <= 0. && Kd_ <= 0.) ||
           (Kp_ >= 0. && Ki_ >= 0. && Kd_ >= 0.)))  // All 3 gains should have the same sign
       ROS_WARN("All three gains (Kp, Ki, Kd) should have the same sign for "

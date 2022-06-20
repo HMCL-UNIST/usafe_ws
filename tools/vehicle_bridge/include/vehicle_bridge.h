@@ -80,12 +80,16 @@ double gear_ratio = 14.5;
 // variables for dynamic configure 
 bool Master_Switch, AD_STR_MODE_CMD, AD_SCC_TAKEOVER_CMD, AD_LEFT_TURNLAMP_STAT;
 bool AD_RIGHT_TURNLAMP_STAT, AD_HAZARD_STAT;
+int MODE_P, MODE_D, MODE_N, ND, EB, RS; // ND : Normal Driving, EB : Emergency Braking, RS : Remote stop
 int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;       
 short accel_value;
 double control_effort, velCMD_KPH;    
 double sign = 1;
 double test_count; 
 int whl_speed_mean_mps;
+int prev_gear;
+short steer_value;
+
 ros::Time Acan_callback_time;
 ros::Time Ccan_callback_time;
 public:
@@ -93,7 +97,7 @@ VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& 
 ~VehicleBridge();
 void AcanSender();
 void AcanWatchdog();
-
+void stateMachine();
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
 void CcanCallback(can_msgs::FrameConstPtr ccan_data);
 void dyn_callback(vehicle_bridge::testConfig& config, uint32_t level);

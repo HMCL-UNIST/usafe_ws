@@ -62,14 +62,20 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   // LightCmdSub = nh_light_.subscribe("/usafe_lights_cmd", 1, &VehicleBridge::LightCmdCallback, this);
   // VelSub = nh_acc.subscribe("control_effort", 1, &VehicleBridge::controlEffortCallback, this);.
 
-  
+  MODE_D = 0;
+  MODE_P = 0;
+  MODE_N = 0;
+  ND = 0;
+  EB = 0;
+  RS = 0;
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
-  // boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
+  boost::thread AcanWatch(&VehicleBridge::stateMachine,this); 
  
   
   f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
 	srv.setCallback(f);
+  
 }
 
 VehicleBridge::~VehicleBridge()
@@ -196,7 +202,7 @@ void VehicleBridge::CcanCallback(can_msgs::FrameConstPtr ccan_data)
       // wheel_info_.wheel_speed = clamp(whl_speed_mean,0, 511.96875);
       // wheel_info_.wheel_speed = whl_speed_mean/3.6; // m/s
       wheel_info_.wheel_speed = velCMD_KPH; // cmd info (km/h)
-      whl_speed_mean_mps = round(whl_speed_mean*100);
+      whl_speed_mean_mps = round(whl_speed_mean*100); // kph
       // ROS_INFO("wheel speed : %d",whl_speed_mean_mps);
       wheel_info_.fl = fl;
       wheel_info_.fr = fr;
@@ -271,35 +277,35 @@ void VehicleBridge::InitCanmsg(){
   light_frame.data[2] = (unsigned int)0 & 0b11111111;  
 
 }
-void VehicleBridge::AcanWatchdog()
-{
-    ros::Rate loop_rate(10); // rate  
-    while (ros::ok())
-    { ros::Duration duration = ros::Time::now() - Acan_callback_time;
-      // ros::Duration duration_steering = ros::Time::now() - steering_frame.header.stamp;
-      ros::Duration duration_accl = ros::Time::now() - scc_frame.header.stamp;
+// void VehicleBridge::AcanWatchdog()
+// {
+//     ros::Rate loop_rate(10); // rate  
+//     while (ros::ok())
+//     { ros::Duration duration = ros::Time::now() - Acan_callback_time;
+//       // ros::Duration duration_steering = ros::Time::now() - steering_frame.header.stamp;
+//       ros::Duration duration_accl = ros::Time::now() - scc_frame.header.stamp;
       
-      // if no can msg received in 0.2 sec
-      if(duration.toSec() > 0.2){        
-        ROS_WARN("Acan is empty for %lf secs", duration.toSec());
+//       // if no can msg received in 0.2 sec
+//       if(duration.toSec() > 0.2){        
+//         ROS_WARN("Acan is empty for %lf secs", duration.toSec());
       
-        Acan_recv_status = false;
+//         Acan_recv_status = false;
        
-      }
+//       }
 
-      // If no accerlation command for more than 0.5 sec, slow down vehicle
-      //  if(duration_accl.toSec() > 0.5){        
-      //   ROS_WARN("acceleration command is not arrived for %lf secs", duration_accl.toSec());
-      //   mtx_.lock();
-      //   accel_value = -100;
-      //   scc_frame.data[1] = (accel_value & 0b11111111);
-	    //   scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
-      //   mtx_.unlock();
-      // }
+//       // If no accerlation command for more than 0.5 sec, slow down vehicle
+//       //  if(duration_accl.toSec() > 0.5){        
+//       //   ROS_WARN("acceleration command is not arrived for %lf secs", duration_accl.toSec());
+//       //   mtx_.lock();
+//       //   accel_value = -100;
+//       //   scc_frame.data[1] = (accel_value & 0b11111111);
+// 	    //   scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+//       //   mtx_.unlock();
+//       // }
 
-     loop_rate.sleep();
-    }
-}
+//      loop_rate.sleep();
+//     }
+// }
 
 void VehicleBridge::AcanSender()
 {
@@ -333,34 +339,13 @@ void VehicleBridge::controlEffortCallback(const std_msgs::Float64& control_effor
 {
   // the stabilizing control effort
   control_effort = round(control_effort_input.data *100)/100;
-  scc_frame.header.stamp = ros::Time::now();
-  scc_frame.id = 0x303;
-  scc_frame.dlc = 4;
-  scc_frame.is_error = false;
-  scc_frame.is_extended = false;
-  scc_frame.is_rtr = false;
   accel_value = control_effort*100;
-  scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
-  scc_frame.data[1] = (accel_value & 0b11111111);
-	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
-  scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
   ROS_INFO("control_effort : %d", control_effort);
 }
 
 void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
-  steering_frame.header.stamp = ros::Time::now();
-  steering_frame.id = 0x300;
-  steering_frame.dlc = 3;
-  steering_frame.is_error = false;
-  steering_frame.is_extended = false;
-  steering_frame.is_rtr = false;
-  
-  short steer_value = (short)(msg->steering_angle);
+  steer_value = (short)(msg->steering_angle);
   ROS_INFO("steer value : %d", steer_value);
-  steering_frame.data[0] = (steer_value & 0b11111111);
-	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
-  // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
-  //  AcanPub.publish(steering_frame);
 }
 
 void VehicleBridge::SCCallback(std_msgs::Int64 msg){
@@ -435,7 +420,156 @@ void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
   light_frame.data[2] = (unsigned int)msg->hazard_light & 0b11111111;  
 }
 
+void VehicleBridge::stateMachine() {
+  ros::Rate loop_rate(50); // rate of cmd   
+  // cout << "states : " << ND << " " << EB << " " << RS << endl;
+  ROS_INFO_ONCE("start state machine");
+  int i = 0;
+  int p_count = 1;
+  int d_count = 1;
+  prev_gear = 1;
+  vehicle_status_.gear_info.gear == 1;
+  velCMD_KPH = 10;
+  whl_speed_mean_mps = 0;
+  while (ros::ok())
+  {  
+    if (!EB && !RS)
+    ND = 1;
+    if (ND) {
+      // For uphill and downhill state machine
+      // Parking sm
+      ROS_INFO_ONCE("Normal Driving");
+      // cout << "AD_GEAR_POS_CMD : " << AD_GEAR_POS_CMD  << endl;
+      if (i == 200) { //virtual
+        velCMD_KPH = 0;
+      }
+      else if (i == 400) { 
+        velCMD_KPH = 10;
+      }
+      else if (i == 600) { 
+        velCMD_KPH = 0;
+      }
+      // D -> P
+      if (whl_speed_mean_mps <= 0.5 && velCMD_KPH == 0 && prev_gear == 1) {
+        AD_GEAR_POS_CMD = 0;
+        gear_frame.header.stamp = ros::Time::now();
+        gear_frame.id = 0x304;
+        gear_frame.dlc = 1;
+        gear_frame.is_error = false;
+        gear_frame.is_extended = false;
+        gear_frame.is_rtr = false;
+        gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
+        if (i == 210 || i == 610) {
+          vehicle_status_.gear_info.gear = 0; //virtual  
+        }
+        if (vehicle_status_.gear_info.gear == 0 && p_count != 0) {
+          // check gear cmd 
+          ROS_INFO("Success : Parking Gear!");  
+          MODE_P = 1; //true
+          MODE_D = 0;
+          prev_gear = vehicle_status_.gear_info.gear;
+          p_count = 0;
+        }
+        else {
+          ROS_INFO("Waiting Parking Gear Change...");
+          MODE_P = 0;
+          p_count++;
+        }
+        // ROS_INFO("p count : %d", p_count);
+        
+      }
+      // P -> D 
+      else if (velCMD_KPH != 0 && prev_gear == 0) {
+        AD_GEAR_POS_CMD = 1;
+        gear_frame.header.stamp = ros::Time::now();
+        gear_frame.id = 0x304;
+        gear_frame.dlc = 1;
+        gear_frame.is_error = false;
+        gear_frame.is_extended = false;
+        gear_frame.is_rtr = false;
+        gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
+        if (i == 410) {
+          vehicle_status_.gear_info.gear = 1; //virtual  
+        }
 
+        if (vehicle_status_.gear_info.gear == 1 && d_count != 0) {
+          ROS_INFO("Success : Driving Gear!");
+          MODE_D = 1; //true 
+          MODE_P = 0;
+          prev_gear = vehicle_status_.gear_info.gear;
+          d_count = 0;
+        }
+        else {
+          ROS_INFO("Waiting Driving Gear Change...");
+          MODE_D = 0;
+          d_count++;
+        }
+      }
+      else {
+        ROS_INFO_ONCE("TO DO : Other states");
+      }
+      if (MODE_D) {
+        if (d_count == 0) {
+          ROS_INFO("Driving state");
+          d_count++;
+        }
+        // briege driving mode accel & mdps command  
+        scc_frame.header.stamp = ros::Time::now();
+        scc_frame.id = 0x303;
+        scc_frame.dlc = 4;
+        scc_frame.is_error = false;
+        scc_frame.is_extended = false;
+        scc_frame.is_rtr = false;
+        scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+        scc_frame.data[1] = (accel_value & 0b11111111);
+        scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+        scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+
+        steering_frame.header.stamp = ros::Time::now();
+        steering_frame.id = 0x300;
+        steering_frame.dlc = 3;
+        steering_frame.is_error = false;
+        steering_frame.is_extended = false;
+        steering_frame.is_rtr = false;
+        steering_frame.data[0] = (steer_value & 0b11111111);
+        steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+        // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
+        // ROS_INFO("Sending Driving command...");
+      }
+
+      if (MODE_P) {
+        if (p_count == 0) {
+          ROS_INFO("Parking state");
+          p_count++;
+        }
+        // do parking mode command 
+        scc_frame.header.stamp = ros::Time::now();
+        scc_frame.id = 0x303;
+        scc_frame.dlc = 4;
+        scc_frame.is_error = false;
+        scc_frame.is_extended = false;
+        scc_frame.is_rtr = false;
+        scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+        scc_frame.data[1] = (0 & 0b11111111);
+        scc_frame.data[2] = ((0 >> 8)&0b11111111);
+        scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+
+        steering_frame.header.stamp = ros::Time::now();
+        steering_frame.id = 0x300;
+        steering_frame.dlc = 3;
+        steering_frame.is_error = false;
+        steering_frame.is_extended = false;
+        steering_frame.is_rtr = false;
+        steering_frame.data[0] = (steer_value & 0b11111111);
+        steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+        // steering_frame.data[2] = (unsigned int)msg->mode & 0b11111111;
+        // ROS_INFO("Sending Parking command...");
+      }
+    }
+    loop_rate.sleep();
+    i++;
+  }
+}
 
 void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t level)
 {
@@ -517,12 +651,11 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   light_frame.data[2] = (unsigned int)AD_HAZARD_STAT & 0b11111111;  
 }
 
+
 int main (int argc, char** argv)
 {
   ros::init(argc, argv, "VehicleBridge");
   
-  
-
   ros::NodeHandle nh_can, nh_acc, nh_steer, nh_light;
   VehicleBridge VehicleBridge_(nh_can,nh_acc,nh_steer,nh_light);
 
