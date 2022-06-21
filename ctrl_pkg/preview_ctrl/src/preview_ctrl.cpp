@@ -323,7 +323,7 @@ void PreviewCtrl::ControlLoop()
         ROS_INFO("target_speed = %f", target_speed);
         std_msgs::Float64 vel_msg;
         vel_msg.data = target_speed;
-        velPub.publish(vel_msg);
+        // velPub.publish(vel_msg);
 
         delta_cmd = steer_filter.filter(delta_cmd);            
         

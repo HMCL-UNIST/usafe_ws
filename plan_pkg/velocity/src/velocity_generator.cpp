@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <cmath>
 
+
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
 #include <vector>
@@ -24,22 +25,34 @@ VelocityGenerator::VelocityGenerator()
     local_traj_init = false;
     visualize = true;
     new_vel = false;
+    previous_step = false;
     ttt = 0;
 
     // Subscribe
     local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityGenerator::trajCallback,this);
     acc_target_vel_sub = nh_.subscribe("/acc_target_vel", 1, &VelocityGenerator::targetCallback, this);
-    vel_sub = nh_.subscribe("/pose_estimate", 1, &VelocityGenerator::velCallback, this);
+    // vel_sub = nh_.subscribe("/pose_estimate", 1, &VelocityGenerator::velCallback, this);
+    wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityGenerator::wheelCallback, this);
     acc_sub = nh_.subscribe("/bias_acc", 1, &VelocityGenerator::accCallback, this);
 
     // Publish
     vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint", 1, true);
-    vel_vis_pub = nh_.advertise<visualization_msgs::MarkerArray>( "/ref_vel_prof_viz", 0 );
+    vel_vis_pub = nh_.advertise<visualization_msgs::Marker>( "/ref_vel_prof_viz", 0 );
     vel_debug  = nh_.advertise<geometry_msgs::PoseStamped>("/vel_debug", 2);
 
+    // ros::Timer vel_timer = nh_.createTimer(ros::Duration(0.1), &VelocityGenerator::CalcVel,this);  
+    boost::thread callbackhandler(&VelocityGenerator::callbackthread,this); 
 
 }
 
+void VelocityGenerator::callbackthread()
+{   
+    ros::Rate loop_rate(10); // rate  
+    while(ros::ok()){
+        CalcVel();
+        loop_rate.sleep();
+    }
+}
 void VelocityGenerator::CalcVel()
 {
 
@@ -60,7 +73,7 @@ void VelocityGenerator::CalcVel()
         xf[1] = target_acc_vel;
         xf[2] = 0;
         // double xf[3] = {10, target_acc_vel, 0};
-        std::cout << "Calculate the velocity: c_vel" << current_vel << " r_vel " << target_acc_vel << "acc" << current_acc << std::endl;
+        // std::cout << "Calculate the velocity: c_vel" << current_vel << " r_vel " << target_acc_vel << "acc" << current_acc << std::endl;
     } 
     else{
         // double xf[3] = {10, speed_limit, 0};
@@ -68,20 +81,27 @@ void VelocityGenerator::CalcVel()
         xf[1] = speed_limit;
         xf[2] = 0;
     }
+    if (previous_step) {
+        std::cout << "*********" << std::endl;
+        xf[1] = xf[1]*0.5;
+    }
+    
 
     bool fail2solve = false;
+    
     double ref_speed = v0;
 
     debug_msg.header.stamp = ros::Time::now(); 
     debug_msg.pose.position.x = v0;
     debug_msg.pose.position.y = xf[1];
+    std::cout << "current_vel" << current_vel <<  std::endl;
     std::cout << "r_vel" << xf[1] <<  std::endl;
     
 
     int k = 0;
     while(1)
     {   
-        std::cout << "k is " << k << std::endl;
+        // std::cout << "k is " << k << std::endl;
         double sf = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) + 1/4*P[1]*pow(P[2],4);
         double vf = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
         double af = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
@@ -89,15 +109,31 @@ void VelocityGenerator::CalcVel()
         
         double del_x[3] = {xf[0] - sf, xf[1]- vf, xf[2]- af};
 
+
+        if (speed_limit <= 20/3.6)
+        {
+            if (current_vel < speed_limit)
+                ref_speed = speed_limit;
+                break;
+        }
+
         if (abs(del_x[0]) < 0.1 && abs(del_x[1]) < 0.1 && abs(del_x[2]) < 0.1) {        
             
-            double time = 0.5;
-            
+            double time = 1;
+
+            if (abs(current_vel-xf[1]) > 8)
+                time = P[2]*0.75;
+
             if (P[2] > time) {
                 ref_speed = v0 + a0*time + P[0]*pow(time,2) + P[1]*pow(time,3);
             }
             else{
                 ref_speed = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
+            }
+
+            if (xf[1] = 0 && current_vel < 1)
+            {
+                ref_speed = 0;
             }
 
             double N = P[2]/0.2;
@@ -114,12 +150,14 @@ void VelocityGenerator::CalcVel()
             {
                 viz_vel_prof(profile);
             }
-            std::cout << "1 sbreak "  << std::endl;
+            // std::cout << "1 sbreak "  << std::endl;
+            previous_step = false;
             break;
         }
-        else if (k >= 30 || fail2solve) {
+        else if (k >= 50 || fail2solve) {
             ref_speed = v0;
             std::cout << "Fail" << std::endl;
+            previous_step = true;
             break;
         }
 
@@ -203,7 +241,13 @@ void VelocityGenerator::CalcVel()
 
 
     }
-    vel_msg.data = ref_speed;
+
+    double rref_speed = ref_speed*3.6;
+    if (rref_speed >= 70) {
+        rref_speed = 70;
+    }
+    vel_msg.data = rref_speed;
+    
     vel_pub.publish(vel_msg);
 
     debug_msg.pose.position.z = ref_speed;
@@ -216,7 +260,7 @@ void VelocityGenerator::CalcVel()
     }
     
     ttt++;
-    std::cout << "target" << new_target_vel << std::endl;
+    // std::cout << "target" << new_target_vel << std::endl;
 
 
 }
@@ -284,7 +328,7 @@ void VelocityGenerator::trajCallback(const hmcl_msgs::Lane& msg)
         if (total_dis >= 15)
             break;
     }
-    std::cout << "Get reference velocity: " << msg.speed_limit << std::endl;
+    std::cout << "Get reference velocity: " << speed_limit << std::endl;
 
     
 }
@@ -294,8 +338,15 @@ void VelocityGenerator::velCallback(const nav_msgs::Odometry& state_msg)
 {
     // std::cout << "Get velocity: " << state_msg.twist.twist.linear.x << std::endl;
     current_vel = abs(state_msg.twist.twist.linear.x);
-    
-    CalcVel();
+
+
+}
+
+void VelocityGenerator::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg)
+{
+    // std::cout << "Get velocity: " << state_msg.twist.twist.linear.x << std::endl;
+    current_vel = abs(state_msg.wheelspeed.wheel_speed);
+
 
 }
 
@@ -320,6 +371,7 @@ int main (int argc, char** argv)
 
     ROS_INFO("velocity profile generator initialize");
     VelocityGenerator vel;
+
 
     ros::spin();
     
