@@ -25,6 +25,7 @@
 #include <ros/ros.h>
 #include <ros/time.h>
 #include <std_msgs/Float64.h>
+#include <std_msgs/Int64.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
 
@@ -49,18 +50,37 @@
 #define PI 3.14159265358979323846264338
 
 
+enum struct DrivingState {Init = 0, NormalDriving = 1, EmergencyBrake = 2, Parking = 3}; 
+
+
+
+
+inline const char* stateToString(DrivingState v)
+{
+    switch (v)
+    {
+        case DrivingState::Init:   return "Init";
+        case DrivingState::NormalDriving:   return "NormalDriving";
+        case DrivingState::EmergencyBrake:   return "EmergencyBrake";
+        case DrivingState::Parking: return "Parking";
+        default:      return "[Unknown DrivingState]";
+    }
+}
+
+
+
 class VehicleBridge 
 {  
 private:
 ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub, emergency_stopSub;
-ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub;
+ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub;
 ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
 dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
-
+DrivingState drivingState;
 // boost::mutex optimizedStateMutex_;
 bool can_recv_status;
 bool Acan_recv_status;
@@ -82,11 +102,18 @@ int steering_offset = 8;
 // variables for dynamic configure 
 bool Master_Switch, AD_STR_MODE_CMD, AD_SCC_TAKEOVER_CMD, AD_LEFT_TURNLAMP_STAT;
 bool AD_RIGHT_TURNLAMP_STAT, AD_HAZARD_STAT;
-int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;       
+int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;    
+int MODE_D = 0, MODE_P = 0, DRIVING = 0, PARKING = 0;   
 double control_effort;    
 double sign = 1;
 double test_count; 
 short accel_value;
+
+int whl_speed_mean_mps;
+int prev_gear;
+short steer_value;
+
+
 ros::Time Acan_callback_time;
 ros::Time Ccan_callback_time;
 public:
@@ -94,6 +121,8 @@ VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& 
 ~VehicleBridge();
 void AcanSender();
 void AcanWatchdog();
+void TestCase();
+void DrivingStateMachine();
 
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
 void CcanCallback(can_msgs::FrameConstPtr ccan_data);

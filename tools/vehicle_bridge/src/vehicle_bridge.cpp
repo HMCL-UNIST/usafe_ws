@@ -42,7 +42,8 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   Acan_recv_status(false), 
   Ccan_recv_status(false), 
   emergency_count(0),
-  emergency_stop_activate(false)
+  emergency_stop_activate(false),
+  drivingState(DrivingState::Init)
 {
   Acan_callback_time = ros::Time::now();
   
@@ -66,11 +67,13 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   
   ROS_INFO("Init A-CAN Handler");
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
-  boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
- 
+  // boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
+  boost::thread statemachine(&VehicleBridge::DrivingStateMachine,this); 
+  boost::thread test(&VehicleBridge::TestCase,this); 
+
   
-  f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
-	srv.setCallback(f);
+  // f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
+	// srv.setCallback(f);
 }
 
 VehicleBridge::~VehicleBridge()
@@ -232,13 +235,13 @@ void VehicleBridge::CcanCallback(can_msgs::FrameConstPtr ccan_data)
 }
 
 void VehicleBridge::InitCanmsg(){
-  steering_frame.header.stamp = ros::Time::now();
+    steering_frame.header.stamp = ros::Time::now();
   steering_frame.id = 0x300;
   steering_frame.dlc = 3;
   steering_frame.is_error = false;
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
-  short steer_value = (short)(0.0+steering_offset) ; // input  in radian, convert into degree
+  short steer_value = (short)(0.0) ; // input  in radian, convert into degree
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)0 & 0b11111111;
@@ -249,11 +252,26 @@ void VehicleBridge::InitCanmsg(){
   scc_frame.is_error = false;
   scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
-  accel_value = (0.0*100);
+  accel_value = 0;
   scc_frame.data[0] = (unsigned int)0 & 0b11111111;
   scc_frame.data[1] = (accel_value & 0b11111111);
 	scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
   scc_frame.data[3] = (unsigned int)0 & 0b11111111;
+
+  // secondary controller(sc)
+  // sc_scc_frame.header.stamp = ros::Time::now();
+  // sc_scc_frame.id = 0x700;
+  // sc_scc_frame.dlc = 6;
+  // sc_scc_frame.is_error = false;
+  // sc_scc_frame.is_extended = false;
+  // sc_scc_frame.is_rtr = false;
+  // unsigned int vel_cmd = (unsigned int)(0);
+  // sc_scc_frame.data[0] = (unsigned int)0 & 0b11111111; //sc on/off
+  // sc_scc_frame.data[1] = (vel_cmd & 0b11111111);
+	// sc_scc_frame.data[2] = ((vel_cmd >> 8)&0b11111111);
+  // sc_scc_frame.data[3] = (0 & 0b11111111);
+	// sc_scc_frame.data[4] = ((0 >> 8)&0b11111111);
+  // sc_scc_frame.data[5] = (unsigned int)0 & 0b11111111; // takeover
   
   gear_frame.header.stamp = ros::Time::now();
   gear_frame.id = 0x304;
@@ -272,36 +290,6 @@ void VehicleBridge::InitCanmsg(){
   light_frame.data[0] = (unsigned int)0 & 0b11111111;  
   light_frame.data[1] = (unsigned int)0 & 0b11111111;  
   light_frame.data[2] = (unsigned int)0 & 0b11111111;  
-
-}
-void VehicleBridge::AcanWatchdog()
-{
-    ros::Rate loop_rate(10); // rate  
-    while (ros::ok())
-    { ros::Duration duration = ros::Time::now() - Acan_callback_time;
-      // ros::Duration duration_steering = ros::Time::now() - steering_frame.header.stamp;
-      ros::Duration duration_accl = ros::Time::now() - scc_frame.header.stamp;
-      
-      // if no can msg received in 0.2 sec
-      if(duration.toSec() > 0.2){        
-        ROS_WARN("Acan is empty for %lf secs", duration.toSec());
-      
-        Acan_recv_status = false;
-       
-      }
-
-      // If no accerlation command for more than 0.5 sec, slow down vehicle
-      //  if(duration_accl.toSec() > 0.5){        
-      //   ROS_WARN("acceleration command is not arrived for %lf secs", duration_accl.toSec());
-      //   mtx_.lock();
-      //   short accel_value = (short)(-1*100);
-      //   scc_frame.data[1] = (accel_value & 0b11111111);
-	    //   scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
-      //   mtx_.unlock();
-      // }
-
-     loop_rate.sleep();
-    }
 }
 
 void VehicleBridge::AcanSender()
@@ -447,6 +435,228 @@ void VehicleBridge::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
 }
 
 
+void VehicleBridge::TestCase(){
+  ros::Rate test_loop_rate(10); // rate 
+  int lc = 0;
+
+  while(ros::ok())
+  {
+    if(lc == 0) {
+      vehicle_status_.gear_info.gear == 0;
+      whl_speed_mean_mps = 0;
+      drivingState = DrivingState::Init;
+      ROS_INFO("Test Case : Init");
+    }
+    if (lc == 20) {
+      scc_info_.scc_mode = 2;
+      scc_info_.acceleration = 0;
+      ROS_INFO("Test Case : Go to normal driving");
+    }
+    if (lc == 30) {
+      vehicle_status_.gear_info.gear = 1;
+      ROS_INFO("Test Case : GEAR : DRIVING");
+    }
+    if(lc == 100) {
+      PARKING = 1;
+      DRIVING = 0;
+      ROS_INFO("Test Case : Go to PARKING");
+    }
+    if (lc == 120) {
+      vehicle_status_.gear_info.gear = 0;
+      ROS_INFO("Test Case : GEAR : PARKING");
+    }
+    if (lc == 200) {
+      DRIVING = 1;
+      PARKING = 0;
+      ROS_INFO("Test Case : Go to DRIVING");
+    }
+
+    lc++; 
+    test_loop_rate.sleep();
+  }
+  
+  
+}
+
+void VehicleBridge::DrivingStateMachine() {
+  ros::Rate state_loop_rate(10); // rate of cmd   
+  // cout << "states : " << ND << " " << EB << " " << RS << endl;
+  ROS_INFO_ONCE("start state machine");
+  int i = 0;
+  int p_count = 1;
+  int d_count = 1;
+  
+  while (ros::ok())
+  {  
+    // ROS_INFO("drivingState = %s",stateToString(drivingState));
+    switch(drivingState){      
+      case DrivingState::Init: 
+        // AWAIT BEHAVIOR & GO TO DRIVING GEAR -> NORMAL DRIVING STAT
+        AD_SCC_MODE_CMD = 2;
+        // AWAITING BEHAVIOR : Always SCC Ready with 0 accel      
+        scc_frame.header.stamp = ros::Time::now();
+        scc_frame.id = 0x303;
+        scc_frame.dlc = 4;
+        scc_frame.is_error = false;
+        scc_frame.is_extended = false;
+        scc_frame.is_rtr = false;
+        scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+        scc_frame.data[1] = (0 & 0b11111111);
+        scc_frame.data[2] = ((0 >> 8)&0b11111111);
+        scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+
+        steering_frame.header.stamp = ros::Time::now();
+        steering_frame.id = 0x300;
+        steering_frame.dlc = 3;
+        steering_frame.is_error = false;
+        steering_frame.is_extended = false;
+        steering_frame.is_rtr = false;
+        steering_frame.data[0] = (steer_value & 0b11111111);
+        steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+        // GO TO DRIVING GEAR
+        if (whl_speed_mean_mps <= 0.1 && scc_info_.scc_mode == 2 && scc_info_.acceleration == 0) {
+          // CONDITION : SCC ON & ACCEL CMD = 0 & SPEED = 0 
+          AD_GEAR_POS_CMD = 1;
+          gear_frame.header.stamp = ros::Time::now();
+          gear_frame.id = 0x304;
+          gear_frame.dlc = 1;
+          gear_frame.is_error = false;
+          gear_frame.is_extended = false;
+          gear_frame.is_rtr = false;
+          gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
+          // CHECK GEAR STAT : DRIVING
+          if (vehicle_status_.gear_info.gear == 1 && d_count != 0) {
+            ROS_INFO("Success : Driving Gear!");
+            MODE_D = 1; //true 
+            MODE_P = 0;
+            d_count = 0;
+          }
+          else if (MODE_D != 1) {
+            ROS_INFO("Waiting Driving Gear Change...");
+            MODE_D = 0;
+            d_count++;
+          }
+        }
+        else {
+          ROS_WARN("CAN NOT GO TO DRIVING : SPEED : %f, SCC MODE : %d, SCC CMD : %d", whl_speed_mean_mps, scc_info_.scc_mode, scc_info_.acceleration); 
+        }       
+        // GO TO NORMAL DRIVING STAT
+        if (scc_info_.scc_mode == 2 && scc_info_.acceleration == 0 && whl_speed_mean_mps <= 0.1 && MODE_D == 1) { 
+          // condition : SCC MODE = ON, SCC ACCEL CMD = 0, SPEED = 0
+          drivingState = DrivingState::NormalDriving;
+        }
+        // else scc not ready or veloicy no_type (CAN error) 
+        // run and catch 
+          // -> emergency stop? 
+          
+      break;  
+
+      case DrivingState::NormalDriving:
+        // NORMAL DRIVING BEHAVIOR
+        scc_frame.header.stamp = ros::Time::now();
+        scc_frame.id = 0x303;
+        scc_frame.dlc = 4;
+        scc_frame.is_error = false;
+        scc_frame.is_extended = false;
+        scc_frame.is_rtr = false;
+        scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+        scc_frame.data[1] = (accel_value & 0b11111111);
+        scc_frame.data[2] = ((accel_value >> 8)&0b11111111);
+        scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+
+        steering_frame.header.stamp = ros::Time::now();
+        steering_frame.id = 0x300;
+        steering_frame.dlc = 3;
+        steering_frame.is_error = false;
+        steering_frame.is_extended = false;
+        steering_frame.is_rtr = false;
+        steering_frame.data[0] = (steer_value & 0b11111111);
+        steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+        
+        // GO TO PARKING STAT
+        if (whl_speed_mean_mps <= 0.1 && PARKING) {
+          drivingState = DrivingState::Parking;
+        }
+
+        // if watchdog error{
+        //   state =DrivingState::EmergencyBrake
+        //   }
+
+      break;  
+
+      // case DrivingState::EmergencyBrake:
+      //   if Velopcity > 0 
+      //       set scc -> -1 
+      //   if velocity == 0  
+      //     state =DrivingState::Parking
+            
+      // break;  
+
+      case DrivingState::Parking:
+        // AWAIT BEHAVIOR & GO TO PARKING -> CHECK
+        // AWAIT BEHAVIOR
+        scc_frame.header.stamp = ros::Time::now();
+        scc_frame.id = 0x303;
+        scc_frame.dlc = 4;
+        scc_frame.is_error = false;
+        scc_frame.is_extended = false;
+        scc_frame.is_rtr = false;
+        scc_frame.data[0] = (unsigned int)AD_SCC_MODE_CMD & 0b11111111;
+        scc_frame.data[1] = (0 & 0b11111111);
+        scc_frame.data[2] = ((0 >> 8)&0b11111111);
+        scc_frame.data[3] = (unsigned int)AD_SCC_TAKEOVER_CMD & 0b11111111;
+
+        steering_frame.header.stamp = ros::Time::now();
+        steering_frame.id = 0x300;
+        steering_frame.dlc = 3;
+        steering_frame.is_error = false;
+        steering_frame.is_extended = false;
+        steering_frame.is_rtr = false;
+        steering_frame.data[0] = (steer_value & 0b11111111);
+        steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+        // GO TO PARKING GEAR
+        if (whl_speed_mean_mps <= 0.1) {
+          AD_GEAR_POS_CMD = 0;
+          gear_frame.header.stamp = ros::Time::now();
+          gear_frame.id = 0x304;
+          gear_frame.dlc = 1;
+          gear_frame.is_error = false;
+          gear_frame.is_extended = false;
+          gear_frame.is_rtr = false;
+          gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
+          // CHECK GEAR STTAT : PARKING 
+          if (vehicle_status_.gear_info.gear == 0 && p_count != 0) {
+            ROS_INFO("Success : Parking Gear!");  
+            MODE_P = 1; //true
+            MODE_D = 0;
+            p_count = 0;
+          }
+          else if (MODE_P != 1) {
+            ROS_INFO("Waiting Parking Gear Change...");
+            MODE_P = 0;
+            p_count++;
+          }
+        }
+        else {
+          ROS_WARN("CAN NOT GO TO DRIVING : Velocity is not zero!");
+        }
+        
+        if (whl_speed_mean_mps <= 0.1 && DRIVING) {
+          drivingState = DrivingState::Init;
+        }
+
+      break;
+
+      default:
+        ROS_INFO("DRIVING default Mode");
+      break; 
+    }
+    i++;
+    state_loop_rate.sleep();
+  }
+}
+
+
 
 void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t level)
 {
@@ -476,6 +686,9 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   steering_frame.header.stamp = ros::Time::now();
   steering_frame.id = 0x300;
   steering_frame.dlc = 3;
+  steering_frame.is_error = false;
+  steering_frame.is_extended = false;
+  steering_frame.is_rtr = false;
   // if( steering_angle_test > 0.1)
   // steering_angle_test = steering_angle_test + 10 
   // short steer_value = (short)(AD_STR_POS_CMD+steering_offset) ; // input  in radian, convert into degree
@@ -483,7 +696,7 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)AD_STR_MODE_CMD & 0b11111111;
-  AcanPub.publish(steering_frame);
+  // AcanPub.publish(steering_frame);
   // scc_frame.header.stamp = ros::Time::now();
   // scc_frame.id = 0x303;
   // scc_frame.dlc = 4;
@@ -496,8 +709,17 @@ void VehicleBridge::dyn_callback(vehicle_bridge::testConfig &config, uint32_t le
   gear_frame.header.stamp = ros::Time::now();
   gear_frame.id = 0x304;
   gear_frame.dlc = 1;
+  gear_frame.is_error = false;
+  gear_frame.is_extended = false;
+  gear_frame.is_rtr = false;
   gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111; 
 
+  light_frame.header.stamp = ros::Time::now();
+  light_frame.id = 0x306;
+  light_frame.dlc = 3;
+  light_frame.is_error = false;
+  light_frame.is_extended = false;
+  light_frame.is_rtr = false;
   light_frame.data[0] = (unsigned int)AD_LEFT_TURNLAMP_STAT & 0b11111111;  
   light_frame.data[1] = (unsigned int)AD_RIGHT_TURNLAMP_STAT & 0b11111111;  
   light_frame.data[2] = (unsigned int)AD_HAZARD_STAT & 0b11111111;  
