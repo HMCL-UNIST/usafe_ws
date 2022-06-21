@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+
+<launch>
+
+
+  <node name="mobileye" pkg="mobileye" type="mobileye_node.py" output="screen">      
+        
+      <!-- <remap from="/fix" to="/carla/ego_vehicle/gnss/gnss1/fix"/> -->
+      <!-- <remap from="/current_pose" to="/gnss_pose_world"/> -->
+      <!-- <remap from="/current_pose" to="/pose_estimate"/> -->
+      
+     
+
+      
+
+      
+  </node>
+
+
+  
+</launch>

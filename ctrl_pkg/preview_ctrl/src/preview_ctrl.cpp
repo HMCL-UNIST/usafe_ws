@@ -308,15 +308,18 @@ void PreviewCtrl::ControlLoop()
         double kappa = 0;
         double cur_lim_vel = sqrt(alat_lim/kappa);
         double target_speed = std::min(avg_speed,cur_lim_vel);
+      //////////////////////////////////////////////////
+      ////////////////////////////////////////////////// Lateral error filter 
         // filter by error , 0.3 m is margin 
         // 1m error -> reduce to 20%
         // 0.5m error -> reduce to 60%
         // Y = -0.8X + 1
-        double l_lim= 0.2;        
-        double filter_ratio = -0.8*std::max(l_lim, Xk(0))+1;
-        filter_ratio = std::max(l_lim,std::min(filter_ratio,1.0));
-        target_speed = target_speed*filter_ratio;
-
+      //////////////////////////////////////////////////
+        // double l_lim= 0.2;        
+        // double filter_ratio = -0.8*std::max(l_lim, Xk(0))+1;
+        // filter_ratio = std::max(l_lim,std::min(filter_ratio,1.0));
+        // target_speed = target_speed*filter_ratio;
+      //////////////////////////////////////////////////
         ROS_INFO("target_speed = %f", target_speed);
         std_msgs::Float64 vel_msg;
         vel_msg.data = target_speed;
