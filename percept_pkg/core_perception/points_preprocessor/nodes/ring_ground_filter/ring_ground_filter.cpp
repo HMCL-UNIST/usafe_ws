@@ -11,7 +11,8 @@
 #include <pcl_conversions/pcl_conversions.h>
 #include <pcl/point_types.h>
 #include <velodyne_pointcloud/point_types.h>
-#include <opencv/cv.h>
+#include <opencv2/opencv.hpp>
+
 
 enum Label
 {
@@ -191,8 +192,8 @@ void GroundFilter::InitRadiusTable(int in_model)
 
 void GroundFilter::InitDepthMap(int in_width)
 {
-  const int mOne = -1;
-  index_map_ = cv::Mat_<int>(vertical_res_, in_width, mOne);
+  const int mOne =  -1;
+  index_map_ = cv::Mat(vertical_res_, in_width, mOne);
 }
 
 void GroundFilter::FilterGround(const pcl::PointCloud<velodyne_pointcloud::PointXYZIR>::ConstPtr &in_cloud_msg,

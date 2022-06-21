@@ -65,6 +65,7 @@ private:
   double min_clipping_height_;
   double max_clipping_height_;
 
+  bool is_map_received = false;
   std::string map_frame_;
 
   void configCallback(const autoware_config_msgs::ConfigCompareMapFilter::ConstPtr& config_msg_ptr);
@@ -104,21 +105,37 @@ void CompareMapFilter::configCallback(const autoware_config_msgs::ConfigCompareM
 
 void CompareMapFilter::pointsMapCallback(const sensor_msgs::PointCloud2::ConstPtr& map_cloud_msg_ptr)
 {
-  pcl::PointCloud<pcl::PointXYZI>::Ptr map_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
-  pcl::fromROSMsg(*map_cloud_msg_ptr, *map_cloud_ptr);
-  tree_.setInputCloud(map_cloud_ptr);
+  if (is_map_received)
+  {
+    return ;
+  }
+  else {
+    pcl::PointCloud<pcl::PointXYZI>::Ptr map_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
+    pcl::fromROSMsg(*map_cloud_msg_ptr, *map_cloud_ptr);
+    tree_.setInputCloud(map_cloud_ptr);
 
-  map_frame_ = map_cloud_msg_ptr->header.frame_id;
+    map_frame_ = map_cloud_msg_ptr->header.frame_id;
+    is_map_received = true;
+    std::cout << "Compared filter : map received" << std::endl;
+  }
+  
 }
 
 void CompareMapFilter::sensorPointsCallback(const sensor_msgs::PointCloud2::ConstPtr& sensorTF_cloud_msg_ptr)
 {
+  if (!is_map_received)
+  {
+    return;
+  }
+  else{
   const ros::Time sensor_time = sensorTF_cloud_msg_ptr->header.stamp;
   const std::string sensor_frame = sensorTF_cloud_msg_ptr->header.frame_id;
 
+  std::cout << "point listen" << std::endl;
+
   pcl::PointCloud<pcl::PointXYZI>::Ptr sensorTF_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::fromROSMsg(*sensorTF_cloud_msg_ptr, *sensorTF_cloud_ptr);
-
+  std::cout << "point listen2" << std::endl;
   pcl::PointCloud<pcl::PointXYZI>::Ptr sensorTF_clipping_height_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
   sensorTF_clipping_height_cloud_ptr->header = sensorTF_cloud_ptr->header;
   for (size_t i = 0; i < sensorTF_cloud_ptr->points.size(); ++i)
@@ -129,7 +146,7 @@ void CompareMapFilter::sensorPointsCallback(const sensor_msgs::PointCloud2::Cons
       sensorTF_clipping_height_cloud_ptr->points.push_back(sensorTF_cloud_ptr->points[i]);
     }
   }
-
+  std::cout << "point liste3" << std::endl;
   pcl::PointCloud<pcl::PointXYZI>::Ptr mapTF_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
   try
   {
@@ -142,17 +159,18 @@ void CompareMapFilter::sensorPointsCallback(const sensor_msgs::PointCloud2::Cons
     ROS_ERROR("Transform error: %s", ex.what());
     return;
   }
-
+  
   pcl::PointCloud<pcl::PointXYZI>::Ptr mapTF_match_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
   pcl::PointCloud<pcl::PointXYZI>::Ptr mapTF_unmatch_cloud_ptr(new pcl::PointCloud<pcl::PointXYZI>);
+  std::cout << "point listen4" << std::endl;
   searchMatchingCloud(mapTF_cloud_ptr, mapTF_match_cloud_ptr, mapTF_unmatch_cloud_ptr);
-
+  std::cout << "point listen5" << std::endl;
   sensor_msgs::PointCloud2 mapTF_match_cloud_msg;
   pcl::toROSMsg(*mapTF_match_cloud_ptr, mapTF_match_cloud_msg);
   mapTF_match_cloud_msg.header.stamp = sensor_time;
   mapTF_match_cloud_msg.header.frame_id = map_frame_;
   mapTF_match_cloud_msg.fields = sensorTF_cloud_msg_ptr->fields;
-
+  std::cout << "point liste6" << std::endl;
   sensor_msgs::PointCloud2 sensorTF_match_cloud_msg;
   try
   {
@@ -182,6 +200,9 @@ void CompareMapFilter::sensorPointsCallback(const sensor_msgs::PointCloud2::Cons
     return;
   }
   unmatch_points_pub_.publish(sensorTF_unmatch_cloud_msg);
+
+  std::cout << "point listen end" << std::endl;
+  }
 }
 
 void CompareMapFilter::searchMatchingCloud(const pcl::PointCloud<pcl::PointXYZI>::Ptr in_cloud_ptr,
@@ -197,10 +218,14 @@ void CompareMapFilter::searchMatchingCloud(const pcl::PointCloud<pcl::PointXYZI>
   std::vector<int> nn_indices(1);
   std::vector<float> nn_dists(1);
   const double squared_distance_threshold = distance_threshold_ * distance_threshold_;
-
+  std::cout << "check1" << std::endl;
   for (size_t i = 0; i < in_cloud_ptr->points.size(); ++i)
   {
+    std::cout << "check2     " << in_cloud_ptr->points[i].x << std::endl;
+    std::cout << "nn_indices "   << nn_indices[0] << std::endl;
+    std::cout << "nn_dists     " << nn_dists[0] << std::endl;
     tree_.nearestKSearch(in_cloud_ptr->points[i], 1, nn_indices, nn_dists);
+    std::cout << "check3" << std::endl;
     if (nn_dists[0] <= squared_distance_threshold)
     {
       match_cloud_ptr->points.push_back(in_cloud_ptr->points[i]);

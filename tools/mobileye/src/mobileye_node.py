@@ -17,9 +17,13 @@ class mobileyeSub():
         rospy.init_node("dbw_mobileye_node")
         self.mobPub = rospy.Publisher('/Mobileye_Info', MobileyeInfo, queue_size=20)
         self.objs_Pub = rospy.Publisher('/detected_objs', DetectedObjectArray, queue_size=10)
-        self.objs_viz_Pub = rospy.Publisher('/detected_objs', MarkerArray, queue_size=2)
-        
+        self.objs_viz_Pub = rospy.Publisher('/detected_objs_viz', MarkerArray, queue_size=2)
+        self.can_sub = rospy.Subscriber("/received_messages", Frame, self.data_pub)
+        self.poseSub = rospy.Subscriber("/pose_estimate", Odometry, self.poseCallback)
+        self.timerSub = rospy.Timer(rospy.Duration(0.1), self.detected_obj_timer)
         self.frame_ok = 0
+        self.pose_ready = False
+        self.ego_geo_pose = Pose()
         self.mobmsg = MobileyeInfo()
         self.obstacle_data = [ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData()]
         self.next_lane = [LKAlane(),LKAlane(),LKAlane(),LKAlane(),LKAlane(),LKAlane(),LKAlane(),LKAlane()]
@@ -31,7 +35,8 @@ class mobileyeSub():
     def objs_marker_gen(self,objs):
         # objs is DetectedObjectArray msg
         markers = MarkerArray()
-        for i, obj in objs:
+        for i in range(len(objs.objects)):
+            obj = objs.objects[i]
             marker = self.obj_marker_gen(obj.pose,i)
             markers.markers.append(marker)
         return markers
@@ -41,7 +46,7 @@ class mobileyeSub():
         marker.header.frame_id = "/map"
         marker.header.stamp = rospy.Time.now()
         # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
-        marker.type = 0
+        marker.type = 1
         marker.id = id
         # Set the scale of the marker
         marker.scale.x = 1.0
@@ -86,21 +91,26 @@ class mobileyeSub():
                                                                 self.ego_geo_pose.orientation.z, self.ego_geo_pose.orientation.w])[2]
 
                 local_delta_x = self.obstacle_data[i].obstacle_position_x
+                add_obj =True
+                if(local_delta_x < 0.5):
+                    add_obj =False
                 local_delta_y = self.obstacle_data[i].obstacle_position_y
+                
                 delta_x = local_delta_x*math.cos(self.ego_yaw)-local_delta_y*math.sin(self.ego_yaw)
                 delta_y = local_delta_x*math.sin(self.ego_yaw)+local_delta_y*math.cos(self.ego_yaw)
 
                 obj_msg.pose.position.x = self.ego_geo_pose.position.x + delta_x
                 obj_msg.pose.position.y = self.ego_geo_pose.position.y + delta_y            
             else:
+                
                 obj_msg.pose.position.x = self.ego_geo_pose.position.x
                 obj_msg.pose.position.y = self.ego_geo_pose.position.y
 
             obj_msg.velocity = self.obstacle_data[i].obstacle_relative_velocity_x
-            
-            objs_msg.objects.append(obj_msg)
+            if(add_obj):
+                objs_msg.objects.append(obj_msg)
 
-        self.objs_Pub(objs_msg)
+        self.objs_Pub.publish(objs_msg)
 
 
         ## Visualize detected obj
@@ -278,6 +288,7 @@ class mobileyeSub():
             self.mobmsg.obstacle_status.failsafe = (self.frame_data[5]%32)//2
 
         elif data.id >= 0x739 and data.id <= 0x73b+(self.mobmsg.obstacle_status.number_of_obstacles-1)*3:
+            
             self.frame_ok = 1
             self.frame_data = bytearray(data.data)
             obstacle_idx = (data.id - 0x739)//3
@@ -495,16 +506,18 @@ class mobileyeSub():
         
         
     
-    def detected_obj_timer(self):        
+    def detected_obj_timer(self,data):        
         self.detected_obj_pub_callback()
 
 
-    def listener(self):
-        rospy.Subscriber("/received_messages", Frame, self.data_pub)
-        rospy.Subscriber("/pose_estimate", Odometry, self.poseCallback)
-        rospy.Timer(rospy.Duration(0.1), self.detected_obj_timer)
-        rospy.spin()
+    # def listener(self):
+        
+        
+        
 
 if __name__=='__main__':
+
     rossub = mobileyeSub()
-    rossub.listener()
+    # rossub.listener()
+    rospy.spin()
+    pass
