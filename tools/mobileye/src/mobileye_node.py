@@ -76,7 +76,7 @@ class mobileyeSub():
         objs_msg = DetectedObjectArray()
         objs_msg.header.stamp = rospy.Time.now()
         objs_msg.header.frame_id = "map"
-        print("number of obj found = " + str(len(self.obstacle_data)))
+        
         for i in range(len(self.obstacle_data)):
 
             obj_msg  = DetectedObject()
@@ -86,31 +86,34 @@ class mobileyeSub():
             obj_msg.acceleration = self.obstacle_data[i].obstacle_object_accel_x
             obj_msg.id = self.obstacle_data[i].obstacle_id            
             
+            
+            self.ego_yaw = euler_from_quaternion([self.ego_geo_pose.orientation.x, self.ego_geo_pose.orientation.y,
+                                                            self.ego_geo_pose.orientation.z, self.ego_geo_pose.orientation.w])[2]
+
+            local_delta_x = self.obstacle_data[i].obstacle_position_x
+            local_delta_y = self.obstacle_data[i].obstacle_position_y
+            dist_to_obj = math.sqrt(local_delta_x**2+local_delta_y**2)                
+            
+            add_obj =True
+            if(dist_to_obj < 0.5):
+                add_obj =False
+            
+            delta_x = local_delta_x*math.cos(self.ego_yaw)-local_delta_y*math.sin(self.ego_yaw)
+            delta_y = local_delta_x*math.sin(self.ego_yaw)+local_delta_y*math.cos(self.ego_yaw)
+
             if self.pose_ready:
-                self.ego_yaw = euler_from_quaternion([self.ego_geo_pose.orientation.x, self.ego_geo_pose.orientation.y,
-                                                                self.ego_geo_pose.orientation.z, self.ego_geo_pose.orientation.w])[2]
-
-                local_delta_x = self.obstacle_data[i].obstacle_position_x
-                add_obj =True
-                if(local_delta_x < 0.5):
-                    add_obj =False
-                local_delta_y = self.obstacle_data[i].obstacle_position_y
-                
-                delta_x = local_delta_x*math.cos(self.ego_yaw)-local_delta_y*math.sin(self.ego_yaw)
-                delta_y = local_delta_x*math.sin(self.ego_yaw)+local_delta_y*math.cos(self.ego_yaw)
-
                 obj_msg.pose.position.x = self.ego_geo_pose.position.x + delta_x
                 obj_msg.pose.position.y = self.ego_geo_pose.position.y + delta_y            
             else:
-                
-                obj_msg.pose.position.x = self.ego_geo_pose.position.x
-                obj_msg.pose.position.y = self.ego_geo_pose.position.y
+                obj_msg.pose.position.x = local_delta_x
+                obj_msg.pose.position.y = local_delta_y
 
             obj_msg.velocity = self.obstacle_data[i].obstacle_relative_velocity_x
             if(add_obj):
                 objs_msg.objects.append(obj_msg)
 
         self.objs_Pub.publish(objs_msg)
+        print("number of obj found = " + str(len(objs_msg.objects)))
 
 
         ## Visualize detected obj
