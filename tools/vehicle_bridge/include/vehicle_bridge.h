@@ -89,6 +89,7 @@ bool Ccan_recv_status;
 bool emergency_stop_activate;
 int emergency_count;
 bool scc_overwrite;
+short scc_overwrite_value;
 hmcl_msgs::VehicleStatus vehicle_status_;
 hmcl_msgs::VehicleSCC scc_info_;
 hmcl_msgs::VehicleSteering steering_info_;

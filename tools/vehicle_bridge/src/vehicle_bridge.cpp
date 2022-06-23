@@ -49,6 +49,8 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   Acan_callback_time = ros::Time::now();
   
   InitCanmsg();
+  
+  scc_overwrite_value = ((round(0.0 *100)/100)*100);        
   test_count = 0; 
   AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &VehicleBridge::AcanCallback, this);
   CcanSub = nh_light_.subscribe("/c_can_l2h", 100, &VehicleBridge::CcanCallback, this);
@@ -64,7 +66,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
   SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);  
   VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);  
-
+  emergency_stopSub = nh_acc.subscribe("/volt", 2, &VehicleBridge::emergencyRemoteCallback, this);
   
   
   ROS_INFO("Init A-CAN Handler");
@@ -277,9 +279,9 @@ void VehicleBridge::AcanSender()
       sccPub.publish(scc_info_);  
       wheelPub.publish(wheel_info_);  
       
-      if(scc_overwrite){        
-        scc_frame.data[1] = (0 & 0b11111111);
-        scc_frame.data[2] = ((0 >> 8)&0b11111111);  
+      if(scc_overwrite){     
+        scc_frame.data[1] = (scc_overwrite_value & 0b11111111);
+        scc_frame.data[2] = ((scc_overwrite_value >> 8)&0b11111111);  
       }
       AcanPub.publish(scc_frame);
       usleep(1000);
@@ -344,25 +346,25 @@ void VehicleBridge::TestCase(){
 
     if(lc  > 50 && lc < 150) {
       std_msgs::Float64 vel_msg;
-      vel_msg.data = 20/3.6;
+      vel_msg.data = 40/3.6;
       velPub.publish(vel_msg);            
     }
 
-    if(lc >  150){
-      std_msgs::Float64 vel_msg;
-      vel_msg.data = 0.0;
-      velPub.publish(vel_msg);            
+    // if(lc >  150){
+    //   std_msgs::Float64 vel_msg;
+    //   vel_msg.data = 0.0;
+    //   velPub.publish(vel_msg);            
 
-      if(abs(wheel_info_.wheel_speed) < 0.1){
-        drivingState = DrivingState::Parking;
-      }
+    //   if(abs(wheel_info_.wheel_speed) < 0.1){
+    //     drivingState = DrivingState::Parking;
+    //   }
 
       
-    }
+    // }
 
-    if( lc > 150 && drivingState == DrivingState::Parking){
-      lc =0;
-    }
+    // if( lc > 150 && drivingState == DrivingState::Parking){
+    //   lc =0;
+    // }
 
     
     
@@ -384,16 +386,26 @@ void VehicleBridge::prevent_brake_system_error(){
 
       case DrivingState::NormalDriving:
         if(abs(wheel_info_.wheel_speed) < 0.1){
+          scc_overwrite_value = ((round(0.0 *100)/100)*100);        
           scc_overwrite = true;
           ROS_INFO("scc_overwrite = true");
         }       
         if(gear_info_.gear == 0){
+          scc_overwrite_value = ((round(0.0 *100)/100)*100);        
           scc_overwrite = true;
         }
         
       break;
 
       case DrivingState::EmergencyBrake:
+          
+          if(abs(wheel_info_.wheel_speed) < 5/3.6){
+            scc_overwrite_value = ((round(-1 *100)/100)*100);        
+          }
+          else{
+            scc_overwrite_value = ((round(-3 *100)/100)*100);        
+          }
+          scc_overwrite = true;
         return;
       break;
 
@@ -418,8 +430,11 @@ void VehicleBridge::DrivingStateMachine() {
   {  
     
     prevent_brake_system_error();
+
     ROS_INFO("drivingState = %s",stateToString(drivingState));
-    
+    if(emergency_stop_activate && drivingState != DrivingState::Parking){
+      drivingState = DrivingState::EmergencyBrake;      
+    }
     int SCC_mode_auto = 2;
     int SCC_mode_off = 0;
     int STR_mode_on = 1;
@@ -491,13 +506,13 @@ void VehicleBridge::DrivingStateMachine() {
         
       break;  
 
-      // case DrivingState::EmergencyBrake:
-      //   if Velopcity > 0 
-      //       set scc -> -1 
-      //   if velocity == 0  
-      //     state =DrivingState::Parking
-            
-      // break;  
+      case DrivingState::EmergencyBrake:
+          scc_overwrite_value = ((round(-3 *100)/100)*100);        
+          scc_overwrite = true;
+         if(abs(wheel_info_.wheel_speed) < 0.1){
+            drivingState =DrivingState::Parking;            
+         }
+      break;  
 
       case DrivingState::Parking:
         // AWAIT BEHAVIOR & GO TO PARKING -> CHECK
