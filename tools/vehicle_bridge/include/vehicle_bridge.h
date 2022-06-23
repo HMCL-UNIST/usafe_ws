@@ -29,6 +29,7 @@
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
 
+
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
@@ -76,7 +77,7 @@ ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub, emergency_stopSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub;
-ros::Publisher  AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
+ros::Publisher  velPub, AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
 dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
@@ -87,7 +88,7 @@ bool Acan_recv_status;
 bool Ccan_recv_status;
 bool emergency_stop_activate;
 int emergency_count;
-
+bool scc_overwrite;
 hmcl_msgs::VehicleStatus vehicle_status_;
 hmcl_msgs::VehicleSCC scc_info_;
 hmcl_msgs::VehicleSteering steering_info_;
@@ -108,7 +109,7 @@ double control_effort;
 double sign = 1;
 double test_count; 
 short accel_value;
-
+float fl, fr, rl, rr, whl_speed_mean;
 int whl_speed_mean_mps;
 int prev_gear;
 short steer_value;
@@ -136,6 +137,7 @@ void LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg);
 void controlEffortCallback(const std_msgs::Float64& control_effort_input);
 
 void emergencyRemoteCallback(std_msgs::Float64ConstPtr msg);
+void prevent_brake_system_error();
 
 
 };

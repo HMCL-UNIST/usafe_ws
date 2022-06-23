@@ -101,7 +101,7 @@ void PidObject::plantStateCallback(const hmcl_msgs::VehicleWheelSpeed& state_msg
   // rl = state_msg.rl;
   // plant_state_ = (fl+fr+rl+rr)/4; // kph
   
-  plant_state_ = state_msg.wheel_speed * 3.6;
+  plant_state_ = state_msg.wheel_speed;
 
 
 
