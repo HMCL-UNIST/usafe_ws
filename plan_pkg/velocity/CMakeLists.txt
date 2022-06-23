@@ -13,6 +13,10 @@ find_package(catkin REQUIRED COMPONENTS
   hmcl_msgs
   autoware_msgs
   tf  
+  dynamic_reconfigure
+)
+generate_dynamic_reconfigure_options(
+     cfg/test.cfg
 )
 
 catkin_package(
@@ -26,14 +30,21 @@ catkin_package(
   autoware_msgs
   tf 
   LIBRARIES
+  dynamic_reconfigure
 )
 
 include_directories(
   include
+  ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
 
+
+
+add_executable(dynamic_reconfigure_node src/acc_node.cpp)
+add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
+target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
 add_executable(velocity_generator src/velocity_generator.cpp)

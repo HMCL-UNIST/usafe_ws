@@ -27,6 +27,9 @@
 #include <hmcl_msgs/Waypoint.h>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <velocity/testConfig.h>
+
 class ACC 
 {
 
@@ -39,7 +42,7 @@ class ACC
     float current_acc, current_vel, current_x, current_y;
     float object_x, object_y, object_vel;
 
-
+    bool direct_control;
     int delay_step;
     double delay_in_sec, lag_tau, dt;
     double Q_dis, Q_vel, r_weight;
@@ -57,6 +60,8 @@ class ACC
     Eigen::MatrixXd mcAd, mcBd; 
     Eigen::MatrixXd mcP;
 
+    dynamic_reconfigure::Server<velocity::testConfig> srv;
+    dynamic_reconfigure::Server<velocity::testConfig>::CallbackType f;
 
     geometry_msgs::PoseStamped debug_msg;
 
@@ -65,7 +70,7 @@ class ACC
 
     void computeMatrices();
     double computeGain();
-    
+    void dyn_callback(velocity::testConfig& config, uint32_t level);
     bool solveRiccatiIterationD(const Eigen::MatrixXd &Ad,
             const Eigen::MatrixXd &Bd, const Eigen::MatrixXd &Q,
             const Eigen::MatrixXd &R, Eigen::MatrixXd &P,

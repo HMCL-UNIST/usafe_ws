@@ -32,6 +32,8 @@ ACC::ACC()
     nh_.param<double>("d_time", d_time, 2.0);
     nh_.param<double>("d_safe", d_safe, 15.0);
 
+    nh_.param<bool>("direct_control", direct_control, false);
+
     delay_step = (int)(delay_in_sec/dt);
 
     // Subscribe
@@ -40,12 +42,31 @@ ACC::ACC()
     acc_sub = nh_.subscribe("/bias_acc", 1, &ACC::accCallback, this);
 
     // Publish
-    target_vel_pub = nh_.advertise<std_msgs::Float64>("/acc_target_vel", 1, true);
+    
+    if(direct_control){
+      target_vel_pub = nh_.advertise<std_msgs::Float64>("/acc_target_vel", 2, true);
+    }else{
+      target_vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);
+    }
     vel_debug  = nh_.advertise<geometry_msgs::PoseStamped>("/acc_debug", 2);
 
-
+  f = boost::bind(&ACC::dyn_callback,this, _1, _2);
+	srv.setCallback(f);
 
 }
+
+
+void ACC::dyn_callback(velocity::testConfig &config, uint32_t level)
+{
+  ROS_INFO("Reconfigure Request");
+  lag_tau = config.lag_tau;
+  Q_vel = config.Q_vel;
+  Q_dis = config.Q_dis;
+  r_weight = config.R_weight;
+  d_time = config.d_time;
+  d_safe = config.d_safe;
+}
+
 
 void ACC::CalcVel()
 { 
