@@ -350,7 +350,7 @@ void PreviewCtrl::ControlLoop()
         steering_frame.data[0] = (steer_value & 0b11111111);
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
-        AcanPub.publish(steering_frame);
+        // AcanPub.publish(steering_frame);
           
 
         ///////////
@@ -362,7 +362,7 @@ void PreviewCtrl::ControlLoop()
         steer_msg.header.stamp = ros::Time::now();
         steer_msg.steering_angle = delta_cmd;        
 
-        // steerPub.publish(steer_msg);
+        steerPub.publish(steer_msg);
         ///////////////////////////////////////////////////////
         // record control inputs 
         delta_buffer.push_back(delta_cmd);

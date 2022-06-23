@@ -191,7 +191,7 @@ void MapLoader::LaneChangeStateMachine(){
           
         case LaneChangeState::Pending:
             if(prev_lane_change_state != LaneChangeState::Pending)
-            {lane_change_weight = 0.0;
+            {
               ROS_INFO("Pending init");
             }else{              
               lane_change_weight = lane_change_weight+lane_change_weight_delta;
@@ -307,12 +307,14 @@ void MapLoader::current_lanefollow(){
             ////////////// check if lane change required ///////////
             
             // double dist_c = lanelet::geometry::distance2d(lanes.front().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
-            dist_to_target = dist_to_lanelet;
+           
             double dist_l = lanelet::geometry::distance2d(lanes.front().leftBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));              
             double dist_r = lanelet::geometry::distance2d(lanes.front().rightBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
             auto left_next_lane = routingGraph->left(lanes.front());                                              
             auto right_next_lane = routingGraph->right(lanes.front());
-            
+             
+             dist_to_target = dist_to_lanelet;
+
               if(lane_change_state == LaneChangeState::LeftChange){
                 if(left_next_lane){
                     ROS_INFO("left lane found");  
@@ -333,7 +335,7 @@ void MapLoader::current_lanefollow(){
               // re calculate dist_to_garget if no changable lane found pending 
               if(lane_change_state == LaneChangeState::Pending){         
                   // if close enough to center line -> switch to follow(force)
-                  if(abs(dist_to_target) < 0.4){
+                  if(abs(dist_to_target) < 0.3){
                     ROS_INFO("close enough switch to Follow");
                     lane_change_state = LaneChangeState::Follow; 
                     prev_lane_change_state = LaneChangeState::Follow;                    

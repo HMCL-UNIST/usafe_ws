@@ -49,7 +49,7 @@
       <param name="max_local_path_length" value="45.0"/> 
 
 
-      <param name="lane_change_in_sec" value="2.0"/> 
+      <param name="lane_change_in_sec" value="3.0"/> 
       <param name="lanechange_fsm_period" value="0.1"/> 
       
       

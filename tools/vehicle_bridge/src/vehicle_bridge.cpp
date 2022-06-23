@@ -286,6 +286,8 @@ void VehicleBridge::AcanSender()
       AcanPub.publish(scc_frame);
       usleep(1000);
       AcanPub.publish(gear_frame);
+      usleep(1000);
+      AcanPub.publish(steering_frame);
       usleep(1000);     
       AcanPub.publish(light_frame);      
       
@@ -465,7 +467,7 @@ void VehicleBridge::DrivingStateMachine() {
         steering_frame.is_rtr = false;
         steering_frame.data[0] = (steer_value & 0b11111111);
         steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
-        steering_frame.data[2] = (unsigned int)STR_mode_on & 0b11111111;
+        steering_frame.data[2] = (unsigned int)STR_mode_off & 0b11111111;
         // GO TO DRIVING GEAR        
         // GO TO NORMAL DRIVING STAT
         
@@ -501,6 +503,7 @@ void VehicleBridge::DrivingStateMachine() {
         steering_frame.is_error = false;
         steering_frame.is_extended = false;
         steering_frame.is_rtr = false;
+        steering_frame.data[2] = (unsigned int)STR_mode_on & 0b11111111;
         // steering_frame.data[0] = (steer_value & 0b11111111);
         // steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         
