@@ -119,8 +119,8 @@ void ACC::CalcVel()
     std_msgs::Float64 target_vel;
     
     
-    if (detected)
-      vel_cmd = 5.0;
+    // if (detected)
+    //   vel_cmd = 5.0;
 
     target_vel.data = vel_cmd;
     target_vel_pub.publish(target_vel);
@@ -274,10 +274,10 @@ void ACC::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
   if( msg.objects.size() <= 0){    
     return;    
   }
-  else{
-    detected = false;
+  // else{
+  //   detected = false;
   
-  }
+  // }
   
 
   ros::Duration tt_ = ros::Time::now() - obj_time;
@@ -305,8 +305,8 @@ void ACC::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
     object_vel = 0;
   } 
 
-  
   CalcVel();
+
   
 }
 
