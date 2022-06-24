@@ -182,30 +182,30 @@ void PidObject::doCalcs()
   // Do fresh calcs if knowledge of the system has changed.
   if (new_state_or_setpt_)
   { 
-     if (plant_state_ >= 0 && plant_state_ <= 20) {
-      // gain scheduling
-      Kp_ = Kp_launch;
-      Ki_ = 0.0;
-      Kd_ = Kd_launch;
-    }
-    else if (plant_state_ > 20 && plant_state_ <= 40) {
-      // gain scheduling
-      Kp_ = Kp_launch;
-      Ki_ = Ki_launch;
-      Kd_ = Kd_launch;
-    }
-    else if (plant_state_ > 40 && plant_state_ <= 60) {
-      // gain scheduling
-      Kp_ = Kp_launch;
-      Ki_ = Ki_launch;
-      Kd_ = Kd_launch;
-    }
-    else {
-      // gain scheduling
-      Kp_ = 4;
-      Ki_ = 0.1;
-      Kd_ = 0.1;
-    }
+    //  if (plant_state_ >= 0 && plant_state_ <= 20) {
+    //   // gain scheduling
+    //   Kp_ = Kp_launch;
+    //   Ki_ = 0.0;
+    //   Kd_ = Kd_launch;
+    // }
+    // else if (plant_state_ > 20 && plant_state_ <= 40) {
+    //   // gain scheduling
+    //   Kp_ = Kp_launch;
+    //   Ki_ = Ki_launch;
+    //   Kd_ = Kd_launch;
+    // }
+    // else if (plant_state_ > 40 && plant_state_ <= 60) {
+    //   // gain scheduling
+    //   Kp_ = Kp_launch;
+    //   Ki_ = Ki_launch;
+    //   Kd_ = Kd_launch;
+    // }
+    // else {
+    //   // gain scheduling
+    //   Kp_ = 4;
+    //   Ki_ = 0.1;
+    //   Kd_ = 0.1;
+    // }
     if (!((Kp_ <= 0. && Ki_ <= 0. && Kd_ <= 0.) ||
           (Kp_ >= 0. && Ki_ >= 0. && Kd_ >= 0.)))  // All 3 gains should have the same sign
       ROS_WARN("All three gains (Kp, Ki, Kd) should have the same sign for "
