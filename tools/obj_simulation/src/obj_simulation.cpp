@@ -68,7 +68,7 @@ ObjSimulation::~ObjSimulation()
 
 void ObjSimulation::egoPoseCallback(const nav_msgs::OdometryConstPtr msg){
   if(sim_pose_reset){
-    sim_pose_reset = false;
+    // sim_pose_reset = false;
   if(is_pose_base){
     
        double current_yaw = amathutils::getPoseYawAngle(msg->pose.pose);
@@ -201,6 +201,7 @@ void ObjSimulation::dyn_callback(obj_simulation::testConfig &config, uint32_t le
   target_vehicle_speed    = config.target_vehicle_speed;
   distance_to_target = config.distance_to_target;
   target_visible = config.target_visible;
+  target_state(4) = target_vehicle_speed;
   
 
 }

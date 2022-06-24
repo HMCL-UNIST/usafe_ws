@@ -20,6 +20,11 @@ ACC::ACC()
 {   
     ros::NodeHandle nh_;
     ROS_INFO("Adaptive Cruise Control initialize");
+    
+    obj_time = ros::Time::now();
+    prev_object_x = 0.0;
+    prev_object_y = 0.0;
+    detected = true;
 
     // Prameter 
     nh_.param<double>("delay_in_sec", delay_in_sec, 1);
@@ -40,6 +45,7 @@ ACC::ACC()
     // Subscribe
     target_sub = nh_.subscribe("/detected_objs",1, &ACC::objectCallback,this);
     pose_sub = nh_.subscribe("/pose_estimate", 1, &ACC::poseCallback, this);
+    wheel_sub = nh_.subscribe("/vehicle_status", 1, &ACC::wheelCallback, this);
     acc_sub = nh_.subscribe("/nav/filtered_imu/data", 1, &ACC::accCallback, this);
 
     // Publish
@@ -77,7 +83,7 @@ void ACC::CalcVel()
     double dis2obj = sqrt( pow(current_x-object_x,2) + pow(current_y-object_y,2) );
     // our sensor cannot monitor over 150 m ... 
     dis2obj = std::min(dis2obj, 150.0);
-    double diffvel = object_vel - current_vel;    
+    double diffvel = object_vel; //- current_vel;    
     // velocity difference is not greater than the speed limit 70m/s ... 
     if(diffvel > 0){
       diffvel = std::min(diffvel, 70/3.6);
@@ -111,6 +117,11 @@ void ACC::CalcVel()
     vel_cmd = std::min(vel_cmd,70/3.6);    
     //Publish
     std_msgs::Float64 target_vel;
+    
+    
+    if (detected)
+      vel_cmd = 5.0;
+
     target_vel.data = vel_cmd;
     target_vel_pub.publish(target_vel);
   
@@ -126,7 +137,7 @@ void ACC::CalcVel()
     debug_msg.header.stamp = ros::Time::now();
     debug_msg.pose.position.x = safe_dis - dis2obj;
     debug_msg.pose.position.y = diffvel;
-    debug_msg.pose.position.z = acc_cmd;
+    
     vel_debug.publish(debug_msg);
 
 
@@ -234,7 +245,7 @@ bool ACC::solveRiccatiIterationD(const Eigen::MatrixXd &Ad,
 
 void ACC::poseCallback(const nav_msgs::Odometry& state_msg)
 {
-  current_vel = abs(state_msg.twist.twist.linear.x);
+  // current_vel = abs(state_msg.twist.twist.linear.x);
   current_x = state_msg.pose.pose.position.x;
   current_y = state_msg.pose.pose.position.y;
 
@@ -258,13 +269,51 @@ void ACC::accCallback(const sensor_msgs::Imu& msg)
 
 void ACC::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
 {
+  
   ROS_INFO("obj msg lenngh = %d", msg.objects.size());
+  if( msg.objects.size() <= 0){    
+    return;    
+  }
+  else{
+    detected = false;
+  
+  }
+  
+
+  ros::Duration tt_ = ros::Time::now() - obj_time;
+  obj_time = ros::Time::now();
+
   object_x = msg.objects[0].pose.position.x;
   object_y = msg.objects[0].pose.position.y;
-  object_vel = msg.objects[0].velocity.linear.x;
+  double dist_ = sqrt(pow((object_x - prev_object_x),2)+pow((object_y - prev_object_y),2));
+  double vel_ = dist_/(tt_.toSec()+1e-9);
+  if(abs(vel_) < 1.5){
+    vel_ = 0.0;
+  }
+  prev_object_x = object_x;
+  prev_object_y= object_y;
+   // relative velocity  -> msg.objects[0].velocity.linear.x;
 
+  double rel_vel = msg.objects[0].velocity.linear.x;
+  debug_msg.pose.position.z = vel_;
+  //vel_ =  current_vel+rel_vel 
+  object_vel = rel_vel;
+  // object_vel = vel_  - current_vel;
+
+  if ( abs(object_vel) <= 0.5 )
+  {
+    object_vel = 0;
+  } 
+
+  
   CalcVel();
   
+}
+
+void ACC::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg)
+{
+    // std::cout << "Get velocity: " << state_msg.twist.twist.linear.x << std::endl;
+    current_vel = abs(state_msg.wheelspeed.wheel_speed);
 }
 
 int main (int argc, char** argv)

@@ -27,6 +27,7 @@
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/Waypoint.h>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
+#include <hmcl_msgs/VehicleStatus.h>
 
 #include <dynamic_reconfigure/server.h>
 #include <velocity/testConfig.h>
@@ -37,12 +38,18 @@ class ACC
     private:
     ros::NodeHandle nh_;
     ros::Publisher target_vel_pub, vel_debug;
-    ros::Subscriber pose_sub, acc_sub, target_sub;
+    ros::Subscriber pose_sub, acc_sub, target_sub, wheel_sub;
 
+    ros::Time obj_time;
+    double  prev_object_x;
+    double prev_object_y;
+  
+  
 
     double current_acc, current_vel, current_x, current_y;
     float object_x, object_y, object_vel;
 
+    bool detected;
     bool direct_control;
     int delay_step;
     double delay_in_sec, lag_tau, dt;
@@ -81,6 +88,7 @@ class ACC
     void poseCallback(const nav_msgs::Odometry& state_msg);
     void accCallback(const sensor_msgs::Imu& msg);
     void objectCallback(const autoware_msgs::DetectedObjectArray& msg);
+    void wheelCallback(const hmcl_msgs::VehicleStatus& state_msg);
 
     void CalcVel();
 
