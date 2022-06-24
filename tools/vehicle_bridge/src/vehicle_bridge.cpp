@@ -346,11 +346,11 @@ void VehicleBridge::TestCase(){
       ROS_INFO("Test Case : Init");
     }
 
-    if(lc  > 50 && lc < 150) {
-      std_msgs::Float64 vel_msg;
-      vel_msg.data = 40/3.6;
-      velPub.publish(vel_msg);            
-    }
+    // if(lc  > 50 && lc < 150) {
+    //   std_msgs::Float64 vel_msg;
+    //   vel_msg.data = 40/3.6;
+    //   velPub.publish(vel_msg);            
+    // }
 
     // if(lc >  150){
     //   std_msgs::Float64 vel_msg;

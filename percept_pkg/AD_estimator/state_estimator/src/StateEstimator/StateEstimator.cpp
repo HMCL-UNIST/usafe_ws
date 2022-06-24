@@ -730,6 +730,14 @@ namespace localization_core
     poseNew.child_frame_id = "base_link";
     poseNew.header.frame_id = "map";
 
+
+    //////////////////////////
+      tf::Transform transform;
+      transform.setOrigin( tf::Vector3(poseNew.pose.pose.position.x, poseNew.pose.pose.position.y, poseNew.pose.pose.position.z) );
+      tf::Quaternion q_tmp(poseNew.pose.pose.orientation.x,poseNew.pose.pose.orientation.y,poseNew.pose.pose.orientation.z,poseNew.pose.pose.orientation.w);      
+      transform.setRotation(q_tmp);
+      tf_br.sendTransform(tf::StampedTransform(transform, poseNew.header.stamp, "map", "base_link"));
+    ///////////////////////////
     posePub_.publish(poseNew);
     
     geometry_msgs::PoseStamped est_pose_new;

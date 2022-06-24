@@ -74,6 +74,8 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/MarkerArray.h>
 
+#include <tf/transform_broadcaster.h>
+
 #define PI 3.14159265358979323846264338
 
 
@@ -89,6 +91,8 @@ namespace localization_core
     ros::Publisher  timePub_;
     ros::Publisher statusPub_;
     ros::Publisher gpsPosPub_;
+
+    tf::TransformBroadcaster tf_br;
 
     double lastImuT_, lastImuTgps_;
     unsigned char status_;

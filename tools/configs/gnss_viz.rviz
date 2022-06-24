@@ -7,7 +7,6 @@ Panels:
         - /Status1
         - /localization1
         - /localization1/pose_est1/Shape1
-        - /Marker2
       Splitter Ratio: 0.658823549747467
     Tree Height: 549
   - Class: rviz/Selection
@@ -97,7 +96,7 @@ Visualization Manager:
           Marker Topic: /global_traj_lanelets_viz
           Name: globalpathsegment
           Namespaces:
-            center_lane_line: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -105,7 +104,7 @@ Visualization Manager:
           Marker Topic: /local_traj_viz
           Name: Lpath
           Namespaces:
-            ltraj: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -117,6 +116,14 @@ Visualization Manager:
             left_lane_bound: true
             right_lane_bound: true
           Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /ref_vel_prof_viz
+          Name: ReferenceVel
+          Namespaces:
+            {}
+          Queue Size: 1
           Value: true
       Enabled: true
       Name: plan
@@ -234,22 +241,26 @@ Visualization Manager:
           Value: false
       Enabled: true
       Name: tools
-    - Class: rviz/Marker
+    - Class: rviz/Group
+      Displays:
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /detected_objs_viz
+          Name: Mobileye_DetectedObj
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /target_vehicle_viz
+          Name: sim_targetVehicle
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
       Enabled: true
-      Marker Topic: /target_vehicle_viz
-      Name: Marker
-      Namespaces:
-        {}
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
-      Marker Topic: /ref_vel_prof_viz
-      Name: Marker
-      Namespaces:
-        vel_prof: true
-      Queue Size: 1
-      Value: true
+      Name: Perception
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -278,25 +289,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 103.9440689086914
+      Distance: 163.55801391601562
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -3.6063194274902344
-        Y: -5.533425331115723
+        X: 3.122769355773926
+        Y: -19.407001495361328
         Z: 4.901015927316621e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 0.44979673624038696
+      Pitch: 1.544796347618103
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 2.9653971195220947
+      Yaw: 3.490398645401001
     Saved: ~
 Window Geometry:
   Displays:

@@ -17,8 +17,8 @@ gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src
 sleep 1;
 gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src/tools/canopen/socketcan_bridge/launch; roslaunch socketcan_bridge2.launch; exec bash"
 
-sleep 1;
-gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src/tools/vehicle_bridge/launch; roslaunch vehicle_bridge.launch; exec bash"
+# sleep 1;
+# gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src/tools/vehicle_bridge/launch; roslaunch vehicle_bridge.launch; exec bash"
 
 sleep 1;
 gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; rosrun rosserial_python serial_node.py _port:=/dev/ttyACM1 _baud:=57600; exec bash"

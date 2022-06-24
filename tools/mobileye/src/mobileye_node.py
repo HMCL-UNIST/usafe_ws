@@ -83,13 +83,22 @@ class mobileyeSub():
             obj_msg.header.frame_id = "map"
             obj_msg.header.stamp = rospy.Time.now()
             obj_msg.angle = self.obstacle_data[i].obstacle_angle
-            obj_msg.acceleration = self.obstacle_data[i].obstacle_object_accel_x
+            obj_msg.acceleration.linear.x = self.obstacle_data[i].obstacle_object_accel_x
             obj_msg.id = self.obstacle_data[i].obstacle_id            
+            
             
             
             self.ego_yaw = euler_from_quaternion([self.ego_geo_pose.orientation.x, self.ego_geo_pose.orientation.y,
                                                             self.ego_geo_pose.orientation.z, self.ego_geo_pose.orientation.w])[2]
 
+            
+            global_yaw = self.obstacle_data[i].obstacle_angle+self.ego_yaw
+            obj_orientation_quat = quaternion_from_euler(0.0,0.0,global_yaw)
+            obj_msg.pose.orientation.x= obj_orientation_quat[0]
+            obj_msg.pose.orientation.y= obj_orientation_quat[1]
+            obj_msg.pose.orientation.z= obj_orientation_quat[2]
+            obj_msg.pose.orientation.w= obj_orientation_quat[3]
+            
             local_delta_x = self.obstacle_data[i].obstacle_position_x
             local_delta_y = self.obstacle_data[i].obstacle_position_y
             dist_to_obj = math.sqrt(local_delta_x**2+local_delta_y**2)                
@@ -108,7 +117,7 @@ class mobileyeSub():
                 obj_msg.pose.position.x = local_delta_x
                 obj_msg.pose.position.y = local_delta_y
 
-            obj_msg.velocity = self.obstacle_data[i].obstacle_relative_velocity_x
+            obj_msg.velocity.linear.x = self.obstacle_data[i].obstacle_relative_velocity_x
             if(add_obj):
                 objs_msg.objects.append(obj_msg)
 
