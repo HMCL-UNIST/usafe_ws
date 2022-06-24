@@ -283,6 +283,7 @@ void VehicleBridge::AcanSender()
         scc_frame.data[1] = (scc_overwrite_value & 0b11111111);
         scc_frame.data[2] = ((scc_overwrite_value >> 8)&0b11111111);  
       }
+      usleep(1000);
       AcanPub.publish(scc_frame);
       usleep(1000);
       AcanPub.publish(gear_frame);
