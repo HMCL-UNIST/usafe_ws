@@ -48,6 +48,7 @@ class mobileyeSub():
         # set shape, Arrow: 0; Cube: 1 ; Sphere: 2 ; Cylinder: 3
         marker.type = 1
         marker.id = id
+        marker.lifetime =  rospy.Duration.from_sec(1)
         # Set the scale of the marker
         marker.scale.x = 1.0
         marker.scale.y = 1.0
@@ -84,7 +85,8 @@ class mobileyeSub():
             obj_msg.header.stamp = rospy.Time.now()
             obj_msg.angle = self.obstacle_data[i].obstacle_angle
             obj_msg.acceleration.linear.x = self.obstacle_data[i].obstacle_object_accel_x
-            obj_msg.id = self.obstacle_data[i].obstacle_id            
+            obj_msg.id = self.obstacle_data[i].obstacle_id    
+            
             
             
             

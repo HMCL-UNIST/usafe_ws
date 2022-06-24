@@ -60,7 +60,7 @@ std::mutex mtx_;
 ros::Subscriber  traj_sub, egoPose_sub;
 ros::Publisher objPub;
 ros::Publisher target_vis_pub;
-
+bool is_pose_base;
 double dt;
 hmcl_msgs::Lane ego_lane;
 double target_vehicle_speed;

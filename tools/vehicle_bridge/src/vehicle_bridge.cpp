@@ -60,8 +60,8 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 5);    
   wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
 
-  wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
-  velPub  = nh_light_.advertise<std_msgs::Float64>("/setpoint", 2);   
+
+  // velPub  = nh_light_.advertise<std_msgs::Float64>("/setpoint", 2);   
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
   SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);  

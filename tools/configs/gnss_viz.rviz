@@ -7,7 +7,7 @@ Panels:
         - /Status1
         - /localization1
         - /localization1/pose_est1/Shape1
-      Splitter Ratio: 0.658823549747467
+      Splitter Ratio: 0.6852940917015076
     Tree Height: 549
   - Class: rviz/Selection
     Name: Selection
@@ -168,7 +168,7 @@ Visualization Manager:
           Axes Radius: 0.10000000149011612
           Class: rviz/Pose
           Color: 115; 210; 22
-          Enabled: true
+          Enabled: false
           Head Length: 2
           Head Radius: 1
           Name: Pose
@@ -177,7 +177,7 @@ Visualization Manager:
           Shape: Arrow
           Topic: /gnss_pose_world
           Unreliable: false
-          Value: true
+          Value: false
         - Class: rviz/Axes
           Enabled: true
           Length: 1
@@ -256,11 +256,60 @@ Visualization Manager:
           Marker Topic: /target_vehicle_viz
           Name: sim_targetVehicle
           Namespaces:
-            {}
+            my_namespace: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /detection/lidar_tracker/objects_markers
+          Name: LidarTrackerMarker
+          Namespaces:
+            /detection/lidar_tracker/arrow_markers: true
+            /detection/lidar_tracker/box_markers: true
+            /detection/lidar_tracker/centroid_markers: true
+            /detection/lidar_tracker/hull_markers: true
+            /detection/lidar_tracker/label_markers: true
           Queue Size: 100
           Value: true
       Enabled: true
       Name: Perception
+    - Class: rviz/TF
+      Enabled: true
+      Frame Timeout: 15
+      Frames:
+        All Enabled: true
+        base_link:
+          Value: true
+        gnss_link:
+          Value: true
+        imu_link:
+          Value: true
+        map:
+          Value: true
+        os_imu:
+          Value: true
+        os_lidar:
+          Value: true
+        os_sensor:
+          Value: true
+      Marker Scale: 1
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Tree:
+        map:
+          base_link:
+            gnss_link:
+              imu_link:
+                {}
+            os_sensor:
+              os_imu:
+                {}
+              os_lidar:
+                {}
+      Update Interval: 0
+      Value: true
   Enabled: true
   Global Options:
     Background Color: 48; 48; 48
@@ -289,25 +338,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 163.55801391601562
+      Distance: 51.21958923339844
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 3.122769355773926
-        Y: -19.407001495361328
-        Z: 4.901015927316621e-6
+        X: 4.39597225189209
+        Y: 1.8888037204742432
+        Z: 3.285054390289588e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.544796347618103
+      Pitch: 1.5347963571548462
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.490398645401001
+      Yaw: 3.3554046154022217
     Saved: ~
 Window Geometry:
   Displays:

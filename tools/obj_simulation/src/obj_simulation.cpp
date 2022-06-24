@@ -50,7 +50,7 @@ ObjSimulation::ObjSimulation(ros::NodeHandle& nh_):
 
   objPub = nh_.advertise<autoware_msgs::DetectedObjectArray>("/detected_objs", 5);    
  target_vis_pub = nh_.advertise<visualization_msgs::Marker>( "/target_vehicle_viz", 0);
-
+  nh_.param<bool>("is_pose_base", is_pose_base, true);
   traj_sub = nh_.subscribe("/local_traj", 2, &ObjSimulation::localTrajCallback, this);
   egoPose_sub = nh_.subscribe("/pose_estimate", 2, &ObjSimulation::egoPoseCallback, this);
   ROS_INFO("obj simulation");
@@ -69,7 +69,7 @@ ObjSimulation::~ObjSimulation()
 void ObjSimulation::egoPoseCallback(const nav_msgs::OdometryConstPtr msg){
   if(sim_pose_reset){
     sim_pose_reset = false;
-  if(!lane_avail){
+  if(is_pose_base){
     
        double current_yaw = amathutils::getPoseYawAngle(msg->pose.pose);
       amathutils::wrap_yaw_rad(current_yaw);
@@ -162,6 +162,9 @@ void ObjSimulation::simulationCallback(){
 
 void ObjSimulation::localTrajCallback(const hmcl_msgs::LaneConstPtr msg){
  ego_lane = *msg;  
+ if(is_pose_base){
+   return;
+ }
  lane_avail = true;
  if(sim_pose_reset){
    sim_pose_reset = false;

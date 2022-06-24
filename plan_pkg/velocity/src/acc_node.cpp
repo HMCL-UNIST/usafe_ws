@@ -33,7 +33,7 @@ ACC::ACC()
     nh_.param<double>("d_safe", d_safe, 15.0);
     
 
-    nh_.param<bool>("direct_control", direct_control, false);
+    nh_.param<bool>("direct_control", direct_control, true);    
 
     delay_step = (int)(delay_in_sec/dt);
 
@@ -45,9 +45,9 @@ ACC::ACC()
     // Publish
     
     if(direct_control){
-      target_vel_pub = nh_.advertise<std_msgs::Float64>("/acc_target_vel", 2, true);
-    }else{
       target_vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);
+    }else{      
+      target_vel_pub = nh_.advertise<std_msgs::Float64>("/acc_target_vel", 2, true);
     }
     vel_debug  = nh_.advertise<geometry_msgs::PoseStamped>("/acc_debug", 2);
 
@@ -76,7 +76,7 @@ void ACC::CalcVel()
     double safe_dis = current_vel*d_time + d_safe;
     double dis2obj = sqrt( pow(current_x-object_x,2) + pow(current_y-object_y,2) );
     // our sensor cannot monitor over 150 m ... 
-    dis2obj = std::max(dis2obj, 150.0);
+    dis2obj = std::min(dis2obj, 150.0);
     double diffvel = object_vel - current_vel;    
     // velocity difference is not greater than the speed limit 70m/s ... 
     if(diffvel > 0){
@@ -95,12 +95,12 @@ void ACC::CalcVel()
 
     computeMatrices();
 
-    if (acc_cmd > 0){
-        acc_cmd  = std::min(acc_cmd,3.0);
-    }
-    if (acc_cmd < 0){
-      acc_cmd  = std::max(acc_cmd,-5.0);
-    }
+    // if (acc_cmd > 0){
+    //     acc_cmd  = std::min(acc_cmd,3.0);
+    // }
+    // if (acc_cmd < 0){
+    //   acc_cmd  = std::max(acc_cmd,-5.0);
+    // }
     
 
     double vel_cmd = current_vel + acc_cmd * dt;
@@ -108,7 +108,7 @@ void ACC::CalcVel()
     if (vel_cmd < 0)
       vel_cmd = 0;
 
-    vel_cmd = std::max(vel_cmd,70/3.6);    
+    vel_cmd = std::min(vel_cmd,70/3.6);    
     //Publish
     std_msgs::Float64 target_vel;
     target_vel.data = vel_cmd;
@@ -258,7 +258,7 @@ void ACC::accCallback(const sensor_msgs::Imu& msg)
 
 void ACC::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
 {
-  
+  ROS_INFO("obj msg lenngh = %d", msg.objects.size());
   object_x = msg.objects[0].pose.position.x;
   object_y = msg.objects[0].pose.position.y;
   object_vel = msg.objects[0].velocity.linear.x;
