@@ -42,6 +42,7 @@ ObjSimulation::ObjSimulation(ros::NodeHandle& nh_):
   target_state =  Eigen::VectorXd::Zero(5);
   sim_pose_reset = false;
   target_visible = false;
+  lane_avail = false;
   target_vehicle_speed = 0.0;  
   distance_to_target = 30.0;
   
@@ -51,6 +52,7 @@ ObjSimulation::ObjSimulation(ros::NodeHandle& nh_):
  target_vis_pub = nh_.advertise<visualization_msgs::Marker>( "/target_vehicle_viz", 0);
 
   traj_sub = nh_.subscribe("/local_traj", 2, &ObjSimulation::localTrajCallback, this);
+  egoPose_sub = nh_.subscribe("/pose_estimate", 2, &ObjSimulation::egoPoseCallback, this);
   ROS_INFO("obj simulation");
   // boost::thread AcanHandler(&ObjSimulation::AcanSender,this); 
   boost::thread simulation_loop(&ObjSimulation::simulationCallback,this); 
@@ -62,6 +64,30 @@ ObjSimulation::ObjSimulation(ros::NodeHandle& nh_):
 
 ObjSimulation::~ObjSimulation()
 {}
+
+
+void ObjSimulation::egoPoseCallback(const nav_msgs::OdometryConstPtr msg){
+  if(sim_pose_reset){
+    sim_pose_reset = false;
+  if(!lane_avail){
+    
+       double current_yaw = amathutils::getPoseYawAngle(msg->pose.pose);
+      amathutils::wrap_yaw_rad(current_yaw);
+      
+      double x_ = msg->pose.pose.position.x + distance_to_target*cos(current_yaw);
+      double y_ = msg->pose.pose.position.y + distance_to_target*sin(current_yaw);
+      
+      target_state(0) = x_;
+      target_state(1) = y_;
+      target_state(2) = msg->pose.pose.position.z;
+      target_state(3) = current_yaw;
+      target_state(4) = target_vehicle_speed;
+
+    }
+  }
+
+}
+
 
 void ObjSimulation::simulationCallback(){
     ros::Rate loop_rate(1/sim_dt); // rate  
@@ -136,6 +162,7 @@ void ObjSimulation::simulationCallback(){
 
 void ObjSimulation::localTrajCallback(const hmcl_msgs::LaneConstPtr msg){
  ego_lane = *msg;  
+ lane_avail = true;
  if(sim_pose_reset){
    sim_pose_reset = false;
     if(msg->waypoints.size() > 0){

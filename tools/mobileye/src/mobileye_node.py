@@ -123,7 +123,7 @@ class mobileyeSub():
 
         self.objs_Pub.publish(objs_msg)
         print("number of obj found = " + str(len(objs_msg.objects)))
-
+        self.obstacle_data = [ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData()]
 
         ## Visualize detected obj
         viz_markers = self.objs_marker_gen(objs_msg)

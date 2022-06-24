@@ -57,7 +57,7 @@ class ObjSimulation
 private:
 ros::NodeHandle nh_;
 std::mutex mtx_;
-ros::Subscriber  traj_sub;
+ros::Subscriber  traj_sub, egoPose_sub;
 ros::Publisher objPub;
 ros::Publisher target_vis_pub;
 
@@ -68,6 +68,7 @@ double distance_to_target;
 bool target_visible;
 double sim_dt;
 bool sim_pose_reset;
+bool lane_avail;
 dynamic_reconfigure::Server<obj_simulation::testConfig> srv;
 dynamic_reconfigure::Server<obj_simulation::testConfig>::CallbackType f;
 
@@ -87,6 +88,8 @@ ObjSimulation(ros::NodeHandle& nh_);
 void dyn_callback(obj_simulation::testConfig& config, uint32_t level);
 void emergencyRemoteCallback(std_msgs::Float64ConstPtr msg);
 void localTrajCallback(const hmcl_msgs::LaneConstPtr msg);
+void egoPoseCallback(const nav_msgs::OdometryConstPtr msg);
+
 void set_target_state(Eigen::VectorXd new_state);
 void simulationCallback();
 

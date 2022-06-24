@@ -31,6 +31,7 @@ ACC::ACC()
 
     nh_.param<double>("d_time", d_time, 2.0);
     nh_.param<double>("d_safe", d_safe, 15.0);
+    
 
     nh_.param<bool>("direct_control", direct_control, false);
 
@@ -39,7 +40,7 @@ ACC::ACC()
     // Subscribe
     target_sub = nh_.subscribe("/detected_objs",1, &ACC::objectCallback,this);
     pose_sub = nh_.subscribe("/pose_estimate", 1, &ACC::poseCallback, this);
-    acc_sub = nh_.subscribe("/bias_acc", 1, &ACC::accCallback, this);
+    acc_sub = nh_.subscribe("/nav/filtered_imu/data", 1, &ACC::accCallback, this);
 
     // Publish
     
@@ -74,23 +75,40 @@ void ACC::CalcVel()
 
     double safe_dis = current_vel*d_time + d_safe;
     double dis2obj = sqrt( pow(current_x-object_x,2) + pow(current_y-object_y,2) );
-
-    double diffvel = object_vel - current_vel;
+    // our sensor cannot monitor over 150 m ... 
+    dis2obj = std::max(dis2obj, 150.0);
+    double diffvel = object_vel - current_vel;    
+    // velocity difference is not greater than the speed limit 70m/s ... 
+    if(diffvel > 0){
+      diffvel = std::min(diffvel, 70/3.6);
+    }    
+    if(diffvel < 0){
+      diffvel = std::max(diffvel, -70/3.6);
+    }
 
     Xk = Eigen::VectorXd::Zero(3,1);
     Xk(0) = safe_dis - dis2obj;
+    
     Xk(1) = diffvel;
     Xk(2) = current_acc;
 
 
     computeMatrices();
 
+    if (acc_cmd > 0){
+        acc_cmd  = std::min(acc_cmd,3.0);
+    }
+    if (acc_cmd < 0){
+      acc_cmd  = std::max(acc_cmd,-5.0);
+    }
+    
 
     double vel_cmd = current_vel + acc_cmd * dt;
     
     if (vel_cmd < 0)
       vel_cmd = 0;
 
+    vel_cmd = std::max(vel_cmd,70/3.6);    
     //Publish
     std_msgs::Float64 target_vel;
     target_vel.data = vel_cmd;
@@ -223,9 +241,19 @@ void ACC::poseCallback(const nav_msgs::Odometry& state_msg)
 
 }
 
-void ACC::accCallback(const geometry_msgs::Point& msg)
-{
-  current_acc = msg.x;
+void ACC::accCallback(const sensor_msgs::Imu& msg)
+{ 
+
+  current_acc = msg.linear_acceleration.x;
+    // Physically our vehicle shouldnt move above or below threadhold acc +-5m/s^2
+   if (current_acc > 0){
+        current_acc  = std::min(current_acc,5.0);
+    }
+    if (current_acc < 0){
+      current_acc  = std::max(current_acc,-5.0);
+    }
+
+  
 }
 
 void ACC::objectCallback(const autoware_msgs::DetectedObjectArray& msg)

@@ -15,6 +15,7 @@
 
 #include <std_msgs/Float64MultiArray.h>
 #include <std_msgs/Float64.h>
+#include <sensor_msgs/Imu.h>
 #include <std_msgs/Float32.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Point.h>
@@ -39,7 +40,7 @@ class ACC
     ros::Subscriber pose_sub, acc_sub, target_sub;
 
 
-    float current_acc, current_vel, current_x, current_y;
+    double current_acc, current_vel, current_x, current_y;
     float object_x, object_y, object_vel;
 
     bool direct_control;
@@ -78,7 +79,7 @@ class ACC
             const uint iter_max = 100000);
 
     void poseCallback(const nav_msgs::Odometry& state_msg);
-    void accCallback(const geometry_msgs::Point& msg);
+    void accCallback(const sensor_msgs::Imu& msg);
     void objectCallback(const autoware_msgs::DetectedObjectArray& msg);
 
     void CalcVel();

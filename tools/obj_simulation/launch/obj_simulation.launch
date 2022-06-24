@@ -2,6 +2,7 @@
 <launch>
   
   <node name="obj_simulation" pkg="obj_simulation" type="obj_simulation" output="screen">      
+        <remap from="/detected_objs" to="/detected_objs_sim"/>
         <!-- <remap from="AA" to="BB"/> -->
   </node>
   

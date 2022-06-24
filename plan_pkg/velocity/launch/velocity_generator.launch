@@ -7,6 +7,8 @@
   </node> -->
 
   <node name="acc_node" pkg="velocity" type="acc_node" output="screen">        
+    <remap from="/detected_objs" to="/detected_objs_sim"/>
+
     <param name="direct_control" value="True"/> 
     <param name = "delay_in_sec" value ="1" />
     <param name = "dt" value ="0.04"/>
@@ -16,6 +18,8 @@
     <param name = "R_weight" value = "1"/>
     <param name = "d_time" value ="2.0"/>
     <param name = "d_safe" value ="15.0"/>
+    
+    
 
 
   </node>
