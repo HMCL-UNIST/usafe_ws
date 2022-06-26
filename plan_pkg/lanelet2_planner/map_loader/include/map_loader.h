@@ -96,7 +96,7 @@
 // #include <lanelet2_extension/visualization/visualization.h>
 // #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
 
-enum struct LaneChangeState {LeftChange = 0, Follow = 1, RightChange = 2, Pending = 3}; 
+enum struct LaneChangeState {LeftChange = 0, Follow = 1, RightChange = 2, LeftPending = 3,RightPending = 4}; 
 
 
 
@@ -111,7 +111,8 @@ inline const char* stateToString(LaneChangeState v)
         case LaneChangeState::LeftChange:   return "LeftChange";
         case LaneChangeState::Follow:   return "Follow";
         case LaneChangeState::RightChange: return "RightChange";
-        case LaneChangeState::Pending: return "Pending";
+        case LaneChangeState::LeftPending: return "LeftPending";
+        case LaneChangeState::RightPending: return "RightPending";
         default:      return "[Unknown LaneChangeState]";
     }
 }
@@ -159,6 +160,10 @@ std::mutex mu_mtx;
 RoutePlanner rp_;
 lanelet::LaneletMapPtr map;
 lanelet::routing::RoutingGraphUPtr routingGraph;
+lanelet::ConstLineString3d target_ctl;
+lanelet::ConstLanelet target_lane;
+std::vector<lanelet::ConstLanelet> target_lanes;
+std::vector<lanelet::ConstLanelet> lanes;
 bool map_loaded;
 float local_path_length;
 double origin_lat;
