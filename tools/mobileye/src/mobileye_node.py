@@ -12,6 +12,8 @@ from geometry_msgs.msg import PoseStamped, Pose, PoseWithCovariance
 from nav_msgs.msg import Odometry
 from tf.transformations import euler_from_quaternion, quaternion_from_euler, unit_vector
 import math
+from hmcl_msgs.msg import Lane
+
 class mobileyeSub():
     def __init__(self):
         rospy.init_node("dbw_mobileye_node")
@@ -20,6 +22,7 @@ class mobileyeSub():
         self.objs_viz_Pub = rospy.Publisher('/detected_objs_viz', MarkerArray, queue_size=2)
         self.can_sub = rospy.Subscriber("/received_messages", Frame, self.data_pub)
         self.poseSub = rospy.Subscriber("/pose_estimate", Odometry, self.poseCallback)
+        self.localPathSub = rospy.Subscriber("/local_traj", Lane, self.pathCallback)
         self.timerSub = rospy.Timer(rospy.Duration(0.1), self.detected_obj_timer)
         self.frame_ok = 0
         self.pose_ready = False
@@ -30,7 +33,9 @@ class mobileyeSub():
         self.tsr = [TSR(),TSR(),TSR(),TSR(),TSR(),TSR(),TSR()]
         self.tsr_num = 0
         self.obj_num = 0
+        self.local_trj =None
 
+    
 
     def objs_marker_gen(self,objs):
         # objs is DetectedObjectArray msg
@@ -121,7 +126,8 @@ class mobileyeSub():
 
             obj_msg.velocity.linear.x = self.obstacle_data[i].obstacle_relative_velocity_x
             if(add_obj):
-                objs_msg.objects.append(obj_msg)
+                if(self.obj_inside_path(obj_msg)):
+                    objs_msg.objects.append(obj_msg)
 
         self.objs_Pub.publish(objs_msg)
         print("number of obj found = " + str(len(objs_msg.objects)))
@@ -132,6 +138,31 @@ class mobileyeSub():
         self.objs_viz_Pub.publish(viz_markers)
 
         
+    def obj_inside_path(self,obj_msg):
+        if self.local_trj is None: 
+            return True
+        if (self.local_trj.header.stamp - obj_msg.header.stamp).to_sec() > 0.5:
+            return False
+       
+        # find min point 
+        min_idx = 0
+        min_dist = 1e4
+        for i, wp in obj_msg.waypoints:
+            dist_tmp = math.sqrt((wp.pose.pose.position.x-obj_msg.pose.position.x)**2+(wp.pose.pose.position.y-obj_msg.pose.position.y)**2)
+            if dist_tmp < min_dist:
+                min_dist = dist_tmp
+                min_idx = i
+        if(min_dist < 1.6):
+            return True
+        else:
+            return False
+                
+
+
+            
+    def pathCallback(self,path_msg):
+        self.local_trj = path_msg
+
     def data_parser(self, data):
             
         if data.id == 0x766:
