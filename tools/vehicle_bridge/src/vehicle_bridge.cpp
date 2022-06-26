@@ -61,6 +61,10 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 5);    
   wheelPub  = nh_light_.advertise<hmcl_msgs::VehicleWheelSpeed>("/wheel_info", 5);    
 
+  right_lc_pub  = nh_light_.advertise<std_msgs::Bool>("/right_lanechange", 2);    
+  left_lc_pub  = nh_light_.advertise<std_msgs::Bool>("/left_lanechange", 2);    
+
+
 
   // velPub  = nh_light_.advertise<std_msgs::Float64>("/setpoint", 2);   
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
@@ -160,8 +164,8 @@ void VehicleBridge::AcanCallback(can_msgs::FrameConstPtr acan_data)
     case 0x608:   
       
       // receive TL_INFO
-      a = acan_data->data[0]; //AD_HAZARD_STAT 
-      a = acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT      
+      left_light_on = (unsigned int)acan_data->data[0]; //AD_HAZARD_STAT 
+      right_light_on = (unsigned int)acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT      
       
       break;
 
@@ -347,11 +351,15 @@ void VehicleBridge::SetpointCallback(std_msgs::Float64ConstPtr msg){
 
 void VehicleBridge::MissionStateMachine(){
    ros::Rate mission_loop_rate(2); // rate 
-    while(ros::ok())
-  { 
+    std_msgs::Bool left_lc_msg;
+    std_msgs::Bool right_lc_msg;
     double ref_x =  0.0;
     double ref_y = 0.0;
     double dist_to_ref = 1e3;
+    while(ros::ok())
+  { 
+
+
     switch(missionState){
       case MissionState::Init:
           drivingState = DrivingState::Init;
@@ -365,6 +373,26 @@ void VehicleBridge::MissionStateMachine(){
       break;
 
       case MissionState::LaneChange:    
+       
+          if(left_light_on){
+            left_lc_msg.data = true;
+            right_lc_msg.data = false;
+          }else{
+            left_lc_msg.data = false;
+            right_lc_msg.data = false;
+          }
+          
+          if(right_light_on){
+            left_lc_msg.data = false;
+            right_lc_msg.data = true;
+          }else{
+            left_lc_msg.data = false;
+            right_lc_msg.data = false;
+          }
+          
+          right_lc_pub.publish(right_lc_msg);
+          left_lc_pub.publish(left_lc_msg);  
+
           ref_x = 149.5;
           ref_y = 29.2;
           dist_to_ref = sqrt(pow((ref_x-ego_pose.pose.position.x),2)+pow((ref_y-ego_pose.pose.position.y),2));

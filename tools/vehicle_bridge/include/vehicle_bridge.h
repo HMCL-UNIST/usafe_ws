@@ -26,9 +26,9 @@
 #include <ros/time.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Int64.h>
+#include <std_msgs/Bool.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/NavSatFix.h>
-
 
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -98,7 +98,7 @@ ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub, emergency_stopSub, gnssPoseSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub, setpointSub;
-ros::Publisher  velPub, AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
+ros::Publisher  velPub, AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub, left_lc_pub, right_lc_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
 dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
@@ -110,6 +110,9 @@ bool Acan_recv_status;
 bool Ccan_recv_status;
 bool emergency_stop_activate;
 int emergency_count;
+
+unsigned int left_light_on;
+unsigned int right_light_on;
 double setpoint_value;
 bool scc_overwrite;
 short scc_overwrite_value;
