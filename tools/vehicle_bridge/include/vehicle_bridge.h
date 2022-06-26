@@ -51,7 +51,7 @@
 #define PI 3.14159265358979323846264338
 
 
-enum struct DrivingState {Init = 0, NormalDriving = 1, EmergencyBrake = 2, Parking = 3}; 
+enum struct DrivingState {Init = 0, NormalDriving = 1, EmergencyBrake = 2, Parking = 3, Incline = 4}; 
 
 
 
@@ -64,9 +64,30 @@ inline const char* stateToString(DrivingState v)
         case DrivingState::NormalDriving:   return "NormalDriving";
         case DrivingState::EmergencyBrake:   return "EmergencyBrake";
         case DrivingState::Parking: return "Parking";
+        case DrivingState::Incline: return "Incline";
         default:      return "[Unknown DrivingState]";
     }
 }
+
+
+
+enum struct MissionState {Init = 0, LaneChange = 1, ACC = 2, Incline = 3}; 
+
+
+
+
+inline const char* stateToString(MissionState v)
+{
+    switch (v)
+    {
+        case MissionState::Init:   return "Init";
+        case MissionState::LaneChange:   return "LaneChange";
+        case MissionState::ACC:   return "ACC";
+        case MissionState::Incline: return "Incline";
+        default:      return "[Unknown MissionState]";
+    }
+}
+
 
 
 
@@ -75,19 +96,21 @@ class VehicleBridge
 private:
 ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
-ros::Subscriber AcanSub, CcanSub, emergency_stopSub;
-ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub;
+ros::Subscriber AcanSub, CcanSub, emergency_stopSub, gnssPoseSub;
+ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub, setpointSub;
 ros::Publisher  velPub, AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
 dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
 DrivingState drivingState;
+MissionState missionState;
 // boost::mutex optimizedStateMutex_;
 bool can_recv_status;
 bool Acan_recv_status;
 bool Ccan_recv_status;
 bool emergency_stop_activate;
 int emergency_count;
+double setpoint_value;
 bool scc_overwrite;
 short scc_overwrite_value;
 hmcl_msgs::VehicleStatus vehicle_status_;
@@ -97,7 +120,7 @@ hmcl_msgs::VehicleWheelSpeed wheel_info_;
 hmcl_msgs::VehicleGear gear_info_;
 
 can_msgs::Frame steering_frame, scc_frame, gear_frame, light_frame;
-
+double acc_cmd;
 double gear_ratio = 15.0;
 int steering_offset = 8;         
 
@@ -114,6 +137,7 @@ float fl, fr, rl, rr, whl_speed_mean;
 int whl_speed_mean_mps;
 int prev_gear;
 short steer_value;
+geometry_msgs::PoseStamped ego_pose;
 
 
 ros::Time Acan_callback_time;
@@ -125,9 +149,13 @@ void AcanSender();
 void AcanWatchdog();
 void TestCase();
 void DrivingStateMachine();
+void MissionStateMachine();
 
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
 void CcanCallback(can_msgs::FrameConstPtr ccan_data);
+void gnssPoseCallback(geometry_msgs::PoseStampedConstPtr msg);
+void SetpointCallback(std_msgs::Float64ConstPtr msg);
+
 void dyn_callback(vehicle_bridge::testConfig& config, uint32_t level);
 void InitCanmsg();
 // Vehicle commands Callbacks
