@@ -38,7 +38,7 @@ ACC::ACC()
     nh_.param<double>("d_safe", d_safe, 15.0);
     
 
-    nh_.param<bool>("direct_control", direct_control, true);    
+    nh_.param<bool>("direct_control", direct_control, false);    
 
     delay_step = (int)(delay_in_sec/dt);
 

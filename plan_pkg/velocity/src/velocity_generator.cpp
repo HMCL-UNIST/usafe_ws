@@ -27,17 +27,17 @@ VelocityGenerator::VelocityGenerator()
     new_vel = false;
     previous_step = false;
     ttt = 0;
-
+    new_target_vel = false;
     // Subscribe
     local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityGenerator::trajCallback,this);
-    // acc_target_vel_sub = nh_.subscribe("/acc_target_vel", 1, &VelocityGenerator::targetCallback, this);
-    acc_target_vel_sub = nh_.subscribe("/setpoint", 1, &VelocityGenerator::targetCallback, this);
+    acc_target_vel_sub = nh_.subscribe("/acc_target_vel", 1, &VelocityGenerator::targetCallback, this);
+    // acc_target_vel_sub = nh_.subscribe("/setpoint", 1, &VelocityGenerator::targetCallback, this);
     // vel_sub = nh_.subscribe("/pose_estimate", 1, &VelocityGenerator::velCallback, this);
     wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityGenerator::wheelCallback, this);
     acc_sub = nh_.subscribe("/bias_acc", 1, &VelocityGenerator::accCallback, this);
 
     // Publish
-    vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint2", 1, true);
+    vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint", 1, true);
     vel_vis_pub = nh_.advertise<visualization_msgs::Marker>( "/ref_vel_prof_viz", 0 );
     vel_debug  = nh_.advertise<geometry_msgs::PoseStamped>("/vel_debug", 2);
 
@@ -48,7 +48,7 @@ VelocityGenerator::VelocityGenerator()
 
 void VelocityGenerator::callbackthread()
 {   
-    ros::Rate loop_rate(5); // rate  
+    ros::Rate loop_rate(10); // rate  
     while(ros::ok()){
         CalcVel();
         loop_rate.sleep();
@@ -111,12 +111,12 @@ void VelocityGenerator::CalcVel()
         double del_x[3] = {xf[0] - sf, xf[1]- vf, xf[2]- af};
 
 
-        if (speed_limit <= 20/3.6)
+        if (xf[1] <= 25/3.6)
         {
-            if (current_vel < speed_limit)
-                ref_speed = speed_limit;
-                break;
+            ref_speed = xf[1];
+            break;
         }
+
 
         if (abs(del_x[0]) < 0.1 && abs(del_x[1]) < 0.1 && abs(del_x[2]) < 0.1) {        
             
@@ -132,7 +132,7 @@ void VelocityGenerator::CalcVel()
                 ref_speed = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
             }
 
-            if (xf[1] = 0 && current_vel < 1)
+            if (xf[1] == 0 && current_vel < 1)
             {
                 ref_speed = 0;
             }
@@ -156,7 +156,7 @@ void VelocityGenerator::CalcVel()
             break;
         }
         else if (k >= 50 || fail2solve) {
-            ref_speed = v0;
+            ref_speed = xf[1];
             std::cout << "Fail" << std::endl;
             previous_step = true;
             break;
@@ -256,10 +256,11 @@ void VelocityGenerator::CalcVel()
 
     new_vel = false;
     
-    if (ttt > 10){
+    if (ttt > 20){
+        
         new_target_vel = false;
     }
-    
+    ROS_INFO(" ttt = %d", ttt);
     ttt++;
     // std::cout << "target" << new_target_vel << std::endl;
 
@@ -314,7 +315,9 @@ void VelocityGenerator::trajCallback(const hmcl_msgs::Lane& msg)
     if (visualize){
         traj = msg;
     }
-
+    if(msg.waypoints.size() < 1){
+        return;
+    }
     double total_dis = 0.0;
     for (int i = 0; i < msg.waypoints.size()-1; i++)
     {   

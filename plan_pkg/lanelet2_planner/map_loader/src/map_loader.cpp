@@ -145,11 +145,11 @@ void MapLoader::init_kalman_filters(){
 
 }
 
-
 void MapLoader::LaneChangeStateMachine(){
-  ros::Rate lc_loop_rate(1/lanechange_fsm_period); // rate  
+    ros::Rate lc_loop_rate(1/lanechange_fsm_period); // rate  
   double lane_change_weight_delta = 1/(lane_change_in_sec/lanechange_fsm_period);
   prev_lane_change_state = lane_change_state;
+  double dist_to_target_ = 1e3;
   while (ros::ok())
   {    
     ROS_INFO("LaneChangeStatus = %s",stateToString(lane_change_state));
@@ -166,13 +166,8 @@ void MapLoader::LaneChangeStateMachine(){
           break;  
 
         case LaneChangeState::Follow:
-            if( prev_lane_change_state != LaneChangeState::Follow){
-                lane_change_state =  LaneChangeState::Pending;
-            }
-
             if(left_change_signal){
               lane_change_state = LaneChangeState::LeftChange; 
-                           
             }
             if(right_change_signal){
               lane_change_state = LaneChangeState::RightChange;              
@@ -189,19 +184,21 @@ void MapLoader::LaneChangeStateMachine(){
             }            
           break;
           
-        case LaneChangeState::Pending:
-            if(prev_lane_change_state != LaneChangeState::Pending)
-            {
-              ROS_INFO("Pending init");
-            }else{              
-              lane_change_weight = lane_change_weight+lane_change_weight_delta;
-            }
-
-            if(lane_change_weight > 1){
-              lane_change_state = LaneChangeState::Follow; 
-              tmp_state = LaneChangeState::Follow; 
-            }           
-            break;  
+        case LaneChangeState::LeftPending:         
+                lane_change_weight = lane_change_weight+lane_change_weight_delta;                       
+               dist_to_target_ = lanelet::geometry::distance2d(target_lane.centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));                      
+                if(dist_to_target_ < 0.1){
+                  lane_change_state = LaneChangeState::Follow;         
+                }
+          break;  
+        
+        case LaneChangeState::RightPending:          
+          lane_change_weight = lane_change_weight+lane_change_weight_delta;
+              dist_to_target_ = lanelet::geometry::distance2d(target_lane.centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));                      
+                if(dist_to_target_ < 0.1){
+                  lane_change_state = LaneChangeState::Follow;         
+                }
+        break;  
 
         default:
         ROS_INFO("Lance Change default Mode");
@@ -209,34 +206,17 @@ void MapLoader::LaneChangeStateMachine(){
     }
 
     // do not stuck in any state 
-    if(lane_change_weight > 2){
-              lane_change_state = LaneChangeState::Pending; 
+    if(lane_change_weight > 3){
+              lane_change_state = LaneChangeState::Follow; 
     }
     prev_lane_change_state = tmp_state;   
     // trigger reset 
-    left_change_signal = false;   
-    right_change_signal = false;
+ 
     lc_loop_rate.sleep();
   }
 
 }
 
-
-// void MapLoader::SimulatedObj(){  
-//   // check if the object detection updated
-//   ros::Rate simulattion_rate(5); // rate  Hz
-  
-//   while (ros::ok())
-//   {
-    
-//   ros::Duration elapsed_time = objects.header.stamp -prev_objects.header.stamp;
-  
-//   // prev object update
-//   prev_objects = objects;
-
-//   simulattion_rate.sleep();
-//   }
-// }
 
 void MapLoader::objsCallback(const autoware_msgs::DetectedObjectArrayConstPtr& msg){
   if(msg->objects.size() > 0){
@@ -293,8 +273,8 @@ void MapLoader::current_lanefollow(){
     std::vector<std::vector<double>> global_points;    
     std::vector<double> speed_lim;    
     std::vector<std::pair<double, lanelet::Lanelet>> nearest_lanelet = lanelet::geometry::findNearest(map->laneletLayer, lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y), 1);
-    std::vector<lanelet::ConstLanelet> lanes;
-
+    // std::vector<lanelet::ConstLanelet> lanes;
+    
     
     for (auto const& item : nearest_lanelet)
     { double dist_to_lanelet = lanelet::geometry::distance2d(item.second.centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
@@ -302,62 +282,80 @@ void MapLoader::current_lanefollow(){
       if( dist_to_lanelet < 3.0){                        
             auto local_path = item.second;            
             auto lanelet_init = item.second;
-            lanes.push_back(local_path);
+            
             int number_lane_count = 0;
             ////////////// check if lane change required ///////////
             
             // double dist_c = lanelet::geometry::distance2d(lanes.front().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
            
-            double dist_l = lanelet::geometry::distance2d(lanes.front().leftBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));              
-            double dist_r = lanelet::geometry::distance2d(lanes.front().rightBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
-            auto left_next_lane = routingGraph->left(lanes.front());                                              
-            auto right_next_lane = routingGraph->right(lanes.front());
+            double dist_l = lanelet::geometry::distance2d(local_path.leftBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));              
+            double dist_r = lanelet::geometry::distance2d(local_path.rightBound(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
+            auto left_next_lane = routingGraph->left(local_path);                                              
+            auto right_next_lane = routingGraph->right(local_path);
              
-             dist_to_target = dist_to_lanelet;
-
+             if(lane_change_state == LaneChangeState::LeftPending ||lane_change_state == LaneChangeState::RightPending){
+                target_lanes.clear();
+                lanes.clear();
+                target_lanes.push_back(target_lane);
+                lanes.push_back(target_lane);
+             }
+            
               if(lane_change_state == LaneChangeState::LeftChange){
                 if(left_next_lane){
                     ROS_INFO("left lane found");  
+                    target_lane =left_next_lane.get(); 
+                    target_lanes.push_back(target_lane);
+                    lanes.push_back(target_lane);
+                    target_ctl = left_next_lane.get().centerline();
                     dist_to_target = lanelet::geometry::distance2d(left_next_lane.get().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));                      
+                    lane_change_state = LaneChangeState::LeftPending;
                 }else{         
                     ROS_INFO("Left lane not found");  
-                  lane_change_state = LaneChangeState::Pending;
+                  lane_change_state = LaneChangeState::Follow;
+                  target_lanes.clear();
+                  lanes.clear();
+                  lanes.push_back(local_path);
+                  target_lanes.push_back(local_path);
                 } 
               }else if(lane_change_state == LaneChangeState::RightChange){
                   if(right_next_lane){
-                    ROS_INFO("right lane found");                                                                                                                      
+                    ROS_INFO("right lane found");    
+                    target_lane =right_next_lane.get();
+                    lanes.push_back(target_lane);          
+                    target_ctl = right_next_lane.get().centerline();                                                                                                         
                     dist_to_target = lanelet::geometry::distance2d(right_next_lane.get().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
+                    lane_change_state = LaneChangeState::RightPending;
                   }else{
                     ROS_INFO("Right lane not found");  
-                    lane_change_state = LaneChangeState::Pending;
+                    lane_change_state = LaneChangeState::Follow;
+                    target_lanes.clear();
+                    lanes.clear();
+                    lanes.push_back(local_path);
+                    target_lanes.push_back(local_path);
                   }
-              }
-              // re calculate dist_to_garget if no changable lane found pending 
-              if(lane_change_state == LaneChangeState::Pending){         
-                  // if close enough to center line -> switch to follow(force)
-                  if(abs(dist_to_target) < 0.3){
-                    ROS_INFO("close enough switch to Follow");
-                    lane_change_state = LaneChangeState::Follow; 
-                    prev_lane_change_state = LaneChangeState::Follow;                    
-                  }             
-                    // dist_to_target = lanelet::geometry::distance2d(lanes.front().centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));                                            
+              }else if(lane_change_state == LaneChangeState::Follow){
+                target_lanes.clear();
+                lanes.clear();
+                lanes.push_back(local_path);
+                target_lanes.push_back(local_path);
               }
             
-
-           
+            
+        
+              auto lanelets_ = routingGraph->following(lanes.back(),false);   
+        
             ////////////// check if lane change required END ///////////
-            auto lanelets_ = routingGraph->following(lanes.back(),false);   
+    
             auto *lanelets_ptr = &lanelets_;
             int while_count = 0;
+            // lane_dist_cumulative > local_path_length
             while(lane_dist_cumulative < local_path_length){
               while_count++;
-             
               number_lane_count++;
               if(number_lane_count > 1000){
                 break;
               }              
                 
-                  
 
               if(lanelets_.size() > 0){ 
                  if(while_count ==1 ){               
@@ -416,20 +414,14 @@ void MapLoader::current_lanefollow(){
                   double delta_x = 0.0; 
                   double delta_y= 0.0 ;
                   if( lane_change_state != LaneChangeState::Follow){
-                      if(lane_change_state == LaneChangeState::LeftChange){
+                      if(lane_change_state == LaneChangeState::LeftChange || lane_change_state == LaneChangeState::LeftPending){
                             // (0,dist_to_target) -> yaw_tmp        
-                            dist_to_target = abs(dist_to_target);                            
-                      }else if(lane_change_state == LaneChangeState::RightChange){
-                        // (0,-1*dist_to_target) -> yaw_tmp                              
-                            dist_to_target = -1*abs(dist_to_target);                            
-                      }else if(lane_change_state == LaneChangeState::Pending){                            
-                            // vehicle on the left side of center line  --> 
                             lcweight = 1-lcweight;  
-                            if(dist_r > dist_l){                              
-                              dist_to_target = abs(dist_to_target);
-                            }else{                              
-                              dist_to_target = -1*abs(dist_to_target);
-                            }                            
+                            dist_to_target = -1*abs(dist_to_target);                            
+                      }else if(lane_change_state == LaneChangeState::RightChange || lane_change_state == LaneChangeState::RightPending){
+                        // (0,-1*dist_to_target) -> yaw_tmp                              
+                             lcweight = 1-lcweight;  
+                            dist_to_target = abs(dist_to_target);                            
                       }
                       delta_x = 0.0*cos(yaw_tmp)-lcweight*dist_to_target*sin(yaw_tmp);
                       delta_y = 0.0*sin(yaw_tmp)+lcweight*dist_to_target*cos(yaw_tmp);                                                                                                                              
@@ -455,10 +447,11 @@ void MapLoader::current_lanefollow(){
                         break;
                       }    
                     }
-                  
+                *lanelets_ptr = routingGraph->following(lanes.back(),false);    
+                lanes.push_back(lanelets_[0]);     
+              }else{
+                break;
               }
-              *lanelets_ptr = routingGraph->following(lanes.back(),false);    
-              lanes.push_back(lanelets_[0]); 
             }           
           }else{
            ROS_WARN("near lanelet is not truly close");      
@@ -841,18 +834,18 @@ void MapLoader::fix_and_save_osm(){
             auto iter_l =  li->leftBound().begin();                      
             double dist_;            
             int count = 0;            
-            while(count < 10000){              
+            while(count < 100000){              
                 auto iter_l =  li->leftBound().begin();  
                 lanelet::Point3d p_l = *next(li->leftBound().begin(),count);
                 lanelet::Point3d p_end = *next(li->leftBound().begin(),li->leftBound().size()-1);
                 double dist_to_end_point =  lanelet::geometry::distance(p_l,p_end);     
-                if( dist_to_end_point <= 1 )                  
+                if( dist_to_end_point < 2 )                  
                     {break;}
                  // ->leftBound()[idx];                    
                 lanelet::Point3d p_left  = *next(li->leftBound().begin(),count);
                 lanelet::Point3d p_right = *next(li->leftBound().begin(),count+1);                   
                 dist_ =  lanelet::geometry::distance(p_left,p_right);                  
-                if(dist_ > map_road_resolution){                  
+                if(dist_ > map_road_resolution*2){                  
                   // lanelet::Point3d new_pt = p_left;
                    double x = (p_left.x() + p_right.x())/2.0;                   
                     double y = (p_left.y() + p_right.y())/2.0;
@@ -877,17 +870,17 @@ void MapLoader::fix_and_save_osm(){
 
             count = 0;
             auto iter_r =  li->rightBound().begin();   
-            while(count < 10000){              
+            while(count < 100000){              
                 auto iter_r =  li->rightBound().begin();  
                 lanelet::Point3d p_l = *next(li->rightBound().begin(),count);
                 lanelet::Point3d p_end = *next(li->rightBound().begin(),li->rightBound().size()-1);
                 double dist_to_end_point =  lanelet::geometry::distance(p_l,p_end);     
-                if( dist_to_end_point <= 1 )                  
+                if( dist_to_end_point < 2 )                  
                     {break;}                                 
                 lanelet::Point3d p_left  = *next(li->rightBound().begin(),count);
                 lanelet::Point3d p_right = *next(li->rightBound().begin(),count+1);                   
                 dist_ =  lanelet::geometry::distance(p_left,p_right);                  
-                if(dist_ > map_road_resolution){                  
+                if(dist_ > map_road_resolution*2){                  
                   // lanelet::Point3d new_pt = p_left;
                    double x = (p_left.x() + p_right.x())/2.0;                   
                     double y = (p_left.y() + p_right.y())/2.0;
