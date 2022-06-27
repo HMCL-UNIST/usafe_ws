@@ -106,7 +106,7 @@ bool Master_Switch, AD_STR_MODE_CMD, AD_SCC_TAKEOVER_CMD, AD_LEFT_TURNLAMP_STAT;
 bool AD_RIGHT_TURNLAMP_STAT, AD_HAZARD_STAT;
 int  AD_STR_POS_CMD, AD_SCC_ACCEL_CMD, AD_GEAR_POS_CMD, AD_SCC_MODE_CMD;    
 int MODE_D = 0, MODE_P = 0, DRIVING = 0, PARKING = 0;   
-double control_effort;    
+double control_effort,control_effort2;    
 double sign = 1;
 double test_count; 
 short accel_value;

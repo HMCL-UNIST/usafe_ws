@@ -30,13 +30,14 @@ VelocityGenerator::VelocityGenerator()
 
     // Subscribe
     local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityGenerator::trajCallback,this);
-    acc_target_vel_sub = nh_.subscribe("/acc_target_vel", 1, &VelocityGenerator::targetCallback, this);
+    // acc_target_vel_sub = nh_.subscribe("/acc_target_vel", 1, &VelocityGenerator::targetCallback, this);
+    acc_target_vel_sub = nh_.subscribe("/setpoint", 1, &VelocityGenerator::targetCallback, this);
     // vel_sub = nh_.subscribe("/pose_estimate", 1, &VelocityGenerator::velCallback, this);
     wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityGenerator::wheelCallback, this);
     acc_sub = nh_.subscribe("/bias_acc", 1, &VelocityGenerator::accCallback, this);
 
     // Publish
-    vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint", 1, true);
+    vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint2", 1, true);
     vel_vis_pub = nh_.advertise<visualization_msgs::Marker>( "/ref_vel_prof_viz", 0 );
     vel_debug  = nh_.advertise<geometry_msgs::PoseStamped>("/vel_debug", 2);
 
@@ -47,7 +48,7 @@ VelocityGenerator::VelocityGenerator()
 
 void VelocityGenerator::callbackthread()
 {   
-    ros::Rate loop_rate(10); // rate  
+    ros::Rate loop_rate(5); // rate  
     while(ros::ok()){
         CalcVel();
         loop_rate.sleep();
@@ -242,9 +243,9 @@ void VelocityGenerator::CalcVel()
 
     }
 
-    double rref_speed = ref_speed*3.6;
-    if (rref_speed >= 70) {
-        rref_speed = 70;
+    double rref_speed = ref_speed;
+    if (rref_speed >= 70/3.6) {
+        rref_speed = 70/3.6;
     }
     vel_msg.data = rref_speed;
     
@@ -255,7 +256,7 @@ void VelocityGenerator::CalcVel()
 
     new_vel = false;
     
-    if (ttt > 5){
+    if (ttt > 10){
         new_target_vel = false;
     }
     

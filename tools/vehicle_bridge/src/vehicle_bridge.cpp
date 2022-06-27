@@ -305,6 +305,7 @@ void VehicleBridge::controlEffortCallback(const std_msgs::Float64& control_effor
   scc_frame.is_error = false;
   scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
+  control_effort2= (control_effort_input.data);
   if(drivingState == DrivingState::NormalDriving){  
       control_effort = round(control_effort_input.data *100)/100;      
       accel_value = (control_effort*100);  
@@ -354,9 +355,9 @@ void VehicleBridge::TestCase(){
     // }
 
     // if(lc >  150){
-    //   std_msgs::Float64 vel_msg;
-    //   vel_msg.data = 0.0;
-    //   velPub.publish(vel_msg);            
+    //   // std_msgs::Float64 vel_msg;
+    //   // vel_msg.data = 0.0;
+    //   // velPub.publish(vel_msg);            
 
     //   if(abs(wheel_info_.wheel_speed) < 0.1){
     //     drivingState = DrivingState::Parking;
@@ -508,6 +509,12 @@ void VehicleBridge::DrivingStateMachine() {
         // steering_frame.data[0] = (steer_value & 0b11111111);
         // steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         
+        if(abs(wheel_info_.wheel_speed) < 0.1 && abs(control_effort2) < 0.1){
+          drivingState = DrivingState::Parking;
+        }
+        else{
+          drivingState = DrivingState::NormalDriving;
+        }
       break;  
 
       case DrivingState::EmergencyBrake:
@@ -544,6 +551,10 @@ void VehicleBridge::DrivingStateMachine() {
         scc_frame.is_rtr = false;        
         scc_frame.data[1] = (0 & 0b11111111);
         scc_frame.data[2] = ((0 >> 8)&0b11111111);        
+        
+        if (abs(control_effort2) > 0.2){
+          drivingState = DrivingState::NormalDriving;
+        }
 
         mtx_.unlock();
 
