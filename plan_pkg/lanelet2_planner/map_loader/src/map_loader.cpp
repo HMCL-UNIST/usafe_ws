@@ -70,7 +70,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
   lanechange_left_sub  = nh_.subscribe("/left_lanechange",2,&MapLoader::leftLancechangeCallback,this);
   lanechange_right_sub = nh_.subscribe("/right_lanechange",2,&MapLoader::rightLancechangeCallback,this);
-  
+  mobileye_sub = nh_.subscribe("/Mobileye_Info",2,&MapLoader::mobileyeCallback,this);
 
   nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
   nh_p_.getParam("osm_file_name", osm_file_name);
@@ -137,6 +137,10 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
 MapLoader::~MapLoader()
 {}
+
+void MapLoader::mobileyeCallback(const mobileye_msgs::MobileyeInfoConstPtr &msg){
+  mobileye_data = *msg;
+}
 
 
 void MapLoader::init_kalman_filters(){
@@ -263,6 +267,19 @@ void MapLoader::global_traj_handler(const ros::TimerEvent& time){
 
 }
 
+
+
+void MapLoader::mobileye_follow(){    
+    hmcl_msgs::Lane local_traj_msg;     
+  mobileye_based_traj(local_traj_msg);  
+  /////////////////////////
+  local_traj_pub.publish(local_traj_msg);
+      if(visualize_path){
+          viz_local_path(local_traj_msg);
+          l_traj_viz_pub.publish(local_traj_marker_arrary);
+      }
+  pub_autoware_traj(local_traj_msg);
+}
 
 
 void MapLoader::current_lanefollow(){
@@ -1088,6 +1105,63 @@ void MapLoader::compute_local_path(){
 
 }
 
+void MapLoader::mobileye_based_traj(hmcl_msgs::Lane& local_traj_msg){
+     
+
+      // ROS_INFO("current Pose  x = %f,y  = %f,yaw  = %f ", -1*dx, -1*dy, -1*psi);
+      // ROS_INFO("c3 = %f,c2 = %f,c1 = %f,c0 = %f ", Pcoef_tmp(0,0), Pcoef_tmp(1,0), Pcoef_tmp(2,0), Pcoef_tmp(3,0));
+      if(mobileye_data.left_lane.quality < 1 && mobileye_data.right_lane.quality < 1){
+          ROS_INFO("Poor lane qualities");
+          return;
+      }
+
+      double current_yaw = amathutils::getPoseYawAngle(cur_pose);
+      amathutils::wrap_yaw_rad(current_yaw);
+      double psi = -1*current_yaw;
+      double dx = -1*cur_pose.position.x;
+      double dy = -1*cur_pose.position.y;  
+      
+      double c3 = mobileye_data.left_lane.curvature_derivative_c3;
+      double c2 = mobileye_data.left_lane.curvature_parameter_c2;
+      double c1 = mobileye_data.left_lane.heading_angle_parameter_c1;
+      double c0 = mobileye_data.left_lane.position_parameter_c0;     
+      float init_s = 0.0;                    
+      std::vector<double> speed_limits = linspaces(float(30/3.6),float(30/3.6),int(local_path_length/map_road_resolution));
+      std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));      
+      PolyFit<double> f = polyfit(xeval, xeval);
+      Eigen::Matrix<double, Eigen::Dynamic, 1> Pcoef_tmp = f.getCoefficients();
+      Pcoef_tmp(0,0) = -c3;
+      Pcoef_tmp(1,0) = -c2;
+      Pcoef_tmp(2,0) = -c1;
+      Pcoef_tmp(3,0) = -c0-1.5;    
+      f.setCoefficients(Pcoef_tmp);
+      std::vector<double> yval = f.evalPoly(xeval);                   
+      hmcl_msgs::Lane local_traj_msg_fit;
+      local_traj_msg_fit.header.frame_id = "map";
+      local_traj_msg_fit.header.stamp = mobileye_data.header.stamp;       
+      for(int i=0; i< xeval.size(); i++){    
+        hmcl_msgs::Waypoint waypoint_tmp;        
+        waypoint_tmp.pose.pose.position.x = (cos(-1*psi)*xeval[i]-sin(-1*psi)*yval[i])-dx;
+        waypoint_tmp.pose.pose.position.y = (sin(-1*psi)*xeval[i]+cos(-1*psi)*yval[i])-dy;          
+        double epsi_tmp = 3*xeval[i]*xeval[i]*c3 + 2*xeval[i]*c2 + c1;     
+        epsi_tmp = atan(epsi_tmp)- psi;       
+        tf2::Quaternion q_tmp;
+        q_tmp.setRPY(0, 0, epsi_tmp);
+        q_tmp=q_tmp.normalize();
+        waypoint_tmp.pose.pose.orientation.x = q_tmp[0];
+        waypoint_tmp.pose.pose.orientation.y = q_tmp[1];
+        waypoint_tmp.pose.pose.orientation.z = q_tmp[2];
+        waypoint_tmp.pose.pose.orientation.w = q_tmp[3];
+        waypoint_tmp.twist.twist.linear.x = 30/3.6;
+        local_traj_msg_fit.waypoints.push_back(waypoint_tmp);            
+      }
+      local_traj_msg = local_traj_msg_fit;
+      
+  
+
+}
+
+
 
 void MapLoader::curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg){
       if(g_points.size() < 6){
@@ -1263,13 +1337,17 @@ void MapLoader::local_traj_handler(const ros::TimerEvent& time){
   // pub_autoware_traj(local_traj_test_msg);
   //////////////////////// //////////////////////// //////////////////////// ////////////////////////
   mu_mtx.lock();
+  
     if(global_traj_available){
       // std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
         // compute_local_path();
         current_lanefollow();
+        
   //     std::chrono::duration<double> sec = std::chrono::system_clock::now() - start;
   // std::cout << "loop iteration time = " << sec.count() << " seconds" << std::endl;
-    }    
+    }else{
+      mobileye_follow();
+    }  
     mu_mtx.unlock();
 }
 

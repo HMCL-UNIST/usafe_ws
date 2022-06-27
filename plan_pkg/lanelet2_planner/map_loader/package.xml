@@ -49,8 +49,10 @@
   <build_depend>lanelet2_validation</build_depend>
   <build_depend>autoware_lanelet2_msgs</build_depend>
   <build_depend>lanelet2_extension</build_depend>
-  
 
+  
+  <build_depend>mobileye_msgs</build_depend>
+   <run_depend>mobileye_msgs</run_depend>
   
   
   <run_depend>lanelet2_extension</run_depend>

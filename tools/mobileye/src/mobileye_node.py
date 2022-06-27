@@ -128,6 +128,7 @@ class mobileyeSub():
                 obj_msg.pose.position.y = local_delta_y
 
             obj_msg.velocity.linear.x = self.obstacle_data[i].obstacle_relative_velocity_x
+            
             if(add_obj):
                 # if(self.obj_inside_path(obj_msg)):
                 objs_msg.objects.append(obj_msg)
