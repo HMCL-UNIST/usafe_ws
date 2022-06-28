@@ -61,7 +61,11 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   debug_pub = nh_.advertise<geometry_msgs::PoseStamped>("/maploader_debug", 2, true);
   
-  
+  double cut_off_freq = 1.0;
+  c0_fil.initialize(0.1, cut_off_freq);
+  c1_fil.initialize(0.1, cut_off_freq);
+  c2_fil.initialize(0.1, cut_off_freq);
+  c3_fil.initialize(0.1, cut_off_freq);
   
   pose_init = false; 
   goal_available = false;
@@ -1131,10 +1135,15 @@ void MapLoader::mobileye_based_traj(hmcl_msgs::Lane& local_traj_msg){
       double c1_r = mobileye_data.right_lane.heading_angle_parameter_c1;
       double c0_r = mobileye_data.right_lane.position_parameter_c0;  
 
-      double c3 = -(c3_r + c3_l)/2.0;
-      double c2 = -(c2_r + c2_l)/2.0;
-      double c1 = -(c1_r + c1_l)/2.0;
-      double c0 = -c0_l - (c0_l+c0_r);
+      c3 = -(c3_r + c3_l)/2.0;
+      c2 = -(c2_r + c2_l)/2.0;
+      c1 = -(c1_r + c1_l)/2.0;
+      c0 = -c0_l- (c0_r-c0_l)/2;
+      
+      c0 = c0_fil.filter(c0);
+      c1 = c1_fil.filter(c1);
+      c2 = c2_fil.filter(c2);
+      c3 = c3_fil.filter(c3);
 
       float init_s = 0.0;                    
       ////////////////// Find reference velocity  /////
@@ -1152,7 +1161,7 @@ void MapLoader::mobileye_based_traj(hmcl_msgs::Lane& local_traj_msg){
     }
       ////////////////////////////////////////////////////////////////
       ////////////////////////////////////////////////////////////////
-      std::vector<double> speed_limits = linspaces(float(speed_limit_tmp/3.6),float(speed_limit_tmp/3.6),int(local_path_length/map_road_resolution));
+      std::vector<double> speed_limits = linspaces(float(speed_limit_tmp),float(speed_limit_tmp),int(local_path_length/map_road_resolution));
       std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));      
       PolyFit<double> f = polyfit(xeval, xeval);
       Eigen::Matrix<double, Eigen::Dynamic, 1> Pcoef_tmp = f.getCoefficients();
@@ -1178,7 +1187,7 @@ void MapLoader::mobileye_based_traj(hmcl_msgs::Lane& local_traj_msg){
         waypoint_tmp.pose.pose.orientation.y = q_tmp[1];
         waypoint_tmp.pose.pose.orientation.z = q_tmp[2];
         waypoint_tmp.pose.pose.orientation.w = q_tmp[3];
-        waypoint_tmp.twist.twist.linear.x = 30/3.6;
+        waypoint_tmp.twist.twist.linear.x = speed_limits[0];
         local_traj_msg_fit.waypoints.push_back(waypoint_tmp);            
       }
       local_traj_msg = local_traj_msg_fit;

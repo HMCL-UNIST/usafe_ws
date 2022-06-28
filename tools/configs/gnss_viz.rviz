@@ -5,7 +5,7 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Status1
-        - /localization1
+        - /plan1
         - /localization1/pose_est1/Shape1
       Splitter Ratio: 0.6852940917015076
     Tree Height: 549
@@ -104,7 +104,7 @@ Visualization Manager:
           Marker Topic: /local_traj_viz
           Name: Lpath
           Namespaces:
-            {}
+            ltraj: true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -118,13 +118,13 @@ Visualization Manager:
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
-          Enabled: true
+          Enabled: false
           Marker Topic: /ref_vel_prof_viz
           Name: ReferenceVel
           Namespaces:
             {}
           Queue Size: 1
-          Value: true
+          Value: false
       Enabled: true
       Name: plan
     - Class: rviz/Group
@@ -248,7 +248,7 @@ Visualization Manager:
           Marker Topic: /detected_objs_viz
           Name: Mobileye_DetectedObj
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -256,7 +256,7 @@ Visualization Manager:
           Marker Topic: /target_vehicle_viz
           Name: sim_targetVehicle
           Namespaces:
-            my_namespace: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -264,11 +264,7 @@ Visualization Manager:
           Marker Topic: /detection/lidar_tracker/objects_markers
           Name: LidarTrackerMarker
           Namespaces:
-            /detection/lidar_tracker/arrow_markers: true
-            /detection/lidar_tracker/box_markers: true
-            /detection/lidar_tracker/centroid_markers: true
-            /detection/lidar_tracker/hull_markers: true
-            /detection/lidar_tracker/label_markers: true
+            {}
           Queue Size: 100
           Value: true
       Enabled: true
@@ -286,12 +282,6 @@ Visualization Manager:
           Value: true
         map:
           Value: true
-        os_imu:
-          Value: true
-        os_lidar:
-          Value: true
-        os_sensor:
-          Value: true
       Marker Scale: 1
       Name: TF
       Show Arrows: true
@@ -302,11 +292,6 @@ Visualization Manager:
           base_link:
             gnss_link:
               imu_link:
-                {}
-            os_sensor:
-              os_imu:
-                {}
-              os_lidar:
                 {}
       Update Interval: 0
       Value: true
@@ -337,26 +322,21 @@ Visualization Manager:
   Value: true
   Views:
     Current:
-      Class: rviz/ThirdPersonFollower
-      Distance: 51.21958923339844
+      Angle: -5.900012016296387
+      Class: rviz/TopDownOrtho
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
-      Focal Point:
-        X: 4.39597225189209
-        Y: 1.8888037204742432
-        Z: 3.285054390289588e-6
-      Focal Shape Fixed Size: true
-      Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5347963571548462
+      Scale: 13.378376007080078
       Target Frame: base_link
-      Value: ThirdPersonFollower (rviz)
-      Yaw: 3.3554046154022217
+      Value: TopDownOrtho (rviz)
+      X: -18.429340362548828
+      Y: 3.392446279525757
     Saved: ~
 Window Geometry:
   Displays:
@@ -374,5 +354,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1028
-  X: 822
-  Y: 84
+  X: 93
+  Y: 77

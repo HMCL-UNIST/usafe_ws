@@ -44,7 +44,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   emergency_count(0),
   emergency_stop_activate(false),
   drivingState(DrivingState::Parking),  
-  missionState(MissionState::ACC),
+  missionState(MissionState::Init),
   scc_overwrite(false)
 {
   Acan_callback_time = ros::Time::now();
