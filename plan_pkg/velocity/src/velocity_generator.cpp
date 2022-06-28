@@ -28,10 +28,10 @@ VelocityGenerator::VelocityGenerator()
     previous_step = false;
     ttt = 0;
     new_target_vel = false;
+
     // Subscribe
     local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityGenerator::trajCallback,this);
     acc_target_vel_sub = nh_.subscribe("/acc_target_vel", 1, &VelocityGenerator::targetCallback, this);
-    // acc_target_vel_sub = nh_.subscribe("/setpoint", 1, &VelocityGenerator::targetCallback, this);
     // vel_sub = nh_.subscribe("/pose_estimate", 1, &VelocityGenerator::velCallback, this);
     wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityGenerator::wheelCallback, this);
     acc_sub = nh_.subscribe("/bias_acc", 1, &VelocityGenerator::accCallback, this);
@@ -58,197 +58,196 @@ void VelocityGenerator::CalcVel()
 {
 
     std_msgs::Float64 vel_msg;
-
+    
+    statemachine();
     double v0 = current_vel;
     double a0 = 0;
-    double a_lon_lim = 1.5;
-    double a_lat_lim = 4.0;
-    double d_lon_lim = -2.0;
+    double ref_speed = v0;
 
-    double P[3] = {1.0,1.0,5.0};
-    double xf[3] = {15, v0, 0};
-    if (new_target_vel) {
+    if (state == VelocityState::ACC)
+    {   
         if (target_acc_vel > speed_limit)
             target_acc_vel = speed_limit;
-        xf[0] = 10;
-        xf[1] = target_acc_vel;
-        xf[2] = 0;
-        // double xf[3] = {10, target_acc_vel, 0};
-        // std::cout << "Calculate the velocity: c_vel" << current_vel << " r_vel " << target_acc_vel << "acc" << current_acc << std::endl;
-    } 
-    else{
-        // double xf[3] = {10, speed_limit, 0};
+        ref_speed = target_acc_vel;
+        std::cout << "Current state is ACC" << std::endl;
+    }
+    else
+    {
+        
+        double time = 0.5;
+        if (state == VelocityState::Fast){
+            a0 = 1;
+            time = 1;
+            std::cout << "Current state is FAST" << std::endl;
+        }
+        else{
+            a0 = 0;
+        }
+        
+        // double a_lon_lim = 1.5;
+        // double a_lat_lim = 4.0;
+        // double d_lon_lim = -2.0;
+
+        double P[3] = {1.0,1.0,5.0};
+        double xf[3] = {15, v0, 0};
+
         xf[0] = 10;
         xf[1] = speed_limit;
         xf[2] = 0;
-    }
-    if (previous_step) {
-        std::cout << "*********" << std::endl;
-        xf[1] = xf[1]*0.5;
-    }
+
+        if (previous_step) {
+            std::cout << "**Previous Status is FAIL**" << std::endl;
+            xf[1] = xf[1]*0.5;
+            xf[0] = 20;
+        }
     
-
-    bool fail2solve = false;
-    
-    double ref_speed = v0;
-
-    debug_msg.header.stamp = ros::Time::now(); 
-    debug_msg.pose.position.x = v0;
-    debug_msg.pose.position.y = xf[1];
-    std::cout << "current_vel" << current_vel <<  std::endl;
-    std::cout << "r_vel" << xf[1] <<  std::endl;
-    
-
-    int k = 0;
-    while(1)
-    {   
-        // std::cout << "k is " << k << std::endl;
-        double sf = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) + 1/4*P[1]*pow(P[2],4);
-        double vf = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
-        double af = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
-
+        bool fail2solve = false;
         
-        double del_x[3] = {xf[0] - sf, xf[1]- vf, xf[2]- af};
-
-
-        if (xf[1] <= 25/3.6)
-        {
-            ref_speed = xf[1];
-            break;
-        }
-
-
-        if (abs(del_x[0]) < 0.1 && abs(del_x[1]) < 0.1 && abs(del_x[2]) < 0.1) {        
-            
-            double time = 1;
-
-            if (abs(current_vel-xf[1]) > 8)
-                time = P[2]*0.75;
-
-            if (P[2] > time) {
-                ref_speed = v0 + a0*time + P[0]*pow(time,2) + P[1]*pow(time,3);
-            }
-            else{
-                ref_speed = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
-            }
-
-            if (xf[1] == 0 && current_vel < 1)
-            {
-                ref_speed = 0;
-            }
-
-            double N = P[2]/0.2;
-
-            std::vector<double> profile{};
-            double tt = 0.0;
-            for (int i = 0; i < N; i++)
-            {
-                profile.push_back(v0 + a0*tt + P[0]*pow(tt,2) + P[1]*pow(tt,3));
-                tt = tt + 0.2;   
-            }
-            std::cout << "Calculate the velocity: c_vel" << current_vel << "r_vel" << ref_speed << std::endl;
-            if (visualize)
-            {
-                viz_vel_prof(profile);
-            }
-            // std::cout << "1 sbreak "  << std::endl;
-            previous_step = false;
-            break;
-        }
-        else if (k >= 50 || fail2solve) {
-            ref_speed = xf[1];
-            std::cout << "Fail" << std::endl;
-            previous_step = true;
-            break;
-        }
-
-        double DEL = 1e-1;
-
-        double xh1 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*(P[0]+DEL)*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
-        double x1 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
-        double J11 = (xh1-x1)/DEL;
-
-        double xh2 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*(P[1]+DEL)*pow(P[2],4);
-        double x2 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
-        double J12 = (xh2-x2)/DEL;            
-
-        double xh3 = v0*(P[2]+DEL) + 1/2*a0*pow((P[2]+DEL),2) + 1/3*P[0]*pow((P[2]+DEL),3) +1/4*P[1]*pow((P[2]+DEL),4);
-        double x3 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
-        double J13 = (xh3-x3)/DEL;    
-
-
-        xh1 = v0 + a0*P[2] + (P[0]+DEL)*pow(P[2],2) + P[1]*pow(P[2],3);
-        x1 = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
-        double J21 = (xh1-x1)/DEL;
-
-        xh2 = v0 + a0*P[2] + P[0]*pow(P[2],2) + (P[1]+DEL)*pow(P[2],3);
-        x2 = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
-        double J22 = (xh2-x2)/DEL;            
-
-        xh3 = v0 + a0*(P[2]+DEL) + P[0]*pow(P[2]+DEL,2) + P[1]*pow(P[2]+DEL,3);
-        x3 = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
-        double J23 = (xh3-x3)/DEL;            
-
-        xh1 = a0 + 2*(P[0]+DEL)*P[2] + 3*P[1]*pow(P[2],2);
-        x1 = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
-        double J31 = (xh1-x1)/DEL;   
-
-        xh2 = a0 + 2*P[0]*P[2] + 3*(P[1]+DEL)*pow(P[2],2);
-        x2 = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
-        double J32 = (xh2-x2)/DEL;
-
-        xh3 = a0 + 2*P[0]*(P[2]+DEL) + 3*P[1]*pow((P[2]+DEL),2);
-        x3 = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
-        double J33 = (xh3-x3)/DEL;
-
         
-        //Compute the inverse Matrix
-        double a = J11; double b = J12; double c = J13; 
-        double d = J21; double e = J22; double f = J23;
-        double g = J31; double h = J32; double i = J33;
 
-        float result = a*e*i - a*f*h - b*d*i + b*f*g +c*d*h -c*e*g;
+        debug_msg.header.stamp = ros::Time::now(); 
+        debug_msg.pose.position.x = v0;
+        debug_msg.pose.position.y = xf[1];        
 
-        if (abs(result) <= 0.0001) {
-            fail2solve = true;
-        }
-        else
-        {
-            double invJ[3][3];
-            invJ[0][0] = (e*i-f*h)/result;
-            invJ[0][1] = (c*h-b*i)/result;
-            invJ[0][2] = (b*f-c*e)/result;
-            invJ[1][0] = (g*f-d*i)/result;
-            invJ[1][1] = (a*i-c*g)/result;
-            invJ[1][2] = (c*d-a*f)/result;
-            invJ[2][0] = (d*h-e*g)/result;
-            invJ[2][1] = (b*g-a*h)/result;
-            invJ[2][2] = (a*e-b*d)/result;
+        int k = 0;
+        while(1)
+        {   
+            // std::cout << "k is " << k << std::endl;
+            double sf = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) + 1/4*P[1]*pow(P[2],4);
+            double vf = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
+            double af = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
             
-            double del_P[3] = {};
-            for (int i = 0; i < 3; i++)
+            double del_x[3] = {xf[0] - sf, xf[1]- vf, xf[2]- af};
+
+            if (abs(del_x[0]) < 0.1 && abs(del_x[1]) < 0.1 && abs(del_x[2]) < 0.1) {        
+                
+                
+
+                if (abs(current_vel-xf[1]) > 8)
+                    time = P[2]*0.75;
+
+                if (P[2] > time) {
+                    ref_speed = v0 + a0*time + P[0]*pow(time,2) + P[1]*pow(time,3);
+                }
+                else{
+                    ref_speed = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
+                }
+
+                if (xf[1] == 0 && current_vel < 1)
+                {
+                    ref_speed = 0;
+                }
+
+                double N = P[2]/0.2;
+
+                std::vector<double> profile{};
+                double tt = 0.0;
+                for (int i = 0; i < N; i++)
+                {
+                    profile.push_back(v0 + a0*tt + P[0]*pow(tt,2) + P[1]*pow(tt,3));
+                    tt = tt + 0.2;   
+                }
+                // std::cout << "Calculate the velocity: c_vel" << current_vel << "r_vel" << ref_speed << std::endl;
+                if (visualize)
+                {
+                    viz_vel_prof(profile);
+                }
+                previous_step = false;
+                break;
+            }
+            else if (k >= 50 || fail2solve) {
+                ref_speed = xf[1];
+                std::cout << "Fail" << std::endl;
+                previous_step = true;
+                break;
+            }
+
+            double DEL = 1e-1;
+
+            double xh1 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*(P[0]+DEL)*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
+            double x1 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
+            double J11 = (xh1-x1)/DEL;
+
+            double xh2 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*(P[1]+DEL)*pow(P[2],4);
+            double x2 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
+            double J12 = (xh2-x2)/DEL;            
+
+            double xh3 = v0*(P[2]+DEL) + 1/2*a0*pow((P[2]+DEL),2) + 1/3*P[0]*pow((P[2]+DEL),3) +1/4*P[1]*pow((P[2]+DEL),4);
+            double x3 = v0*P[2] + 1/2*a0*pow(P[2],2) + 1/3*P[0]*pow(P[2],3) +1/4*P[1]*pow(P[2],4);
+            double J13 = (xh3-x3)/DEL;    
+
+
+            xh1 = v0 + a0*P[2] + (P[0]+DEL)*pow(P[2],2) + P[1]*pow(P[2],3);
+            x1 = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
+            double J21 = (xh1-x1)/DEL;
+
+            xh2 = v0 + a0*P[2] + P[0]*pow(P[2],2) + (P[1]+DEL)*pow(P[2],3);
+            x2 = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
+            double J22 = (xh2-x2)/DEL;            
+
+            xh3 = v0 + a0*(P[2]+DEL) + P[0]*pow(P[2]+DEL,2) + P[1]*pow(P[2]+DEL,3);
+            x3 = v0 + a0*P[2] + P[0]*pow(P[2],2) + P[1]*pow(P[2],3);
+            double J23 = (xh3-x3)/DEL;            
+
+            xh1 = a0 + 2*(P[0]+DEL)*P[2] + 3*P[1]*pow(P[2],2);
+            x1 = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
+            double J31 = (xh1-x1)/DEL;   
+
+            xh2 = a0 + 2*P[0]*P[2] + 3*(P[1]+DEL)*pow(P[2],2);
+            x2 = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
+            double J32 = (xh2-x2)/DEL;
+
+            xh3 = a0 + 2*P[0]*(P[2]+DEL) + 3*P[1]*pow((P[2]+DEL),2);
+            x3 = a0 + 2*P[0]*P[2] + 3*P[1]*pow(P[2],2);
+            double J33 = (xh3-x3)/DEL;
+
+            
+            //Compute the inverse Matrix
+            double a = J11; double b = J12; double c = J13; 
+            double d = J21; double e = J22; double f = J23;
+            double g = J31; double h = J32; double i = J33;
+
+            float result = a*e*i - a*f*h - b*d*i + b*f*g +c*d*h -c*e*g;
+
+            if (abs(result) <= 0.0001) {
+                fail2solve = true;
+            }
+            else
             {
-                double x = invJ[i][0] * del_x[0];
-                double y = invJ[i][1] * del_x[1];
-                double z = invJ[i][2] * del_x[2];
+                double invJ[3][3];
+                invJ[0][0] = (e*i-f*h)/result;
+                invJ[0][1] = (c*h-b*i)/result;
+                invJ[0][2] = (b*f-c*e)/result;
+                invJ[1][0] = (g*f-d*i)/result;
+                invJ[1][1] = (a*i-c*g)/result;
+                invJ[1][2] = (c*d-a*f)/result;
+                invJ[2][0] = (d*h-e*g)/result;
+                invJ[2][1] = (b*g-a*h)/result;
+                invJ[2][2] = (a*e-b*d)/result;
                 
-                del_P[i] = x + y + z;
-            } 
-                
-            P[0] = P[0]+del_P[0]; P[1]=P[1]+ del_P[1]; P[2] = P[2]+ del_P[2]; 
+                double del_P[3] = {};
+                for (int i = 0; i < 3; i++)
+                {
+                    double x = invJ[i][0] * del_x[0];
+                    double y = invJ[i][1] * del_x[1];
+                    double z = invJ[i][2] * del_x[2];
+                    
+                    del_P[i] = x + y + z;
+                } 
+                    
+                P[0] = P[0]+del_P[0]; P[1]=P[1]+ del_P[1]; P[2] = P[2]+ del_P[2]; 
+            }
+            k = k+1;
         }
-
-        k = k+1;
-
-
     }
+
+    
 
     double rref_speed = ref_speed;
     if (rref_speed >= 70/3.6) {
         rref_speed = 70/3.6;
     }
     vel_msg.data = rref_speed;
-    
     vel_pub.publish(vel_msg);
 
     debug_msg.pose.position.z = ref_speed;
@@ -257,16 +256,31 @@ void VelocityGenerator::CalcVel()
     new_vel = false;
     
     if (ttt > 20){
-        
         new_target_vel = false;
+        // std::cout << "target" << new_target_vel << std::endl;
     }
-    ROS_INFO(" ttt = %d", ttt);
     ttt++;
-    // std::cout << "target" << new_target_vel << std::endl;
+    std::cout << "target" << new_target_vel << std::endl;
 
 
 }
-
+void VelocityGenerator::statemachine()
+{   
+    if (new_target_vel){
+        state = VelocityState::ACC;
+    }
+    else
+    {
+        if (current_vel <= 20/3.6 && abs(current_vel-speed_limit) >= 10/3.6){
+            state = VelocityState::Fast;
+        }
+        else
+        {
+            state = VelocityState::Normal;
+        }
+    
+    }
+}
 void VelocityGenerator::viz_vel_prof(std::vector<double> profile)
 {
 
@@ -318,6 +332,7 @@ void VelocityGenerator::trajCallback(const hmcl_msgs::Lane& msg)
     if(msg.waypoints.size() < 1){
         return;
     }
+
     double total_dis = 0.0;
     for (int i = 0; i < msg.waypoints.size()-1; i++)
     {   
@@ -356,7 +371,7 @@ void VelocityGenerator::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg)
 
 void VelocityGenerator::targetCallback(const std_msgs::Float64& msg)
 {
-//   std::cout << "Get target velocity: "  << std::endl;
+  std::cout << "Get target velocity: "  << msg.data << std::endl;
   target_acc_vel = msg.data;
   new_target_vel = true;
   ttt = 0;

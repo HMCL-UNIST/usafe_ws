@@ -44,7 +44,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   emergency_count(0),
   emergency_stop_activate(false),
   drivingState(DrivingState::Parking),  
-  missionState(MissionState::ACC),
+  missionState(MissionState::Init),
   scc_overwrite(false)
 {
   Acan_callback_time = ros::Time::now();
@@ -259,8 +259,6 @@ void VehicleBridge::InitCanmsg(){
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
   short steer_value = (short)(0.0+steering_offset) ; // input  in radian, convert into degree
-  steering_frame.data[0] = (steer_value & 0b11111111);
-	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   steering_frame.data[2] = (unsigned int)0 & 0b11111111;
 
   scc_frame.header.stamp = ros::Time::now();
@@ -308,7 +306,7 @@ void VehicleBridge::AcanSender()
       wheelPub.publish(wheel_info_);  
       
       if(scc_overwrite){     
-        ROS_INFO("scc overwrite in acansender");
+        // ROS_INFO("scc overwrite in acansender");
         scc_frame.data[1] = (scc_overwrite_value & 0b11111111);
         scc_frame.data[2] = ((scc_overwrite_value >> 8)&0b11111111);  
       }
@@ -381,10 +379,10 @@ void VehicleBridge::MissionStateMachine(){
     switch(missionState){
       case MissionState::Init:
           drivingState = DrivingState::Init;
-          ref_x = -530.2;
-          ref_y = 770.75;
+          ref_x = -706.52;
+          ref_y = 962.55;
           dist_to_ref = sqrt(pow((ref_x-ego_pose.pose.position.x),2)+pow((ref_y-ego_pose.pose.position.y),2));
-          if(dist_to_ref < 10.0){
+          if(dist_to_ref < 3.0){
             missionState = MissionState::LaneChange;
           }
       
@@ -411,24 +409,24 @@ void VehicleBridge::MissionStateMachine(){
           right_lc_pub.publish(right_lc_msg);
           left_lc_pub.publish(left_lc_msg);  
         
-          ref_x = 149.5;
-          ref_y = 29.2;
+          ref_x = 68.17;
+          ref_y = 117.0;
 
         
 
           dist_to_ref = sqrt(pow((ref_x-ego_pose.pose.position.x),2)+pow((ref_y-ego_pose.pose.position.y),2));
-          if(dist_to_ref < 10.0){
+          if(dist_to_ref < 3.0){
             missionState = MissionState::ACC;
           }      
          
       break;
 
       case MissionState::ACC:                         
-          ref_x = -468.6;
-          ref_y = 695.1;
+          ref_x = -746.66;
+          ref_y = 940.81;
           
           dist_to_ref = sqrt(pow((ref_x-ego_pose.pose.position.x),2)+pow((ref_y-ego_pose.pose.position.y),2));
-          if(dist_to_ref < 10.0){
+          if(dist_to_ref < 2.0){
             missionState = MissionState::Incline;
           }           
          
@@ -437,11 +435,11 @@ void VehicleBridge::MissionStateMachine(){
 
       case MissionState::Incline:
              // Stop if the vehicle want to stop and reaches low speed 
-             if(abs(wheel_info_.wheel_speed) < 0.1 && setpoint_value <= 0.5){
+             if(abs(wheel_info_.wheel_speed) < 0.5 && setpoint_value <= 1.0){
                 drivingState = DrivingState::Parking;
               }
               // initialize 
-              if(drivingState == DrivingState::Parking && setpoint_value > 0.5){
+              if(drivingState == DrivingState::Parking && setpoint_value > 1.0){
                    drivingState = DrivingState::Init;
               }
 
@@ -465,7 +463,8 @@ void VehicleBridge::TestCase(){
   int lc = 0;
 
   while(ros::ok())
-  { ROS_INFO("test time = %d",lc);
+  {
+    //ROS_INFO("test time = %d",lc);
     
     if(lc == 0) {
       // vehicle_status_.gear_info.gear = 0;
@@ -525,12 +524,12 @@ void VehicleBridge::prevent_brake_system_error(){
         if(abs(wheel_info_.wheel_speed) < 0.1){
           scc_overwrite_value = ((round(0.0 *100)/100)*100);        
           scc_overwrite = true;
-          ROS_INFO("scc_overwrite = true");
+          // ROS_INFO("scc_overwrite = true");
         }       
         if(gear_info_.gear == 0){
           scc_overwrite_value = ((round(0.0 *100)/100)*100);        
           scc_overwrite = true;
-          ROS_INFO("scc_overwrite = true gear ");
+          // ROS_INFO("scc_overwrite = true gear ");
         }
         
       break;
@@ -544,7 +543,7 @@ void VehicleBridge::prevent_brake_system_error(){
             scc_overwrite_value = ((round(-3 *100)/100)*100);        
           }
           scc_overwrite = true;
-          ROS_INFO("scc_overwrite = true emergency brake");
+          // ROS_INFO("scc_overwrite = true emergency brake");
         return;
       break;
 
@@ -602,9 +601,6 @@ void VehicleBridge::DrivingStateMachine() {
         steering_frame.is_error = false;
         steering_frame.is_extended = false;
         steering_frame.is_rtr = false;
-        steering_frame.data[0] = (steer_value & 0b11111111);
-        steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
-        steering_frame.data[2] = (unsigned int)STR_mode_off & 0b11111111;
         // GO TO DRIVING GEAR        
         // GO TO NORMAL DRIVING STAT
         
@@ -646,8 +642,6 @@ void VehicleBridge::DrivingStateMachine() {
         steering_frame.is_extended = false;
         steering_frame.is_rtr = false;
         steering_frame.data[2] = (unsigned int)STR_mode_on & 0b11111111;
-        // steering_frame.data[0] = (steer_value & 0b11111111);
-        // steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         
         // if(abs(wheel_info_.wheel_speed) < 0.1 && abs(control_effort2) < 0.1){
         //   drivingState = DrivingState::Parking;

@@ -130,10 +130,10 @@ class mobileyeSub():
             obj_msg.velocity.linear.x = self.obstacle_data[i].obstacle_relative_velocity_x
             
             if(add_obj):
-                # if(self.obj_inside_path(obj_msg)):
-                objs_msg.objects.append(obj_msg)
-                # if(self.obstacle_data[i].obstacle_lane == 1):
-                #     objs_msg.objects.append(obj_msg)
+                if(self.obj_inside_path(obj_msg)):
+                    objs_msg.objects.append(obj_msg)
+                if(self.obstacle_data[i].obstacle_lane == 1):
+                    objs_msg.objects.append(obj_msg)
 
         self.objs_Pub.publish(objs_msg)
         print("number of obj found = " + str(len(objs_msg.objects)))

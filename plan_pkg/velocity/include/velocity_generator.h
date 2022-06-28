@@ -23,6 +23,19 @@
 #include <hmcl_msgs/Waypoint.h>
 #include <hmcl_msgs/VehicleStatus.h>
 
+enum struct VelocityState {Normal = 0, ACC = 1, Fast = 2}; 
+
+inline const char* stateToString(VelocityState v)
+{
+    switch (v)
+    {
+        case VelocityState::Normal:   return "Normal";
+        case VelocityState::ACC:   return "ACC";
+        case VelocityState::Fast:   return "Fast";
+        default:      return "[Unknown VelocityState]";
+    }
+}
+
 class VelocityGenerator 
 {
 
@@ -39,11 +52,13 @@ class VelocityGenerator
 
     hmcl_msgs::Lane traj;
     geometry_msgs::PoseStamped debug_msg;
+    VelocityState state;
 
     public:
     VelocityGenerator();
 
     void callbackthread();
+    void statemachine();
     void trajCallback(const hmcl_msgs::Lane& msg);
     void velCallback(const nav_msgs::Odometry& state_msg);
     void accCallback(const geometry_msgs::Point& msg);
