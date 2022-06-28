@@ -55,8 +55,19 @@
   <build_depend>std_msgs</build_depend>
   <build_depend>autoware_msgs</build_depend>
   <build_depend>hmcl_msgs</build_depend>
+
+  <build_depend>jsk_rviz_plugins</build_depend>
+  <exec_depend>jsk_rviz_plugins</exec_depend>
+
+  
+  
+  
   <exec_depend>autoware_msgs</exec_depend>
+  
+  
   <exec_depend>hmcl_msgs</exec_depend> 
+
+  
 
 
   <build_export_depend>roscpp</build_export_depend>

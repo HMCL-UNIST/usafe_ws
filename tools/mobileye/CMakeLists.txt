@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   hmcl_msgs
   autoware_msgs
   message_generation
+  jsk_rviz_plugins
 )
 
 ## System dependencies are found with CMake's conventions
@@ -138,7 +139,7 @@ generate_messages(
 catkin_package(
 #  INCLUDE_DIRS include
  LIBRARIES mobileye
- CATKIN_DEPENDS roscpp rospy std_msgs message_runtime autoware_msgs hmcl_msgs
+ CATKIN_DEPENDS roscpp rospy std_msgs message_runtime autoware_msgs hmcl_msgs jsk_rviz_plugins
 #  DEPENDS system_lib
 )
 
@@ -195,6 +196,7 @@ include_directories(
 catkin_install_python(PROGRAMS
   src/Data_pub.py
   src/mobileye_node.py
+  src/hmcl_viz.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
