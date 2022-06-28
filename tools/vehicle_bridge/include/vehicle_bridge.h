@@ -116,6 +116,7 @@ std_msgs::Bool right_lc_msg;
 
 unsigned int light_on;
 double setpoint_value;
+double prev_setpoint_value;
 bool scc_overwrite;
 short scc_overwrite_value;
 hmcl_msgs::VehicleStatus vehicle_status_;

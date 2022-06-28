@@ -1121,19 +1121,45 @@ void MapLoader::mobileye_based_traj(hmcl_msgs::Lane& local_traj_msg){
       double dx = -1*cur_pose.position.x;
       double dy = -1*cur_pose.position.y;  
       
-      double c3 = mobileye_data.left_lane.curvature_derivative_c3;
-      double c2 = mobileye_data.left_lane.curvature_parameter_c2;
-      double c1 = mobileye_data.left_lane.heading_angle_parameter_c1;
-      double c0 = mobileye_data.left_lane.position_parameter_c0;     
+      double c3_l = mobileye_data.left_lane.curvature_derivative_c3;
+      double c2_l = mobileye_data.left_lane.curvature_parameter_c2;
+      double c1_l = mobileye_data.left_lane.heading_angle_parameter_c1;
+      double c0_l = mobileye_data.left_lane.position_parameter_c0;     
+
+      double c3_r = mobileye_data.right_lane.curvature_derivative_c3;
+      double c2_r = mobileye_data.right_lane.curvature_parameter_c2;
+      double c1_r = mobileye_data.right_lane.heading_angle_parameter_c1;
+      double c0_r = mobileye_data.right_lane.position_parameter_c0;  
+
+      double c3 = -(c3_r + c3_l)/2.0;
+      double c2 = -(c2_r + c2_l)/2.0;
+      double c1 = -(c1_r + c1_l)/2.0;
+      double c0 = -c0_l - (c0_l+c0_r);
+
       float init_s = 0.0;                    
-      std::vector<double> speed_limits = linspaces(float(30/3.6),float(30/3.6),int(local_path_length/map_road_resolution));
+      ////////////////// Find reference velocity  /////
+      ////////////////// //////////////////////////////
+ std::vector<std::pair<double, lanelet::Lanelet>> nearest_lanelet = lanelet::geometry::findNearest(map->laneletLayer, lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y), 1);
+    // std::vector<lanelet::ConstLanelet> lanes;    
+    double speed_limit_tmp = 0;
+    for (auto const& item : nearest_lanelet)
+    { double dist_to_lanelet = lanelet::geometry::distance2d(item.second.centerline(),lanelet::BasicPoint2d(cur_pose.position.x,cur_pose.position.y));
+      // check if lanelet near the current position
+      if( dist_to_lanelet < 3.0){                        
+            auto local_path = item.second; 
+            speed_limit_tmp = local_path.attributeOr("speed_limit",0.0); 
+      }
+    }
+      ////////////////////////////////////////////////////////////////
+      ////////////////////////////////////////////////////////////////
+      std::vector<double> speed_limits = linspaces(float(speed_limit_tmp/3.6),float(speed_limit_tmp/3.6),int(local_path_length/map_road_resolution));
       std::vector<double> xeval = linspaces(init_s,local_path_length,int(local_path_length/map_road_resolution));      
       PolyFit<double> f = polyfit(xeval, xeval);
       Eigen::Matrix<double, Eigen::Dynamic, 1> Pcoef_tmp = f.getCoefficients();
-      Pcoef_tmp(0,0) = -c3;
-      Pcoef_tmp(1,0) = -c2;
-      Pcoef_tmp(2,0) = -c1;
-      Pcoef_tmp(3,0) = -c0-1.5;    
+      Pcoef_tmp(0,0) = c3;
+      Pcoef_tmp(1,0) = c2;
+      Pcoef_tmp(2,0) = c1;
+      Pcoef_tmp(3,0) = c0;    
       f.setCoefficients(Pcoef_tmp);
       std::vector<double> yval = f.evalPoly(xeval);                   
       hmcl_msgs::Lane local_traj_msg_fit;

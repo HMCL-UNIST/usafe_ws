@@ -44,7 +44,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   emergency_count(0),
   emergency_stop_activate(false),
   drivingState(DrivingState::Parking),  
-  missionState(MissionState::Init),
+  missionState(MissionState::ACC),
   scc_overwrite(false)
 {
   Acan_callback_time = ros::Time::now();
@@ -363,6 +363,7 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
 
 void VehicleBridge::SetpointCallback(std_msgs::Float64ConstPtr msg){
   setpoint_value = msg->data;
+  prev_setpoint_value = setpoint_value;
 }
   
 
@@ -446,14 +447,14 @@ void VehicleBridge::MissionStateMachine(){
 
 
       case MissionState::Incline:
-             // Stop if the vehicle want to stop and reaches low speed 
-             if(abs(wheel_info_.wheel_speed) < 0.5 && setpoint_value <= 1.0){
-                drivingState = DrivingState::Parking;
-              }
-              // initialize 
-              if(drivingState == DrivingState::Parking && setpoint_value > 1.0){
-                   drivingState = DrivingState::Init;
-              }
+            // Stop if the vehicle want to stop and reaches low speed 
+            if(abs(wheel_info_.wheel_speed) < 0.5 && setpoint_value <= 1.0) {
+              drivingState = DrivingState::Parking;
+            }
+            // initialize 
+            if(drivingState == DrivingState::Parking && setpoint_value > 1.0) {
+                  drivingState = DrivingState::Init;
+            }
 
           
       break;
@@ -676,6 +677,18 @@ void VehicleBridge::DrivingStateMachine() {
         // AWAIT BEHAVIOR & GO TO PARKING -> CHECK
         // AWAIT BEHAVIOR     
         mtx_.lock();
+
+        if(abs(wheel_info_.wheel_speed) <= 1 && abs(wheel_info_.wheel_speed) >= 0.1){
+          scc_frame.header.stamp = ros::Time::now();
+          scc_frame.id = 0x303;
+          scc_frame.dlc = 4;
+          scc_frame.is_error = false;
+          scc_frame.is_extended = false;
+          scc_frame.is_rtr = false;        
+          scc_frame.data[1] = (-100 & 0b11111111);
+          scc_frame.data[2] = ((-100 >> 8)&0b11111111);       
+       }
+
         if(abs(wheel_info_.wheel_speed) < 0.1){
       // GO TO PARKING GEAR
         AD_GEAR_POS_CMD = 0;
