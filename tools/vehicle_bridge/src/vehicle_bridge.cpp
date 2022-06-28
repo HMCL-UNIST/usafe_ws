@@ -64,6 +64,9 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   right_lc_pub  = nh_light_.advertise<std_msgs::Bool>("/right_lanechange", 2);    
   left_lc_pub  = nh_light_.advertise<std_msgs::Bool>("/left_lanechange", 2);    
 
+  mission_pub  = nh_light_.advertise<std_msgs::String>("/mission_gui", 2);    
+  driving_pub  = nh_light_.advertise<std_msgs::String>("/driving_gui", 2);    
+
 
 
   // velPub  = nh_light_.advertise<std_msgs::Float64>("/setpoint", 2);   
@@ -379,7 +382,11 @@ void VehicleBridge::MissionStateMachine(){
     while(ros::ok())
   { 
 
-      ROS_INFO("missionState = %s",stateToString(missionState));
+      // ROS_INFO("missionState = %s",stateToString(missionState));
+      std_msgs::String missionState_msg;
+      missionState_msg.data = stateToString(missionState);
+      mission_pub.publish(missionState_msg);
+
     switch(missionState){
       case MissionState::Init:
           drivingState = DrivingState::Init;
@@ -581,7 +588,11 @@ void VehicleBridge::DrivingStateMachine() {
     
     prevent_brake_system_error();
 
-    ROS_INFO("drivingState = %s",stateToString(drivingState));
+    // ROS_INFO("drivingState = %s",stateToString(drivingState));
+    std_msgs::String drivingState_msg;
+    drivingState_msg.data = stateToString(drivingState);
+    driving_pub.publish(drivingState_msg);
+
     if(emergency_stop_activate && drivingState != DrivingState::Parking){
       drivingState = DrivingState::EmergencyBrake;      
     }
@@ -676,6 +687,18 @@ void VehicleBridge::DrivingStateMachine() {
         // AWAIT BEHAVIOR & GO TO PARKING -> CHECK
         // AWAIT BEHAVIOR     
         mtx_.lock();
+
+         if(abs(wheel_info_.wheel_speed) <= 1 && abs(wheel_info_.wheel_speed) >= 0.1){
+          scc_frame.header.stamp = ros::Time::now();
+          scc_frame.id = 0x303;
+          scc_frame.dlc = 4;
+          scc_frame.is_error = false;
+          scc_frame.is_extended = false;
+          scc_frame.is_rtr = false;        
+          scc_frame.data[1] = (-100 & 0b11111111);
+          scc_frame.data[2] = ((-100 >> 8)&0b11111111);       
+       }
+       
         if(abs(wheel_info_.wheel_speed) < 0.1){
       // GO TO PARKING GEAR
         AD_GEAR_POS_CMD = 0;

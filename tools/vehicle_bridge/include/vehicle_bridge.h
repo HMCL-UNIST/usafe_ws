@@ -48,6 +48,7 @@
 #include <dynamic_reconfigure/server.h>
 #include <vehicle_bridge/testConfig.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <std_msgs/String.h>
 #define PI 3.14159265358979323846264338
 
 
@@ -99,6 +100,7 @@ std::mutex mtx_;
 ros::Subscriber AcanSub, CcanSub, emergency_stopSub, gnssPoseSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub, setpointSub;
 ros::Publisher  velPub, AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub, debug_pub, test_pub, left_lc_pub, right_lc_pub;
+ros::Publisher mission_pub, driving_pub;
 
 dynamic_reconfigure::Server<vehicle_bridge::testConfig> srv;
 dynamic_reconfigure::Server<vehicle_bridge::testConfig>::CallbackType f;
