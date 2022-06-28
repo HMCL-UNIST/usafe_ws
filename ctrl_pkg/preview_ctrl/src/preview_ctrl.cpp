@@ -216,7 +216,8 @@ void PreviewCtrl::steering_rate_reset(double speed){
     //   angle_rate_limit = 0.1;
     // }
 
-    angle_rate_limit = -0.01*speed*3.6 +0.6;
+    // angle_rate_limit = -0.01*speed*3.6 +0.6;
+    angle_rate_limit = -0.0131*speed*3.6 +0.647;
     angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
 
 }

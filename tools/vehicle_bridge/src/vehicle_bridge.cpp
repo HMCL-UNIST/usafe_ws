@@ -372,6 +372,10 @@ void VehicleBridge::MissionStateMachine(){
     double ref_x =  0.0;
     double ref_y = 0.0;
     double dist_to_ref = 1e3;
+
+    double ref_x2 =  0.0;
+    double ref_y2 = 0.0;
+    double dist_to_ref2 = 1e3;
     while(ros::ok())
   { 
 
@@ -418,6 +422,14 @@ void VehicleBridge::MissionStateMachine(){
           if(dist_to_ref < 3.0){
             missionState = MissionState::ACC;
           }      
+
+          ref_x2 = -746.66;
+          ref_y2 = 940.81;
+          
+          dist_to_ref2 = sqrt(pow((ref_x2-ego_pose.pose.position.x),2)+pow((ref_y2-ego_pose.pose.position.y),2));
+          if(dist_to_ref2 < 2.0){
+            missionState = MissionState::Incline;
+          }  
          
       break;
 
