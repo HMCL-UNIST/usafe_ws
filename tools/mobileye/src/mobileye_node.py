@@ -91,10 +91,10 @@ class mobileyeSub():
             obj_msg.angle = self.obstacle_data[i].obstacle_angle
             obj_msg.acceleration.linear.x = self.obstacle_data[i].obstacle_object_accel_x
             obj_msg.id = self.obstacle_data[i].obstacle_id    
-            if i < 1:
-                print("init")
-                if self.obstacle_data[i].obstacle_lane is not None:
-                    print("lane info " + str(self.obstacle_data[i].obstacle_lane))
+            # if i < 1:
+            #     print("init")
+            #     if self.obstacle_data[i].obstacle_lane is not None:
+            #         print("lane info " + str(self.obstacle_data[i].obstacle_lane))
                     
 
             
@@ -136,7 +136,7 @@ class mobileyeSub():
                     objs_msg.objects.append(obj_msg)
 
         self.objs_Pub.publish(objs_msg)
-        print("number of obj found = " + str(len(objs_msg.objects)))
+        # print("number of obj found = " + str(len(objs_msg.objects)))
         self.obstacle_data = [ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData(),ObstacleData()]
 
         ## Visualize detected obj

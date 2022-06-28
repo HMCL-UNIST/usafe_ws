@@ -57,7 +57,7 @@ class hmclGUI():
       if self.fix_msg.position_covariance[0] > 5:
         gnss_text = "GNSS bad"
       else: 
-        gnss_text = "GNSS Working, COV = " + str(self.fix_msg.position_covariance[0])
+        gnss_text = "GNSS OK, COV = " + str(self.fix_msg.position_covariance[0])
     gnss_overlay = OverlayText()
     gnss_overlay.width = 300
     gnss_overlay.height = 25
