@@ -74,14 +74,14 @@ void VelocityGenerator::CalcVel()
     else
     {
         
-        double time = 0.5;
+        double time = 1;
         if (state == VelocityState::Fast){
             a0 = 1;
             time = 1;
             std::cout << "Current state is FAST" << std::endl;
         }
         else{
-            a0 = 0;
+            a0 = 1.0;
         }
         
         // double a_lon_lim = 1.5;

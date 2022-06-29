@@ -44,7 +44,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   emergency_count(0),
   emergency_stop_activate(false),
   drivingState(DrivingState::Parking),  
-  missionState(MissionState::Init),
+  missionState(MissionState::ACC),
   scc_overwrite(false)
 {
   Acan_callback_time = ros::Time::now();
@@ -72,10 +72,10 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   // velPub  = nh_light_.advertise<std_msgs::Float64>("/setpoint", 2);   
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);  
+  // SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);  
   VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);  
   emergency_stopSub = nh_acc.subscribe("/volt", 2, &VehicleBridge::emergencyRemoteCallback, this);
-  setpointSub = nh_acc.subscribe("/setpoint", 2, &VehicleBridge::SetpointCallback, this);
+  // setpointSub = nh_acc.subscribe("/setpoint", 2, &VehicleBridge::SetpointCallback, this);
   gnssPoseSub = nh_acc.subscribe("/gnss_pose_world", 2, &VehicleBridge::gnssPoseCallback, this);
   
   
@@ -84,7 +84,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   boost::thread AcanHandler(&VehicleBridge::AcanSender,this); 
   // boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
   boost::thread statemachine(&VehicleBridge::DrivingStateMachine,this); 
-  boost::thread missionMachine(&VehicleBridge::MissionStateMachine,this); 
+  // boost::thread missionMachine(&VehicleBridge::MissionStateMachine,this); 
   boost::thread test(&VehicleBridge::TestCase,this); 
 
   
@@ -96,7 +96,7 @@ VehicleBridge::~VehicleBridge()
 {}
 
 void VehicleBridge::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
-    int thres = 5;
+    int thres = 1;
     if(msg->data > 0.5){
       emergency_count++;
     }else{
@@ -104,7 +104,9 @@ void VehicleBridge::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
     }
     
     if(emergency_count > thres){
-      emergency_stop_activate = true;           
+      emergency_stop_activate = true;    
+      scc_overwrite_value = ((round(-5.0*100)/100)*100);        
+      scc_overwrite = true;       
     }else{
       emergency_stop_activate = false;            
     }
@@ -302,26 +304,30 @@ void VehicleBridge::AcanSender()
   ros::Rate loop_rate(50); // rate of cmd   
   while (ros::ok())
   {  
-      // publish vehicle info 
+      // publish vehicle info
+      mtx_.lock(); 
       steerPub.publish(steering_info_);
       statusPub.publish(vehicle_status_);
       sccPub.publish(scc_info_);  
       wheelPub.publish(wheel_info_);  
       
-      if(scc_overwrite){     
-        // ROS_INFO("scc overwrite in acansender");
-        scc_frame.data[1] = (scc_overwrite_value & 0b11111111);
-        scc_frame.data[2] = ((scc_overwrite_value >> 8)&0b11111111);  
-      }
-      usleep(1000);
-      AcanPub.publish(scc_frame);
-      usleep(1000);
-      AcanPub.publish(gear_frame);
-      usleep(1000);
-      AcanPub.publish(steering_frame);
-      usleep(1000);     
-      AcanPub.publish(light_frame);      
       
+      //  scc_overwrite_value = ((round(2 *100)/100)*100); 
+      if(scc_overwrite){    
+        ROS_INFO("scc overwrite in acansender");
+        scc_frame.data[1] = (-500 & 0b11111111);
+        scc_frame.data[2] = ((-500 >> 8)&0b11111111);  
+      }
+      // ROS_INFO("@@ scc frame = %d", scc_frame.data[1]);
+      usleep(10);
+      AcanPub.publish(scc_frame);
+      usleep(10);
+      AcanPub.publish(gear_frame);
+      usleep(10);
+      AcanPub.publish(steering_frame);
+      // usleep(10);     
+      // AcanPub.publish(light_frame);      
+      mtx_.unlock();
     loop_rate.sleep();
   }
 }
@@ -344,6 +350,7 @@ void VehicleBridge::controlEffortCallback(const std_msgs::Float64& control_effor
         
       control_effort = round(control_effort_input.data *100)/100;      
       accel_value = (control_effort*100);  
+      ROS_INFO("accel_value %d", accel_value);
       scc_frame.data[1] = (accel_value & 0b11111111);
 	    scc_frame.data[2] = ((accel_value >> 8)&0b11111111);  
   }
@@ -356,7 +363,7 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.is_error = false;
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
-  short steer_value = (short)((msg->steering_angle)*gear_ratio*180/PI*10)+steering_offset;
+  short steer_value = (short)((0.0)*gear_ratio*180/PI*10)+steering_offset;
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   
@@ -387,13 +394,33 @@ void VehicleBridge::MissionStateMachine(){
       missionState_msg.data = stateToString(missionState);
       mission_pub.publish(missionState_msg);
 
+    if(light_on == 1){
+        left_lc_msg.data = true;
+        right_lc_msg.data = false;
+    }else if(light_on == 2)
+    {
+      left_lc_msg.data = false;
+      right_lc_msg.data = true;
+    }
+    else
+    {
+      left_lc_msg.data = false;
+      right_lc_msg.data = false;
+      }
+        
+        
+        
+        right_lc_pub.publish(right_lc_msg);
+        left_lc_pub.publish(left_lc_msg);  
+        
+
     switch(missionState){
       case MissionState::Init:
           drivingState = DrivingState::Init;
-          ref_x = -706.52;
-          ref_y = 962.55;
+          ref_x = -903.9;
+          ref_y = 893.4;
           dist_to_ref = sqrt(pow((ref_x-ego_pose.pose.position.x),2)+pow((ref_y-ego_pose.pose.position.y),2));
-          if(dist_to_ref < 3.0){
+          if(dist_to_ref < 5.0){
             missionState = MissionState::LaneChange;
           }
       
@@ -401,32 +428,14 @@ void VehicleBridge::MissionStateMachine(){
 
       case MissionState::LaneChange:    
        
-          if(light_on == 1){
-            left_lc_msg.data = true;
-            right_lc_msg.data = false;
-          }else if(light_on == 2)
-          {
-            left_lc_msg.data = false;
-            right_lc_msg.data = true;
-          }
-          else
-          {
-            left_lc_msg.data = false;
-            right_lc_msg.data = false;
-            }
-          
-          
-          
-          right_lc_pub.publish(right_lc_msg);
-          left_lc_pub.publish(left_lc_msg);  
-        
-          ref_x = 68.17;
-          ref_y = 117.0;
+      
+          ref_x = 238.5;
+          ref_y = -73.0;
 
         
 
           dist_to_ref = sqrt(pow((ref_x-ego_pose.pose.position.x),2)+pow((ref_y-ego_pose.pose.position.y),2));
-          if(dist_to_ref < 3.0){
+          if(dist_to_ref < 5.0){
             missionState = MissionState::ACC;
           }      
 
@@ -491,7 +500,7 @@ void VehicleBridge::TestCase(){
       ROS_INFO("Test Case : Parking");
     }
 
-    if(lc == 50) {
+    if(lc == 20) {
       // vehicle_status_.gear_info.gear = 0;
       drivingState = DrivingState::Init;
       ROS_INFO("Test Case : Init");
@@ -555,12 +564,19 @@ void VehicleBridge::prevent_brake_system_error(){
 
       case DrivingState::EmergencyBrake:
           
-          if(abs(wheel_info_.wheel_speed) < 5/3.6){
-            scc_overwrite_value = ((round(-1 *100)/100)*100);        
-          }
-          else{
-            scc_overwrite_value = ((round(-3 *100)/100)*100);        
-          }
+          // if(abs(wheel_info_.wheel_speed) < 5/3.6){
+          //   scc_overwrite_value = ((round(-7*100)/100)*100);        
+          // }
+          // else{
+          //   scc_overwrite_value = ((round(-7*100)/100)*100);        
+          // }
+
+          // scc_overwrite_value = ((round(-10*100)/100)*100);
+          // scc_frame.data[1] = (-1000 & 0b11111111);
+          // scc_frame.data[2] = ((-1000 >> 8)&0b11111111);
+
+          // AcanPub.publish(scc_frame); 
+
           scc_overwrite = true;
           // ROS_INFO("scc_overwrite = true emergency brake");
         return;
@@ -616,7 +632,7 @@ void VehicleBridge::DrivingStateMachine() {
         scc_frame.data[1] = (-100 & 0b11111111);
         scc_frame.data[2] = ((-100 >> 8)&0b11111111);
         scc_frame.data[3] = (unsigned int)0 & 0b11111111;
-        AcanPub.publish(scc_frame);
+        // AcanPub.publish(scc_frame);
         usleep(1000);
         steering_frame.header.stamp = ros::Time::now();
         steering_frame.id = 0x300;
@@ -675,7 +691,11 @@ void VehicleBridge::DrivingStateMachine() {
       break;  
 
       case DrivingState::EmergencyBrake:
-          scc_overwrite_value = ((round(-3 *100)/100)*100);        
+          scc_overwrite_value = ((round(-4.9 *100)/100)*100);  
+
+          scc_frame.data[1] = (-490 & 0b11111111);
+          scc_frame.data[2] = ((-490 >> 8)&0b11111111);
+          AcanPub.publish(scc_frame);      
           scc_overwrite = true;
           ROS_INFO("over write true emergency driving state");
          if(abs(wheel_info_.wheel_speed) < 0.1){
