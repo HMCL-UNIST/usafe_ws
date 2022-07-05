@@ -37,6 +37,7 @@ class DecisionMaker
                 if(minidx < minidx2) idx = minidx;
                 else idx = minidx2;
             }
+            
             float x[2] = {px - lane.waypoints[idx].pose.pose.position.x, py - lane.waypoints[idx].pose.pose.position.y};
             float p[2] = {lane.waypoints[idx+1].pose.pose.position.x - lane.waypoints[idx].pose.pose.position.x, lane.waypoints[idx+1].pose.pose.position.y - lane.waypoints[idx].pose.pose.position.y};
             float v[2] = {vx, vy};
@@ -49,6 +50,7 @@ class DecisionMaker
             float ds = sv*cos(theta2);
             float l;
             float dl;
+            //ROS_INFO("idx %d, x %d, p %d, v %d", idx, x[0],p[0],v[0]);
             if(x[0]*p[1]-x[1]*p[0]<0) l = -dx*sin(theta);
             else l = dx*sin(theta);
             if(v[0]*p[1]-v[1]*p[0]<0) dl = -sv*sin(theta2);
@@ -78,7 +80,7 @@ class DecisionMaker
             this->gapLag = 100;
         }
 
-        void updateParameter(hmcl_msgs::LaneArray &globalLaneArray, const autoware_msgs::DetectedObjectArray &detectedObjects, geometry_msgs::Pose &egoPose, geometry_msgs::Twist &egoVel){
+        void updateParameter(hmcl_msgs::LaneArray &globalLaneArray, autoware_msgs::DetectedObjectArray &detectedObjects, geometry_msgs::Pose &egoPose, geometry_msgs::Twist &egoVel){
             int n0 = globalLaneArray.lanes[0].waypoints.size();
             int n1 = 1;
             float sarr0[n0];
@@ -96,6 +98,18 @@ class DecisionMaker
             float safeFront = 100, safeLead = 100,safeLag = 100, gapFront = 100, gapLead = 100, gapLag = 100;
             int idFront, idLead, idLag;
             bool checkLag = false, checkLead = false;
+            float xObj[on],yObj[on],vxObj[on],vyObj[on];
+
+            float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.z + egoPose.orientation.w*egoPose.orientation.x), 1-2*(egoPose.orientation.w*egoPose.orientation.w + egoPose.orientation.z*egoPose.orientation.z));
+            for(int i = 0; i < on; i++){
+                //ROS_INFO("%f, %f",egoPose.position.x, egoPose.position.y);
+                xObj[i] = egoPose.position.x + detectedObjects.objects[i].pose.position.x*cos(yaw)-detectedObjects.objects[i].pose.position.y*sin(yaw);
+                yObj[i] = egoPose.position.y + detectedObjects.objects[i].pose.position.x*sin(yaw)+detectedObjects.objects[i].pose.position.y*cos(yaw);
+                vxObj[i] = detectedObjects.objects[i].velocity.linear.x*cos(yaw) - detectedObjects.objects[i].velocity.linear.y*sin(yaw);
+                vyObj[i] = detectedObjects.objects[i].velocity.linear.x*sin(yaw) + detectedObjects.objects[i].velocity.linear.y*cos(yaw);
+                //ROS_INFO("i:%d,x: %f,y: %f,vx: %f,vy: %f",i,xObj[i],yObj[i],vxObj[i],vxObj[i]);
+            }
+
 
             // calculate Frenet longitudinal length of egolane            
             psarr = sarr0;
@@ -108,8 +122,9 @@ class DecisionMaker
             lEgo = slEgo[1];
             dsEgo = slEgo[2];
             dlEgo = slEgo[3];
-
+            // ROS_INFO("slego, x: %f,y: %f,vx: %f,vy: %f",sEgo,lEgo,dsEgo,dlEgo);
             // determine the necessity of lane change
+            // ROS_INFO("n1: %d",globalLaneArray.lanes.size());
             if(globalLaneArray.lanes.size() > 1){
                 this->needLC = true;
                 n1 = globalLaneArray.lanes[1].waypoints.size();
@@ -135,7 +150,7 @@ class DecisionMaker
                 for(int j = 0; j < 2; j++){
                     if(j == 0){
                         psarr = sarr0;
-                        this->calculateFrenet(n0, psarr, detectedObjects.objects[i].pose.position.x, detectedObjects.objects[i].pose.position.y, detectedObjects.objects[i].velocity.linear.x, detectedObjects.objects[i].velocity.linear.y, psl, globalLaneArray.lanes[0]);
+                        this->calculateFrenet(n0, psarr, xObj[i], yObj[i], vxObj[i], vyObj[i], psl, globalLaneArray.lanes[0]);
                         sObj[i] = slObj[0];
                         lObj[i] = slObj[1];
                         dsObj[i] = slObj[2];
@@ -145,7 +160,7 @@ class DecisionMaker
                     else if(j == 1){
                         if(this->needLC == true){
                             psarr = sarr1;
-                            this->calculateFrenet(n1, psarr, detectedObjects.objects[i].pose.position.x, detectedObjects.objects[i].pose.position.y, detectedObjects.objects[i].velocity.linear.x, detectedObjects.objects[i].velocity.linear.y, psl, globalLaneArray.lanes[1]);
+                            this->calculateFrenet(n1, psarr, xObj[i], yObj[i], vxObj[i], vyObj[i], psl, globalLaneArray.lanes[1]);
                             if(abs(slObj[1]) < abs(lObj[i]) && abs(slObj[1]) <= wLane/2){
                                 laneidObj[i] = 1;
                             }
@@ -182,6 +197,7 @@ class DecisionMaker
                         }
                     }
                 }
+                // ROS_INFO("slobj, i:%d,x: %f,y: %f,vx: %f,vy: %f",i,sObj[i],lObj[i],dsObj[i],dlObj[i]);
             }
 
             // calculate safe distance

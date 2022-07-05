@@ -59,7 +59,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
   
 
-  nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town03.osm");
+  nh_p_.param<std::string>("osm_file_name", osm_file_name, "KIAPI.osm");
   nh_p_.getParam("osm_file_name", osm_file_name);
   nh_p_.param<double>("test_direction", test_direction, 1.0);
   nh_p_.param<double>("map_origin_lat", origin_lat, 0.0);
@@ -103,7 +103,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   if(continuious_global_replan){
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
-  ROS_INFO("behaviortimer");
+
   behavior_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::behavior_handler,this);
 
   boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
@@ -310,7 +310,7 @@ void MapLoader::compute_global_path(){
                 
             }   
           global_traj_available = true;
-          // way_pub.publish(global_lane_array);          
+          way_pub.publish(global_lane_array);          
           global_lane_array_for_local = global_lane_array;
 
           if(visualize_path){
@@ -360,7 +360,8 @@ void MapLoader::compute_global_path(){
 
 void MapLoader::get_next_behavior(){
   currentBehavior = decisionMaker.getCurrentBehavior();
-  decisionMaker.updateParameter(global_lane_array, objects, cur_pose, cur_vel);
+  ROS_INFO("curpose x: %f, curpose y: %f",pose_x,pose_y);
+  decisionMaker.updateParameter(global_lane_array_for_local, objects, cur_pose, cur_vel);
   ROS_INFO("start: %d, isFront: %d, needLC: %d, psbLC: %d, doneLC: %d, isEmergency: %d",decisionMaker.getParam(1),decisionMaker.getParam(2),decisionMaker.getParam(3),decisionMaker.getParam(4),decisionMaker.getParam(5),decisionMaker.getParam(6));
   decisionMaker.updateBehaviorState();
   nextBehavior = decisionMaker.getCurrentBehavior();
