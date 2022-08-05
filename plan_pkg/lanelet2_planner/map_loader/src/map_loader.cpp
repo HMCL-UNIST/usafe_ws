@@ -60,12 +60,17 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   autoware_lane_pub = nh_.advertise<autoware_msgs::Lane>("/local_traj_auto", 2, true);
 
   debug_pub = nh_.advertise<geometry_msgs::PoseStamped>("/maploader_debug", 2, true);
+
+  lir_pub= nh_.advertise<hmcl_msgs::LaneArray>("/lane_in_range",2,true);
+  
+  max_dist=100;
   
   
   
   pose_init = false; 
   goal_available = false;
   pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
+  odom_sub = nh_.subscribe("/carla/hero/odometry",100, &MapLoader::llaCallback,this);
   goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
   vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
   lanechange_left_sub  = nh_.subscribe("/left_lanechange",2,&MapLoader::leftLancechangeCallback,this);
@@ -130,6 +135,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
   }
   
+  lir_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::lir_handler,this);
+
   boost::thread lanelet_ros_convert(&MapLoader::lanelet_ros_convert_loop,this); 
   boost::thread lane_change_state_machine(&MapLoader::LaneChangeStateMachine,this); 
   // boost::thread simulated_obj_generator(&MapLoader::SimulatedObj,this); 
@@ -156,7 +163,7 @@ void MapLoader::LaneChangeStateMachine(){
   double dist_to_target_ = 1e3;
   while (ros::ok())
   {    
-    ROS_INFO("LaneChangeStatus = %s",stateToString(lane_change_state));
+    // ROS_INFO("LaneChangeStatus = %s",stateToString(lane_change_state));
     // ROS_INFO("lane_change_weight = %f",lane_change_weight);
     LaneChangeState tmp_state = lane_change_state;
     switch(lane_change_state){      
@@ -771,6 +778,92 @@ void MapLoader::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){
   pose_y = msg->pose.position.y;
   pose_z = msg->pose.position.z;
 }
+void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){ 
+  odom_x = msg->pose.pose.position.x;
+  odom_y = msg->pose.pose.position.y;
+  odom_z = msg->pose.pose.position.z;
+}
+
+void MapLoader::lane_in_range(){
+  lir_array.lanes.clear();
+  int j=0;
+  bool add_stop = false;
+  for (int i=0; i<global_lane_array.lanes.size(); i++){
+    if (!global_lane_array.lanes[i].lane_change_flag){
+      hmcl_msgs::Lane ll_;
+      for (int k=0; k<global_lane_array.lanes[i].waypoints.size(); k++){
+        while (!add_stop){
+          hmcl_msgs::Waypoint tmp_wp = global_lane_array.lanes[i].waypoints[k];
+          if (calculate_distance(cur_pose, tmp_wp, max_dist)){
+            ll_.waypoints.push_back(tmp_wp);
+          }
+          else{
+            add_stop = true;
+          }
+        }
+      }
+      ll_.header = global_lane_array.header;
+      ll_.lane_id = j;
+      double speed_limit = global_lane_array.lanes[0].speed_limit;
+      ll_.speed_limit = speed_limit;
+      ll_.speedbumps = global_lane_array.lanes[0].speedbumps;
+      ll_.trafficlights = global_lane_array.lanes[0].trafficlights;
+      lir_array.lanes.push_back(ll_);
+    }
+    else{
+      hmcl_msgs::Lane ll_2;
+      for (int k=0; k<global_lane_array.lanes[i].waypoints.size(); k++){
+        while (!add_stop){
+          hmcl_msgs::Waypoint tmp_wp = global_lane_array.lanes[i].waypoints[k];
+          if (calculate_distance(cur_pose, tmp_wp, max_dist)){
+            ll_2.waypoints.push_back(tmp_wp);
+          }
+          else{
+            add_stop = true;
+          }
+        }
+      }
+      j=j+1;
+      ll_2.header = global_lane_array.header;
+      ll_2.lane_id = j;
+      double speed_limit = global_lane_array.lanes[0].speed_limit;
+      ll_2.speed_limit = speed_limit;
+      ll_2.speedbumps = global_lane_array.lanes[0].speedbumps;
+      ll_2.trafficlights = global_lane_array.lanes[0].trafficlights;
+      lir_array.lanes.push_back(ll_2);  
+    }
+   }
+   lir_array.header.stamp = ros::Time::now();
+   lir_array.header.frame_id = "map";
+   lir_available=true;
+}
+
+void MapLoader::lir_handler(const ros::TimerEvent& time){
+  if(lir_available){
+    lane_in_range();
+    if(lir_array.lanes.size()>0){
+      std::cout<<"lir ready"<<std::endl;
+      lir_pub.publish(lir_array);
+    }
+    else{
+      std::cout<<"empty lir"<< std::endl;
+    }
+  }
+}
+
+
+
+bool MapLoader::calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist){
+  double dist_;
+  dist_= sqrt(pow((wp.pose.pose.position.x-point.position.x),2) + pow((wp.pose.pose.position.y-point.position.y),2));
+  if (dist_< dist){
+    return true;
+  }
+  else{
+    return false;
+  }
+}
+
 
 void MapLoader::construct_lanelets_with_viz(){
   ROS_INFO("constructing lanelets viz ..... ");
@@ -1111,7 +1204,7 @@ void MapLoader::mobileye_based_traj(hmcl_msgs::Lane& local_traj_msg){
       // ROS_INFO("current Pose  x = %f,y  = %f,yaw  = %f ", -1*dx, -1*dy, -1*psi);
       // ROS_INFO("c3 = %f,c2 = %f,c1 = %f,c0 = %f ", Pcoef_tmp(0,0), Pcoef_tmp(1,0), Pcoef_tmp(2,0), Pcoef_tmp(3,0));
       if(mobileye_data.left_lane.quality < 1 && mobileye_data.right_lane.quality < 1){
-          ROS_INFO("Poor lane qualities");
+          // ROS_INFO("Poor lane qualities");
           return;
       }
 

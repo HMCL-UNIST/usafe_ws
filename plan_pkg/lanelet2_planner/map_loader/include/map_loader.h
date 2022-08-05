@@ -33,6 +33,7 @@
 #include <ros/package.h>
 
 #include <std_msgs/Float64.h>
+#include <std_msgs/Int32MultiArray.h>
 #include <std_msgs/Bool.h>
 #include <sensor_msgs/NavSatFix.h>
 #include <hmcl_msgs/Lane.h>
@@ -43,6 +44,7 @@
 #include <mobileye_msgs/MobileyeInfo.h>
 
 #include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
@@ -69,6 +71,7 @@
 #include <vector>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/geometry/LaneletMap.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
@@ -143,13 +146,13 @@ private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
 
 ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
-
+ros::Publisher lir_pub;
 ros::Publisher way_pub;
 ros::Subscriber mobileye_sub;
-ros::Subscriber pose_sub, goal_sub, vehicle_status_sub;
+ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
 mobileye_msgs::MobileyeInfo mobileye_data;
-ros::Timer viz_timer, g_traj_timer, local_traj_timer;
+ros::Timer viz_timer, g_traj_timer, local_traj_timer, lir_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary;
 
 double test_direction;
@@ -165,14 +168,20 @@ lanelet::ConstLineString3d target_ctl;
 lanelet::ConstLanelet target_lane;
 std::vector<lanelet::ConstLanelet> target_lanes;
 std::vector<lanelet::ConstLanelet> lanes;
+std::vector<lanelet::ConstLanelet> lir;
+std::vector<hmcl_msgs::Lane> traj_ll;
 bool map_loaded;
 float local_path_length;
 double origin_lat;
 double origin_lon;
 double origin_att;
+double max_dist;
 bool global_traj_available;
 bool goal_available;
-hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local;
+bool lir_available;
+bool gla_available;
+hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array;
+
 
 
 
@@ -187,6 +196,7 @@ tf::StampedTransform l_sensor_to_g_sensor;
 tf::TransformListener local_transform_listener;
 float weight_decay_rate;
 double pose_x,pose_y,pose_z;
+float odom_x,odom_y,odom_z;
 bool pose_init;
 geometry_msgs::Pose cur_pose, prev_pose;
 geometry_msgs::Pose cur_goal;
@@ -230,7 +240,9 @@ void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
+void lir_handler(const ros::TimerEvent& time);
 void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+void llaCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
@@ -256,6 +268,8 @@ void init_kalman_filters();
 void compute_global_path();
 void compute_local_path();
 void current_lanefollow();
+void lane_in_range();
+bool calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist);
 
 void LaneChangeStateMachine();
 
