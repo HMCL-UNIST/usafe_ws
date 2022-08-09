@@ -12,6 +12,8 @@ add_message_files(
   DIRECTORY msg
   FILES
     Trafficlight.msg
+    TrafficlightBulb.msg
+    TrafficlightArray.msg
     Lane.msg
     LaneArray.msg
     Waypoint.msg    

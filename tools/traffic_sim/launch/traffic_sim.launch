@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+
+
+    <!-- Node that runs the MPC -->
+    <node pkg="traffic_sim" type="main_node.py" name="traffic_sim_node" output="screen">        
+                <!-- <param name="planner" value="astar" /> -->
+    </node>
+    
+    
+</launch>
