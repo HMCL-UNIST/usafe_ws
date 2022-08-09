@@ -996,8 +996,6 @@ void MapLoader::compute_local_path(){
 
     std::vector<std::vector<double>> global_points;
 
-    
-
     std::vector<double> speed_lim;
     // extract local trajectory from "global_lane_array_for_local" to -- >  "local_traj"
     // If we found lane change, we add linstrtings upto the next of the lane which has lane change signal
