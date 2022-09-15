@@ -1,0 +1,8 @@
+prefix=/home/hmcl/mission_ws/devel
+
+Name: mission_panel
+Description: Description of mission_panel
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 
