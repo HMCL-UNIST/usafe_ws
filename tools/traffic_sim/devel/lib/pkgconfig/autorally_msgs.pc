@@ -1,0 +1,8 @@
+prefix=/home/hmcl/traffic_sim_ws/devel
+
+Name: autorally_msgs
+Description: Description of autorally_msgs
+Version: 0.2.5
+Cflags: -I/home/hmcl/traffic_sim_ws/devel/include
+Libs: -L${prefix}/lib 
+Requires: 

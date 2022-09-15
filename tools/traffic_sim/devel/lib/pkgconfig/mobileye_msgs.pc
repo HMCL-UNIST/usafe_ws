@@ -1,0 +1,8 @@
+prefix=/home/hmcl/traffic_sim_ws/devel
+
+Name: mobileye_msgs
+Description: Description of mobileye_msgs
+Version: 1.1.0
+Cflags: -I/home/hmcl/traffic_sim_ws/devel/include
+Libs: -L${prefix}/lib 
+Requires: std_msgs message_runtime

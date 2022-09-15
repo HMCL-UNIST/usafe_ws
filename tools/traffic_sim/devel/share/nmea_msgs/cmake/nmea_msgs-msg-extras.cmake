@@ -1,0 +1,2 @@
+set(nmea_msgs_MESSAGE_FILES "/home/hmcl/traffic_sim_ws/src/msgs_pkg/nmea_msgs/msg/Gpgga.msg;/home/hmcl/traffic_sim_ws/src/msgs_pkg/nmea_msgs/msg/Gpgsa.msg;/home/hmcl/traffic_sim_ws/src/msgs_pkg/nmea_msgs/msg/Gpgsv.msg;/home/hmcl/traffic_sim_ws/src/msgs_pkg/nmea_msgs/msg/GpgsvSatellite.msg;/home/hmcl/traffic_sim_ws/src/msgs_pkg/nmea_msgs/msg/Gprmc.msg;/home/hmcl/traffic_sim_ws/src/msgs_pkg/nmea_msgs/msg/Gpgst.msg;/home/hmcl/traffic_sim_ws/src/msgs_pkg/nmea_msgs/msg/Sentence.msg")
+set(nmea_msgs_SERVICE_FILES "")
