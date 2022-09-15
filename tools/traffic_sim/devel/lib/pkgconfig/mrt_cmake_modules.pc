@@ -1,8 +1,0 @@
-prefix=/home/hmcl/traffic_sim_ws/devel
-
-Name: mrt_cmake_modules
-Description: Description of mrt_cmake_modules
-Version: 1.0.9
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 

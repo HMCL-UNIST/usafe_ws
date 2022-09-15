@@ -1,8 +1,0 @@
-prefix=/home/hmcl/traffic_sim_ws/devel
-
-Name: map_loader
-Description: Description of map_loader
-Version: 0.1.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: nav_msgs roscpp sensor_msgs geometry_msgs hmcl_msgs std_msgs tf lanelet2_core lanelet2_io lanelet2_maps lanelet2_projection lanelet2_routing lanelet2_traffic_rules lanelet2_validation lanelet2_extension autoware_msgs mobileye_msgs

@@ -5,7 +5,7 @@
 
   <node name="agents_sim" pkg="agents_sim" type="agents_sim" output="screen">      
       
-      <param name="osm_file_name" value="$(find agents_sim)/maps/kiapi_traffic_section_v2.osm"/> 
+      <param name="osm_file_name" value="$(find agents_sim)/maps/ad_road_v3.osm"/> 
       
       <!-- KIAPI -->
       <param name="map_origin_lat" value="35.6470671983"/> 
@@ -14,7 +14,7 @@
 
       <param name="map_road_resolution" value="1.0"/> 
 
-      <param name="n_vehicle_agents" value="3"/> 
+      <!-- <param name="n_vehicle_agents" value="9"/>  -->
       <param name="n_ped_agents" value="0"/> 
       
     

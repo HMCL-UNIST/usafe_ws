@@ -39,6 +39,7 @@
 #define PI 3.14159265358979323846264338
 
 #include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/geometry/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
@@ -80,7 +81,10 @@ Agents(){
 
 hmcl_msgs::LaneArray targetLaneArray;
 hmcl_msgs::Lane targetLane;
+lanelet::Areas targetArea;
 visualization_msgs::MarkerArray targetLaneMarker;
+bool isvehicle;
+
 
 
 Eigen::VectorXd pose2state(nav_msgs::Odometry &odom){
@@ -178,8 +182,6 @@ void update_step(double vel){
     current_state(2) = target_yaw;
     current_state(3) = vel;
 }
-
-
 
 visualization_msgs::Marker get_rviz_marker(){
     visualization_msgs::Marker marker;

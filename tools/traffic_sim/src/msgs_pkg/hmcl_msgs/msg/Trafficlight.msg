@@ -1,9 +1,0 @@
-Header header
-int32 id
-int32 lanelet_id
-geometry_msgs/Pose pose
-TrafficlightBulb left_light
-TrafficlightBulb straight_light
-TrafficlightBulb right_light
-bool valid_stop_line
-geometry_msgs/Pose stop_line

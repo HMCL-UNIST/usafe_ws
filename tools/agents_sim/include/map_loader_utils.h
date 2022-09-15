@@ -75,6 +75,15 @@ lanelet::ConstLanelets laneletLayerConst(lanelet::LaneletMapPtr ll_map)
   return lanelets;
 }
 
+lanelet::Areas areaLayer(lanelet::LaneletMapPtr ll_map){
+  lanelet::Areas areas;
+
+  for (auto li = ll_map->areaLayer.begin(); li != ll_map->areaLayer.end(); li++){
+    areas.push_back(*li);
+  }
+
+  return areas;
+}
 
 lanelet::Lanelets laneletLayer(lanelet::LaneletMapPtr ll_map)
 {

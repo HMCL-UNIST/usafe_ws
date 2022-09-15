@@ -20,6 +20,7 @@
 #include <sstream>
 #include <vector>
 #include <fstream>
+#include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
@@ -29,17 +30,20 @@
 
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
+#include <std_msgs/String.h>
 #include <vector>
 #include "agents_sim.h"
 // macro for getting the time stamp of a ros message
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
+using namespace std;
 
 AgentSim::AgentSim(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :  
   nh_(nh), nh_p_(nh_p), dt(0.1)
 {
   // using namespace lanelet;
-  
+  mission_code = 0;
+  scen_available = false;
   map_loaded = false;    
   nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
   nh_p_.getParam("osm_file_name", osm_file_name);
@@ -47,76 +51,96 @@ AgentSim::AgentSim(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :
   nh_p_.param<double>("map_origin_lon", origin_lon, 0.0);
   nh_p_.param<double>("map_origin_att", origin_att, 0.0);  
   nh_p_.param<double>("map_road_resolution", map_road_resolution, 1.0);
-  
-  nh_p_.param<int>("n_vehicle_agents", n_vehicle_agents, 3);  
+  // nh_p_.param<int>("n_vehicle_agents", n_vehicle_agents, 3);  
   nh_p_.param<int>("n_ped_agents", n_ped_agents, 0);  
-  
-  for(int i=0; i < n_vehicle_agents; i++){
-    Agents vehicle_agent;    
-    vehicle_agents.push_back(vehicle_agent);
-    if(i ==0){
-      Eigen::VectorXd state_(4);    
-      state_ << -151, 71, 5.43, 0.0;
-      vehicle_agents[i].set_state(state_);  
-    }else if(i == 1){
-      Eigen::VectorXd state_(4);    
-      state_ << -143.217, 87.6375, 3.82445, 0.0;
-      vehicle_agents[i].set_state(state_);  
-    }else if(i == 2){
-      Eigen::VectorXd state_(4);    
-      state_ << -163.47, 34.5, 2.38, 0.0;
-      vehicle_agents[i].set_state(state_);  
-    }
-    
-  }
-  
-  viz_timer = nh_.createTimer(ros::Duration(0.1), &AgentSim::viz_pub,this);    
+  viz_timer = nh_.createTimer(ros::Duration(0.1), &AgentSim::viz_pub,this);
+  ped_agents_pub = nh_.advertise<visualization_msgs::MarkerArray>("/ped_agents_marker", 20, true); 
   vehicle_agents_pub = nh_.advertise<visualization_msgs::MarkerArray>("/vehicle_agents_marker", 20, true);
-  ped_agents_pub = nh_.advertise<visualization_msgs::MarkerArray>("/ped_agents_marker", 20, true);
   g_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/npc_global_traj_viz", 20, true);
+  ped_agents_pub = nh_.advertise<visualization_msgs::MarkerArray>("/ped_agents_marker", 20, true);
+  ped_agents_pub = nh_.advertise<visualization_msgs::MarkerArray>("/ped_agents_marker", 20, true);
+  mission_sub=nh_.subscribe("/mission_cmd",1,&AgentSim::MissionCallback,this);
   load_map();
   
-
   lanelet::traffic_rules::TrafficRulesPtr trafficRules =
   lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
   routingGraph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);  
   
-  
-  
+  boost::thread agent_scenario_thread(&AgentSim::Scenario_generation,this);
+  boost::thread dummy_thread(&AgentSim::dummy,this);
   boost::thread agent_update_thread(&AgentSim::simulationCallback,this); 
   boost::thread agent_local_path_update_thread(&AgentSim::localpathCallback,this); 
   boost::thread agent_globalpath_update_thread(&AgentSim::globalpathCallback,this); 
-  
 }
 
 AgentSim::~AgentSim()
 {}
-
+void AgentSim::MissionCallback(const std_msgs::String &msg){
+    if (!msg.data.empty()){
+    if(msg.data == "SpeedBump"){
+      mission_code = 1;
+    }
+    else if(msg.data == "Dropping"){
+      mission_code = 2;
+    }
+    else if(msg.data == "Blind"){
+      mission_code = 3;
+    }
+    else if(msg.data == "Overtaking"){
+      mission_code = 4;
+    }
+    else if(msg.data == "Pedestrian"){
+      mission_code = 5;
+    }
+    else if(msg.data == "Pedestrian_2"){
+      mission_code = 6;
+    }  
+    else if(msg.data == "All" ){
+      mission_code = 7;
+    }
+    else if(msg.data == "Clear"){
+      mission_code = 8;
+    }
+  }
+  if(0 < mission_code && mission_code < 8){
+    ROS_INFO("mission code = %d",mission_code);
+  }
+  else if(mission_code == 8){
+    ROS_INFO("Clear");
+  }
+  else{
+    ROS_INFO("Wrong mission");
+    scen_available = false;
+  }
+}
 
 void AgentSim::globalpathCallback(){  
-    ros::Rate loop_rate(0.1); // rate  
+    ros::Rate loop_rate(2); // rate  
       while (ros::ok()){
-        if (!map_loaded){continue;}
-          for(int i=0; i < n_vehicle_agents; i++){                
+        if (!scen_available && !map_loaded){continue;}
+          for(int i=0; i < vehicle_agents.size(); i++){                
             vehicle_agents[i].targetLaneArray = compute_random_path(vehicle_agents[i].getPose(),vehicle_agents[i].targetLaneMarker);            
-            }
-          loop_rate.sleep();
+          }
+        loop_rate.sleep();
       }
-      ROS_INFO("path simulation end");
 }
 
 
 void AgentSim::localpathCallback(){  
     ros::Rate loop_rate(1/dt); // rate  
       while (ros::ok()){
-        if (!map_loaded){continue;}        
-          for(int i=0; i < n_vehicle_agents; i++){                
-            if (vehicle_agents[i].targetLaneArray.lanes.size() < 1){
-              continue;
-              }
-            vehicle_agents[i].targetLane = compute_local_path(vehicle_agents[i].targetLaneArray,vehicle_agents[i].getPose());            
-            }
-          loop_rate.sleep();
+        if (scen_available && map_loaded){        
+        for(int i=0; i < vehicle_agents.size(); i++){                
+          if (vehicle_agents[i].targetLaneArray.lanes.size() < 1){
+            continue;
+          }
+          vehicle_agents[i].targetLane = compute_local_path(vehicle_agents[i].targetLaneArray,vehicle_agents[i].getPose());            
+          }
+        loop_rate.sleep();
+        }
+        else{
+        loop_rate.sleep();
+        }
       }
       ROS_INFO("path simulation end");
 }
@@ -124,34 +148,56 @@ void AgentSim::localpathCallback(){
 
 void AgentSim::simulationCallback(){  
     ros::Rate loop_rate(1/dt); // rate  
-      while (ros::ok()){
-        if (!map_loaded){continue;}
-          for(int i=0; i < n_vehicle_agents; i++){
-            double agent_velocity = 3.0;
-            vehicle_agents[i].update_step(agent_velocity);                                  
-            }
-          loop_rate.sleep();
+      while (ros::ok())
+      {
+        if (scen_available && map_loaded){
+          for(int i=0; i < vehicle_agents.size(); i++){
+            if(vehicle_agents[i].isvehicle){
+              double agent_velocity = 3.0;
+              vehicle_agents[i].update_step(agent_velocity);
+            }                                  
+          }
+        }
+        loop_rate.sleep();
       }
       ROS_INFO("simulation end");
 }
 
 
 void AgentSim::viz_pub(const ros::TimerEvent& time){  
-   visualization_msgs::MarkerArray vehicle_markerArray;
-   visualization_msgs::MarkerArray local_traj_markerArray;
 
-   for(int i=0; i < n_vehicle_agents; i++){            
-            visualization_msgs::Marker marker_tmp = vehicle_agents[i].get_rviz_marker();
-            vehicle_markerArray.markers.push_back(marker_tmp);            
-            visualization_msgs::MarkerArray tt = viz_local_paths(vehicle_agents[i].targetLane);
-            for(int j=0; j < tt.markers.size(); j++){            
-                  local_traj_markerArray.markers.push_back(tt.markers[j]);
-            }            
-          }
-    g_traj_viz_pub.publish(local_traj_markerArray);
-    vehicle_agents_pub.publish(vehicle_markerArray);
-    
-    return;    
+  visualization_msgs::MarkerArray vehicle_markerArray;
+  visualization_msgs::MarkerArray local_traj_markerArray;
+
+  if(vehicle_agents.size()>0){
+    for(int i=0; i < vehicle_agents.size(); i++){           
+      visualization_msgs::Marker marker_tmp = vehicle_agents[i].get_rviz_marker();
+      vehicle_markerArray.markers.push_back(marker_tmp);            
+      visualization_msgs::MarkerArray tt = viz_local_paths(vehicle_agents[i].targetLane);
+      for(int j=0; j < tt.markers.size(); j++){            
+        local_traj_markerArray.markers.push_back(tt.markers[j]);
+      }            
+    }
+  }
+
+  if(mission_code ==2){
+    if(dummy_clear){
+      vehicle_markerArray.markers[1].action = visualization_msgs::Marker::DELETE;
+    }
+  }
+  
+  if(mission_code == 8){
+    for(int i=0; i<vehicle_markerArray.markers.size(); i++){
+      vehicle_markerArray.markers[i].action = visualization_msgs::Marker::DELETE;
+    }
+    marker_clean = true;
+  }
+
+  g_traj_viz_pub.publish(local_traj_markerArray);
+  vehicle_agents_pub.publish(vehicle_markerArray);
+  vehicle_markerArray.markers.clear();
+
+  return;    
 }
 
 void AgentSim::load_map(){
@@ -167,12 +213,105 @@ void AgentSim::load_map(){
   ROS_INFO("constructing lanelets viz ..... ");
   lanelet::Lanelets all_lanelets = laneletLayer(map); 
   lanelet::ConstLanelets all_laneletsConst = laneletLayerConst(map);
+  lanelet::Areas all_areas= areaLayer(map);
   road_lanelets = roadLanelets(all_lanelets);  
   road_lanelets_const = roadLaneletsConst(all_laneletsConst);    
   fix_and_save_osm();    
   map_loaded  = true;
 }
 
+void AgentSim::Scenario_generation(){
+  ros::Rate loop_rate(2);
+  while(ros::ok()){
+    if(mission_code == 8){
+      if(marker_clean){
+        vehicle_agents.clear();
+      }
+      Bool_initialize();
+    }
+    if(scen_available){continue;}
+    if(0 < mission_code && mission_code < 8){
+      ROS_INFO("mission code is %d", mission_code);
+    }
+    if(mission_code == 1){
+      n_vehicle_agents = 0;
+      speedbump();
+      scen_available = true;
+    }
+    if(mission_code ==2){
+      dropping();
+      scen_available = true;
+    }
+    loop_rate.sleep();
+  }
+}
+
+void AgentSim::Bool_initialize(){
+  scen_available = false;
+  dropper = false;
+  dropped = false;
+  dummy_clear = false;
+  marker_clean = false;
+}
+
+void AgentSim::speedbump(){
+
+}
+
+void AgentSim::dropping(){
+  Agents vehicle_agent;
+  vehicle_agents.push_back(vehicle_agent);
+  Eigen::VectorXd state_(4);
+  state_ << -289.4211, 275.8057, -0.82, 0;
+  vehicle_agents[0].set_state(state_);
+  vehicle_agents[0].isvehicle = true;
+  dropper = true;
+  ROS_INFO("1 agent is generated");
+}
+
+void AgentSim::dummy(){
+  srand(time(NULL));
+  int rand_time = rand()%6+5; // 5s < rand_time < 10s
+  int t=0;
+  int h=0;
+  int t_clear=5;
+  ros::Rate loop_rate(1);
+  while(ros::ok()){
+    if(dropper && !dropped){
+      if(t<rand_time){
+        t++;
+        ROS_INFO("Dropping : %d seconds left", rand_time-t);
+        loop_rate.sleep();
+      }
+      else{
+      Agents vehicle_agent;
+      vehicle_agents.push_back(vehicle_agent);
+      Eigen::VectorXd state_(4);
+      state_ << vehicle_agents[0].getPose().position.x, vehicle_agents[0].getPose().position.y, 0, 0;
+      vehicle_agents[1].isvehicle = false; //dummy
+      vehicle_agents[1].set_state(state_);
+      dropped = true;
+      ROS_INFO("Dropped!");
+      }
+    }
+    if(dropped && !dummy_clear){
+      vehicle_agents[0].isvehicle = false;
+      double agent_vel = 0;
+      vehicle_agents[0].update_step(agent_vel);
+      if(h<t_clear){
+        h++;
+        loop_rate.sleep();
+      }
+      else{
+        vehicle_agents[0].isvehicle = true;
+        dummy_clear = true;
+        rand_time = rand()%6+5;
+        t=0;
+        h=0;
+      }
+    }
+  }
+}
 
 hmcl_msgs::LaneArray AgentSim::compute_random_path(geometry_msgs::Pose cur_pose, visualization_msgs::MarkerArray &traj_lanelet_marker_array){  
   hmcl_msgs::LaneArray global_lane_array;  
@@ -388,7 +527,35 @@ hmcl_msgs::Lane AgentSim::compute_local_path(hmcl_msgs::LaneArray global_lane_ar
   return local_traj_msg;
 
 }
- 
+lanelet::Areas AgentSim::inlet_outlet(hmcl_msgs::LaneArray global_lane){
+  lanelet::Areas area_through;
+  lanelet::Areas areas = all_areas;
+  bool add_stop=false;
+  for(int i=0; i<global_lane.lanes.size(); i++){
+    for(int j=0; j<global_lane.lanes[i].waypoints.size(); j++){
+      auto p_x=global_lane.lanes[i].waypoints[j].pose.pose.position.x;
+      auto p_y=global_lane.lanes[i].waypoints[j].pose.pose.position.y;
+      for(int k=0; k<areas.size(); k++){
+        if(lanelet::geometry::inside(areas[k],lanelet::BasicPoint2d(p_x,p_y))){
+          area_through.push_back(areas[k]);
+          areas.erase(areas.begin()+k);
+        }
+        if(areas.size()>2){
+          add_stop = true;
+          break;
+        }
+      }
+      if(add_stop){
+        break;
+      }
+    }
+    if(add_stop){
+      break;
+    }
+  }
+  return area_through;
+}
+
 
  void AgentSim::fix_and_save_osm(){  
   
