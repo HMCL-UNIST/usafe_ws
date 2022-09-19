@@ -107,7 +107,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   if(visualize_path){    
     g_traj_lanelet_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/global_traj_lanelets_viz", 1, true);
     g_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/global_traj_viz", 1, true);
-    l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);  
+    l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
+    lir_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lir_viz",1,true);  
     viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
   }
   
@@ -786,59 +787,90 @@ void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){
 
 void MapLoader::lane_in_range(){
   lir_array.lanes.clear();
-  int j=0;
   bool add_stop = false;
+  std::vector<int> lc_idx;
   for (int i=0; i<global_lane_array.lanes.size(); i++){
-    if (!global_lane_array.lanes[i].lane_change_flag){
-      hmcl_msgs::Lane ll_;
-      for (int k=0; k<global_lane_array.lanes[i].waypoints.size(); k++){
-        while (!add_stop){
-          hmcl_msgs::Waypoint tmp_wp = global_lane_array.lanes[i].waypoints[k];
-          if (calculate_distance(cur_pose, tmp_wp, max_dist)){
-            ll_.waypoints.push_back(tmp_wp);
-          }
-          else{
-            add_stop = true;
-          }
+    if(global_lane_array.lanes[i].lane_change_flag){
+      lc_idx.push_back(i);
+    }
+  }
+  lc_idx.push_back(global_lane_array.lanes.size()-1);
+  if(lc_idx.size()==0){
+    hmcl_msgs::Lane l_tmp;
+    l_tmp.header =  global_lane_array.header;
+    l_tmp.lane_id = 0;
+    l_tmp.lane_change_flag = false;
+    for(int i=0; i<global_lane_array.lanes.size(); i++){
+      for(int j=0; j<global_lane_array.lanes[i].waypoints.size(); j++){
+        if(calculate_distance(cur_pose,global_lane_array.lanes[i].waypoints[j],max_dist)){
+          l_tmp.waypoints.push_back(global_lane_array.lanes[i].waypoints[j]);
+        }
+        else{
+          break;
         }
       }
-      ll_.header = global_lane_array.header;
-      ll_.lane_id = j;
-      double speed_limit = global_lane_array.lanes[0].speed_limit;
-      ll_.speed_limit = speed_limit;
-      ll_.speedbumps = global_lane_array.lanes[0].speedbumps;
-      ll_.trafficlights = global_lane_array.lanes[0].trafficlights;
-      lir_array.lanes.push_back(ll_);
     }
-    else{
-      hmcl_msgs::Lane ll_2;
-      for (int k=0; k<global_lane_array.lanes[i].waypoints.size(); k++){
-        while (!add_stop){
-          hmcl_msgs::Waypoint tmp_wp = global_lane_array.lanes[i].waypoints[k];
-          if (calculate_distance(cur_pose, tmp_wp, max_dist)){
-            ll_2.waypoints.push_back(tmp_wp);
+    lir_array.lanes.push_back(l_tmp);
+  }
+  else if(lc_idx.size()>0){
+    int j=0;
+    for (int i=0; i<lc_idx.size(); i++){
+      hmcl_msgs::Lane l_tmp;
+      l_tmp.header = global_lane_array.header;
+      l_tmp.lane_id = i;
+      while(j<=lc_idx[i]){
+        for(int k=j; k<global_lane_array.lanes[j].waypoints.size(); k++){
+          if(calculate_distance(cur_pose,global_lane_array.lanes[j].waypoints[k],max_dist)){
+            l_tmp.waypoints.push_back(global_lane_array.lanes[j].waypoints[k]);
           }
           else{
-            add_stop = true;
+            break;
           }
         }
+        j++;
       }
-      j=j+1;
-      ll_2.header = global_lane_array.header;
-      ll_2.lane_id = j;
-      double speed_limit = global_lane_array.lanes[0].speed_limit;
-      ll_2.speed_limit = speed_limit;
-      ll_2.speedbumps = global_lane_array.lanes[0].speedbumps;
-      ll_2.trafficlights = global_lane_array.lanes[0].trafficlights;
-      lir_array.lanes.push_back(ll_2);  
+      lir_array.lanes.push_back(l_tmp);
     }
-   }
-   lir_array.header.stamp = ros::Time::now();
-   lir_array.header.frame_id = "map";
-   lir_available=true;
+  }
+  lir_array.header = global_lane_array.header;
+  if(lir_array.lanes.size()>0){
+    lir_available = true;
+  }
 }
 
+void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
+  std_msgs::ColorRGBA lir_marker_color;
+  setColor(&lir_marker_color, 1.0, 0.0, 0.0, 0.5);
+  lir_marker_array.markers.clear();
+  if(lir_available){
+    for(int i=0; i<lanes.lanes.size(); i++){
+      for(int j=0; j<lanes.lanes[i].waypoints.size(); j++){
+        visualization_msgs::Marker marker_tmp;
+        marker_tmp.header.stamp = ros::Time::now();
+        marker_tmp.header.frame_id = "map" ; //global_lane_array.header.frame_id;
+        marker_tmp.id = 10000+i;
+        marker_tmp.ns = "ltraj";
+        marker_tmp.type = visualization_msgs::Marker::ARROW;
+        marker_tmp.action = visualization_msgs::Marker::ADD;                  
+        marker_tmp.pose.position.x = lanes.lanes[i].waypoints[j].pose.pose.position.x;
+        marker_tmp.pose.position.y = lanes.lanes[i].waypoints[j].pose.pose.position.y;
+        marker_tmp.pose.position.z = lanes.lanes[i].waypoints[j].pose.pose.position.z;
+        marker_tmp.pose.orientation.x = lanes.lanes[i].waypoints[j].pose.pose.orientation.x;
+        marker_tmp.pose.orientation.y = lanes.lanes[i].waypoints[j].pose.pose.orientation.y;
+        marker_tmp.pose.orientation.z = lanes.lanes[i].waypoints[j].pose.pose.orientation.z;
+        marker_tmp.pose.orientation.w = lanes.lanes[i].waypoints[j].pose.pose.orientation.w;
+        marker_tmp.color = lir_marker_color;
+        marker_tmp.lifetime = ros::Duration(0.1);
+        marker_tmp.scale.x = 1.2;
+        marker_tmp.scale.y = 0.6;
+        marker_tmp.scale.z = 0.1;                  
+        local_traj_marker_arrary.markers.push_back(marker_tmp);
+      }
+    }
+  }
+}
 void MapLoader::lir_handler(const ros::TimerEvent& time){
+  if(global_traj_available){
   if(lir_available){
     lane_in_range();
     if(lir_array.lanes.size()>0){
@@ -848,6 +880,7 @@ void MapLoader::lir_handler(const ros::TimerEvent& time){
     else{
       std::cout<<"empty lir"<< std::endl;
     }
+  }
   }
 }
 
@@ -904,6 +937,7 @@ void MapLoader::viz_pub(const ros::TimerEvent& time){
     g_map_pub.publish(map_marker_array);
     g_traj_lanelet_viz_pub.publish(traj_lanelet_marker_array);
     g_traj_viz_pub.publish(traj_marker_array);
+    lir_viz_pub.publish(lir_marker_array);
     
 }
 

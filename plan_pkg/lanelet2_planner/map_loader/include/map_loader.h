@@ -145,7 +145,7 @@ class MapLoader
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
 
-ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub;
+ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub;
 ros::Publisher lir_pub;
 ros::Publisher way_pub;
 ros::Subscriber mobileye_sub;
@@ -153,7 +153,7 @@ ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
 mobileye_msgs::MobileyeInfo mobileye_data;
 ros::Timer viz_timer, g_traj_timer, local_traj_timer, lir_timer;
-visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary;
+visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary, lir_marker_array;
 
 double test_direction;
 bool visualize_path, continuious_global_replan;
@@ -277,6 +277,7 @@ void lanelet_ros_convert_loop();
 void SimulatedObj();
 
 void viz_local_path(hmcl_msgs::Lane &lane_);
+void viz_lir(hmcl_msgs::LaneArray &lanes);
 
 void pub_autoware_traj(const hmcl_msgs::Lane& lane);
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
