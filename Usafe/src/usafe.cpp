@@ -55,16 +55,53 @@ Usafe::Usafe(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :
   pp_planner_ = new planner::PathPlanner();
   vel_planner_ = new planner::VelocityPlanner();
   planner_common_ = new planner::PlannerCommon();
+  race_planner_ = new planner::RacingLinePlanner();
+  race_planner_->number_of_node = 3;
+  race_planner_->gen_random_graph();
+  // race_planner_->compute_best_route();
+  
 
   // controller initiazlie 
   long_ctrl_ = new controller::LongitudinalCtrl();
   lat_ctrl_ = new controller::LateralCtrl();
 
-  
 }
 
 Usafe::~Usafe()
 {}
+
+// Usafe::planner_loop(){
+  
+//   // get the mission state 
+//   //*** (HyunBIN) //*** 
+//   mission_state =  ms_planner_.get_ms_state();
+  
+//   // retrive goal action (pose) 
+//   // (Sanghyun) //*** 
+//   goal_ = v2x_receiver_.get_goal(mission_state);
+ 
+//   // compute the behaviour state 
+//   // (HyunBin) //*** 
+//   behaviour_state = bh_planner_.get_behaviour(mission_state);
+  
+//   // Compute the local path and velocity profile depends on the behaviour state
+//   //*** Junseoung //*** 
+//   local_path = pp_planner_.get_local_path(behaviour_state)
+//   //***  NAM //***  
+//   local_vel_profile = vel_planner.get_local_velocity_profile(behaviour_state)
+
+//   // Compute the lateral and longitudinal cmd 
+//   //***MINU //*** 
+//   long_ctrl_.get_vel_cmd(local_vel_profile)
+//   //***MINU //*** 
+//   lat_ctrl.get_vel_cmd(local_path)
+
+// }
+
+// Usafet::perception_loop(){
+  
+
+// }
 
 
 

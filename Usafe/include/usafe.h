@@ -86,6 +86,7 @@
 #include <planner/planner_common.h>
 #include <planner/velocity_planner.h>
 #include <planner/route_planner.h>
+#include <planner/racing_planner.h>
 // tools include 
 #include <tools/debugger.h>
 #include <tools/healthmonitoring.h>
@@ -120,7 +121,7 @@ planner::BehaviorStatMachine*         bh_planner_;
 planner::PathPlanner*                 pp_planner_;
 planner::VelocityPlanner*             vel_planner_;
 planner::PlannerCommon*               planner_common_;
-
+planner::RacingLinePlanner*           race_planner_;
 controller::LongitudinalCtrl*         long_ctrl_;
 controller::LateralCtrl*            lat_ctrl_;
 

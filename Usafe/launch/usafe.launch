@@ -3,7 +3,7 @@
 <launch>
 
 
-  <node name="map_loader" pkg="map_loader" type="map_loader" output="screen">      
+  <node name="usafe" pkg="usafe" type="usafe" output="screen">      
       
       <remap from="/current_pose" to="/gnss_pose_world"/>  
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
