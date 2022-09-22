@@ -37,6 +37,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     // Set publisher and subscriber 
     g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);      
     waypoints_pub = nh_.advertise<visualization_msgs::MarkerArray>("/waypoints", 2, true);          
+    edges_pub = nh_.advertise<visualization_msgs::MarkerArray>("/Waypoint_edges", 2, true);          
+    shortest_path_pub = nh_.advertise<visualization_msgs::Marker>("/shortest_path", 2, true);          
     point_sub = nh_.subscribe("move_base_simple/goal", 1, &RacingLinePlanner::callbackGetGoalPose, this);
 
     // Set timer callbacks
@@ -47,7 +49,9 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     lanelet::traffic_rules::TrafficRulesPtr trafficRules =  lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
     routingGraph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);      
     construct_lanelets_with_viz();
-  
+    // 
+    scenario_cout = 0;
+    insertDefaultWaypoints(scenario_cout);
       
   return;  
 }
@@ -56,29 +60,282 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
 RacingLinePlanner::~RacingLinePlanner()
 {}
 
-void RacingLinePlanner::setupGraph(){
-    
+void RacingLinePlanner::inserWaypoints(double x, double y, int cost){
+    geometry_msgs::Pose wp_tmp;
+    wp_tmp.position.x = x;
+    wp_tmp.position.y = y;
+    planner::Waypoint waypoint_tmp = planner::Waypoint(x, y, cost);    
+    waypoints.push_back(waypoint_tmp);
+    waypoints_pose.push_back(wp_tmp);
 }
+void RacingLinePlanner::insertDefaultWaypoints(int scenario_num){
+    waypoints.clear();
+    waypoints_pose.clear();
+    // Insert Start and Goal waypoint
+    if(scenario_num == 0){
+        // First goal point --> x = 215, y = -44.1;
+        double goal_x = 222.59;
+        double goal_y = -52.13;  
+        inserWaypoints(goal_x, goal_y, 0);    
+        double start_x = -510.7;
+        double start_y = 754.54;
+        inserWaypoints(start_x, start_y, 0);    
+    }else{
+        double goal_x = -429.17;
+        double goal_y = 651.0;  
+        inserWaypoints(goal_x, goal_y, 100);    
+        double start_x = -1.0;
+        double start_y = 177.44;
+        inserWaypoints(start_x, start_y, 100);
+    }
+    // Second goal point --> x = 215, y = -44.1;
+    
+    // Insert current posision (Start posision d)
+}
+
+
+void RacingLinePlanner::setupGraph(){
+    // Reinitilize Graph using waypoints    
+    number_of_node = waypoints.size();
+    if(number_of_node > 0){
+        g = planner::Graph(number_of_node);        
+        g.clearEdges();    
+    }else{
+        return;
+    }     
+    for(int i = 0; i < waypoints.size() ; i++){
+        for(int j = 0; j < waypoints.size() ; j++){
+            if(i!=j){
+                // bool is_forward_tmp =is_forward(waypoints_pose[i],waypoints_pose[j]);
+                bool is_forward_tmp =is_forward(waypoints[i],waypoints[j]);
+                if(is_forward_tmp){                    
+                    if(is_EdgeValid(waypoints[i],waypoints[j]))
+                        g.addEdge(i, j,waypoints[j].cost);                    
+                } 
+            }            
+        }
+    }
+}
+
+planner::Waypoint RacingLinePlanner::gen_avoidanceWp(lanelet::ConstLanelet lanelet_,geometry_msgs::Pose &bad_wp_pose){
+        lanelet::ConstLineString3d centerline_ = lanelet_.centerline();
+        auto near_idx =  getClosestWaypoint(true,centerline_, bad_wp_pose);
+        auto near_point = centerline_[near_idx];
+        planner::Waypoint avoidance_sp;
+        avoidance_sp.x_pose = near_point.x();
+        avoidance_sp.y_pose = near_point.y();
+        avoidance_sp.cost = 40.0;
+        return avoidance_sp;
+}
+
+std::vector<Waypoint> RacingLinePlanner::AddAvoidanceWaypoint(const Waypoint& bad_wp){
+    std::vector<Waypoint> good_waypoints;
+    planner::Waypoint avoid_wp;
+    geometry_msgs::Pose bad_wp_pose; 
+    bad_wp_pose.position.x = bad_wp.x_pose ;
+    bad_wp_pose.position.y = bad_wp.y_pose ;
+        
+
+    int to_closest_lane_idx = get_closest_lanelet(road_lanelets_const,bad_wp_pose);                      
+    auto left_next_lane = routingGraph->left(road_lanelets_const.at(to_closest_lane_idx));             
+        if(left_next_lane){      
+            avoid_wp = gen_avoidanceWp(left_next_lane.get(),bad_wp_pose);
+            good_waypoints.push_back(avoid_wp);                
+            auto left_left_next_lane = routingGraph->left(left_next_lane.get());
+                if(left_left_next_lane){
+                    avoid_wp = gen_avoidanceWp(left_left_next_lane.get(),bad_wp_pose);
+                    good_waypoints.push_back(avoid_wp);
+                }
+            }
+                
+        auto right_next_lane = routingGraph->right(road_lanelets_const.at(to_closest_lane_idx)); 
+        if(right_next_lane){
+          
+            avoid_wp = gen_avoidanceWp(right_next_lane.get(),bad_wp_pose);
+            good_waypoints.push_back(avoid_wp);                
+            auto right_right_next_lane = routingGraph->right(right_next_lane.get());             
+                if(right_right_next_lane){
+                    
+                    avoid_wp = gen_avoidanceWp(right_right_next_lane.get(),bad_wp_pose);
+                    good_waypoints.push_back(avoid_wp);
+                }
+        }
+
+        // filter if there is green point near by 
+    std::vector<Waypoint> filt_good_waypoints;
+    if(good_waypoints.size()>0){
+        for(int j = 0; j<  good_waypoints.size(); j++){
+            bool insert_sp = true;
+            for(int i=0; i< waypoints.size(); i++){            
+                double dist_tmp = waypoints[i].dist_to(good_waypoints[j]);
+                if(dist_tmp < avoidance_wp_add_green_dist)
+                    insert_sp = false;                    
+            }       
+            if(insert_sp)
+                filt_good_waypoints.push_back(good_waypoints[j]);                                    
+            
+        }
+    
+    }
+    return filt_good_waypoints;
+}
+
+std::vector<Waypoint> RacingLinePlanner::getclosest2Waypoints(const Waypoint& wp){
+    geometry_msgs::Pose wp_pose;
+    wp_pose.position.x = wp.x_pose;
+    wp_pose.position.y = wp.y_pose;
+    int lane_index = get_closest_lanelet(road_lanelets_const,wp_pose);  
+    auto centerline_ = road_lanelets_const[lane_index].centerline();
+    auto near_idx =  getClosestWaypoint(true,centerline_, wp_pose);
+    std::vector<Waypoint> closest_wps;
+    Waypoint closest_wp;
+    closest_wp.x_pose = centerline_[near_idx].x();
+    closest_wp.y_pose = centerline_[near_idx].y();
+    closest_wp.cost = 0.0;
+    closest_wps.push_back(closest_wp);
+    if(near_idx == centerline_.size()-1){    
+    closest_wp.x_pose = centerline_[near_idx-1].x();
+    closest_wp.y_pose = centerline_[near_idx-1].y();    
+    }else{
+    closest_wp.x_pose = centerline_[near_idx+1].x();
+    closest_wp.y_pose = centerline_[near_idx+1].y();    
+    }
+    closest_wps.push_back(closest_wp);
+    return closest_wps;
+}
+
+bool RacingLinePlanner::is_EdgeValid(const Waypoint& wp1, const Waypoint& wp2){
+    bool valid_flag = true;    
+    // check if waypoints, which are in the middle of wp1 and wp2, too close to the line between wp1 and wp2
+    for( int k=0;k < waypoints.size() ; k++){            
+        if(!(waypoints[k] == wp1) && !(waypoints[k] == wp2)){
+            double p1[2] = {wp1.x_pose, wp1.y_pose};
+            double p2[2] = {wp2.x_pose, wp2.y_pose};
+            double p3[2] = {waypoints[k].x_pose, waypoints[k].y_pose};
+            double angle_ = get_angle_between_vec(p3,p1,p2);            
+            // check if the points between two points
+            if(fabs(angle_) > PI/2.0){
+                double dist_to_line = get_project_ver_dist(p1,p2,p3);                                
+                if(dist_to_line < edge_valid_dist_to_line_thres)
+                    valid_flag = false;                        
+            }            
+        }        
+    }
+
+    // If the angle between centerline and edge too big
+    if(valid_flag){
+        std::vector<Waypoint> cwps =  getclosest2Waypoints(wp1);
+        double wp1_[2] = {cwps[0].x_pose, cwps[0].y_pose};
+        double wp2_[2] = {cwps[1].x_pose, cwps[1].y_pose};
+        double wp3_[2] = {wp2.x_pose, wp2.y_pose};
+        double angle_from_centerline = get_angle_between_vec(wp1_,wp2_,wp3_);            
+        if (fabs(angle_from_centerline) > edge_centerline_aling_angle_limit){
+             valid_flag = false;   
+        }
+    }
+  
+
+    return valid_flag;
+}
+
+
+
 
 void RacingLinePlanner::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg){
     
     std::random_device dev;
     std::mt19937 rng(dev());
-    std::uniform_int_distribution<std::mt19937::result_type> rangg(1,100); 
-    auto cost = rangg(rng);    
-    planner::Waypoint waypoint_tmp = planner::Waypoint(msg->pose.position.x, msg->pose.position.y, double(cost));
+    std::uniform_int_distribution<std::mt19937::result_type> rangg(0,100);     
+    int cost = rangg(rng);    
+    while( cost > 100 ){
+        cost = rangg(rng);    
+    }    
+    
+
+    geometry_msgs::Pose prior_wp;
+    prior_wp = msg->pose;
+    int lane_index = get_closest_lanelet(road_lanelets_const,prior_wp);  
+    auto centerline_ = road_lanelets_const[lane_index].centerline();
+    auto near_idx =  getClosestWaypoint(true,centerline_, prior_wp);
+    auto near_point = centerline_[near_idx];
+    
+    geometry_msgs::Pose wp_tmp;
+    wp_tmp.position.x = near_point.x();
+    wp_tmp.position.y = near_point.y();
+    planner::Waypoint waypoint_tmp = planner::Waypoint(wp_tmp.position.x, wp_tmp.position.y, cost);
+    
     waypoints.push_back(waypoint_tmp);
-    waypoints_pose.push_back(msg->pose);
-    if(waypoints_pose.size() > 1){ 
-        is_forward(waypoints_pose[waypoints_pose.size()-2],waypoints_pose[waypoints_pose.size()-1]);
+    waypoints_pose.push_back(wp_tmp);
+    
+    if( cost > 50){        
+        std::vector<Waypoint> avoidance_wps = AddAvoidanceWaypoint(waypoint_tmp);                
+        if(avoidance_wps.size() > 0){
+            for(int i=0; i < avoidance_wps.size(); i++){
+                waypoints.push_back(avoidance_wps[i]);
+                geometry_msgs::Pose tmp_pose; 
+                tmp_pose.position.x = avoidance_wps[i].x_pose;
+                tmp_pose.position.y = avoidance_wps[i].y_pose;
+                waypoints_pose.push_back(tmp_pose);
+            }
+        }
         
+    }
+
+    if(waypoints_pose.size() > 1){ 
+        auto start_time=  std::chrono::high_resolution_clock::now();                   
+        
+        setupGraph();
+        edgeMarkerArray = g.GenEdgeMarkerArray(waypoints);
+        
+        auto stop_time=  std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+        cout << duration.count() << endl;
+        // is_forward(waypoints_pose[waypoints_pose.size()-2],waypoints_pose[waypoints_pose.size()-1]);
+
+        
+    } 
+    
+    
+    getShortestPath();
        
-    }  
-    // Reinitilize Graph using waypoints
+}
+
+void RacingLinePlanner::getShortestPath(){    
+  
+    if(waypoints_pose.size() > 6 && scenario_cout ==0 ){          
+        shortestPathMarker.header.frame_id = "map";
+        shortestPathMarker.header.stamp = ros::Time();
+        shortestPathMarker.type = 4;
+        shortestPathMarker.id = 1000;
+        shortestPathMarker.ns = "shortestpath";                
+        shortestPathMarker.pose.position.x = 0.0;
+        shortestPathMarker.pose.position.y = 0.0;
+        shortestPathMarker.pose.position.z = 0.0;
+        shortestPathMarker.action = visualization_msgs::Marker::ADD;
+        shortestPathMarker.scale.x = 0.5;
+        shortestPathMarker.color.a = 1.0; 
+        shortestPathMarker.color.r = 1.0;
+        shortestPathMarker.color.g = 0.0;
+        shortestPathMarker.color.b = 1.0;
+        std::vector<int> shortest_path_wp_idx = g.shortestPath(1);
+        
+        for(int i =0; i< shortest_path_wp_idx.size(); i++){                
+                geometry_msgs::Point point_;            
+                ROS_INFO(" shortest index %d", shortest_path_wp_idx[i]);
+                point_.x = waypoints.at(shortest_path_wp_idx[i]).x_pose;
+                ROS_INFO(" point x  %f", point_.x);
+                point_.y = waypoints.at(shortest_path_wp_idx[i]).y_pose;
+                ROS_INFO(" point y  %f", point_.y);
+                point_.z = 3.0;
+                shortestPathMarker.points.push_back(point_);                
+        }
+        ROS_INFO("best path computed");
+    best_route_idx = shortest_path_wp_idx; 
+    scenario_cout++;    
+    }
+
     
-    
-         
-    
+  
 }
 
 void RacingLinePlanner::viz_pub(const ros::TimerEvent& time){  
@@ -100,13 +357,24 @@ void RacingLinePlanner::viz_pub(const ros::TimerEvent& time){
         marker.scale.x = 2;
         marker.scale.y = 2;
         marker.scale.z = 2;
-        marker.color.a = 1.0; // Don't forget to set the alpha!
-        marker.color.r = waypoints[i].cost/100;
-        marker.color.g = 1.0-waypoints[i].cost/100;
+        marker.color.a = 1.0; // Don't forget to set the alpha!        
+        if (waypoints[i].cost < 50){
+            marker.color.r = 0.0;
+            marker.color.g = 1-waypoints[i].cost/100.0;
+        }else{
+            marker.color.r = waypoints[i].cost/100.0;
+            marker.color.g = 0.0;
+        }        
         marker.color.b = 0.0;        
         waypoint_marker_array.markers.push_back(marker);        
     }
     waypoints_pub.publish(waypoint_marker_array);
+    
+    if( waypoints.size() > 1)
+        edges_pub.publish(edgeMarkerArray);
+
+    if(shortestPathMarker.points.size()>0)
+        shortest_path_pub.publish(shortestPathMarker);
     // Visualize Edges between Markers
 }
 
@@ -173,17 +441,22 @@ bool RacingLinePlanner::compute_best_route(int src_idx){
     return false;
 }
 
-void RacingLinePlanner::waypoint_to_graph(){
-return; 
-}
+
 void RacingLinePlanner::compute_edge_cost(){
     return ;
 }
 
-bool RacingLinePlanner::is_forward(const geometry_msgs::Pose& from_waypoint, const geometry_msgs::Pose& to_waypoint){
+
+
+// bool RacingLinePlanner::is_forward(const geometry_msgs::Pose& from_waypoint, const geometry_msgs::Pose& to_waypoint){
+bool RacingLinePlanner::is_forward(const Waypoint& from_wp, Waypoint& to_wp){
      
-        auto start_time=  std::chrono::high_resolution_clock::now();            
-            
+        geometry_msgs::Pose from_waypoint, to_waypoint;
+        from_waypoint.position.x = from_wp.x_pose;
+        from_waypoint.position.y = from_wp.y_pose;
+        to_waypoint.position.x = to_wp.x_pose;
+        to_waypoint.position.y = to_wp.y_pose;
+
         bool from_to_valid = false;    
 
         int from_closest_lane_idx = get_closest_lanelet(road_lanelets_const,from_waypoint);      
@@ -241,14 +514,13 @@ bool RacingLinePlanner::is_forward(const geometry_msgs::Pose& from_waypoint, con
             }
             
         }        
-            if (from_to_valid){
-                ROS_WARN("from - > to");     
-            }else{
-                ROS_WARN("to - > from, backward");     
-            }        
-            auto stop_time=  std::chrono::high_resolution_clock::now();
-            auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
-            cout << duration.count() << endl;
+            // if (from_to_valid){
+            //     ROS_WARN("from - > to");     
+            // }else{
+            //     ROS_WARN("to - > from, backward");     
+            // }        
+        return from_to_valid;
+            
 }
 ///////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////
@@ -278,6 +550,49 @@ void Graph::addEdge(int u, int v, int w)
     adj[u].push_back(make_pair(v, w));
     adj[v].push_back(make_pair(u, w));
 }
+
+visualization_msgs::MarkerArray Graph::GenEdgeMarkerArray(const std::vector<Waypoint>& waypoints){
+        visualization_msgs::MarkerArray Edgemarkers;
+        int id_count = 0;
+        for(int i=0;i< V;i++){
+            list<pair<int, int> >::iterator j;
+            for (j = adj[i].begin(); j != adj[i].end(); j++) {            
+            int v = (*j).first;
+            int weight = (*j).second;
+            visualization_msgs::Marker edge_line;
+            id_count++;
+            edge_line.header.frame_id = "map";
+            edge_line.header.stamp = ros::Time();
+            edge_line.type = 4;
+            edge_line.id = id_count;
+            edge_line.scale.x = 0.3;
+            edge_line.color.a = 0.5;            
+            if (weight > 50){
+                edge_line.color.r = weight/100.0;
+                edge_line.color.g = 0.0;
+            }else{
+                edge_line.color.r = 0.0;
+                edge_line.color.g = 1-weight/100.0;
+            }        
+            edge_line.color.b = 0.0;      
+            geometry_msgs::Point from_point, to_point;            
+            from_point.x = waypoints.at(i).x_pose;
+            from_point.y = waypoints.at(i).y_pose;
+            from_point.z = 0.5;
+            to_point.x = waypoints.at(v).x_pose;
+            to_point.y = waypoints.at(v).y_pose;
+            to_point.z = 0.5;
+            edge_line.points.push_back(from_point);
+            edge_line.points.push_back(to_point);
+            Edgemarkers.markers.push_back(edge_line);
+
+        }
+    }
+        
+      
+        return Edgemarkers;
+}
+
 std::vector<int> Graph::shortestPath(int src)
 {   // Start at "src" to Goal "0"  
 // https://www.geeksforgeeks.org/dijkstras-shortest-path-algorithm-greedy-algo-7/  

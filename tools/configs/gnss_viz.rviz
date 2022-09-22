@@ -7,6 +7,7 @@ Panels:
         - /Status1
         - /plan1
         - /plan1/lanelet21
+        - /plan1/shortest_path1
         - /localization1/pose_est1/Shape1
         - /tools1
       Splitter Ratio: 0.6852940917015076
@@ -132,6 +133,22 @@ Visualization Manager:
           Enabled: true
           Marker Topic: /waypoints
           Name: waypoints
+          Namespaces:
+            waypoint: true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /Waypoint_edges
+          Name: edges
+          Namespaces:
+            "": true
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /shortest_path
+          Name: shortest_path
           Namespaces:
             {}
           Queue Size: 100
@@ -346,16 +363,16 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 146.0811004638672
+      Distance: 73.23001098632812
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -378.0924377441406
-        Y: 571.4882202148438
-        Z: 5.49125661564176e-6
+        X: -393.691162109375
+        Y: 595.546875
+        Z: -0.000408477004384622
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
@@ -364,7 +381,7 @@ Visualization Manager:
       Pitch: 1.5697963237762451
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 4.083163261413574
+      Yaw: 3.7782344818115234
     Saved: ~
 Window Geometry:
   Displays:
@@ -382,5 +399,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1657
-  X: 339
-  Y: 84
+  X: 257
+  Y: 32

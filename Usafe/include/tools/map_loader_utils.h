@@ -562,3 +562,54 @@ lanelet::ArcCoordinates get_ArcCoordinate(const lanelet::ConstLineString3d cente
     const auto & point = lanelet::Point2d(lanelet::InvalId, x_tmp, y_tmp).basicPoint2d();        
 return lanelet::geometry::toArcCoordinates(lanelet::utils::to2D(centerline), lanelet::utils::to2D(point));  // transforms the point into arc coordinates
 }
+
+double get_dist(double wp1[2], double wp2[2]){
+  return sqrt( (wp2[0]-wp1[0])*(wp2[0]-wp1[0])+ (wp2[1]-wp1[1])*(wp2[1]-wp1[1]));
+}
+
+double get_angle_between_vec(double wp1[2],double wp2[2], double wp3[2]){    
+    // vec1 is centered ;
+    double vec1_dist = get_dist(wp1,wp2);
+    double vec2_dist = get_dist(wp1,wp3);
+    double nominator_tmp = (wp3[0]-wp1[0])*(wp2[0]-wp1[0]) + (wp3[1]-wp1[1])*(wp2[1]-wp1[1]);
+    return acos(nominator_tmp /(vec1_dist*vec2_dist+1e-9));
+}
+
+
+double get_project_ver_dist(double wp1[2],double wp2[2], double wp3[2]){
+  double angle_between_vec = get_angle_between_vec(wp1,wp2,wp3);
+  double dist_vec = get_dist(wp1,wp3);
+  return dist_vec*sin(angle_between_vec);  
+}
+
+
+
+unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_){
+  //input is usually the center line 
+  int closest_idx=lstring.size()-1;  
+  double min_dist_ = std::numeric_limits<double>::max();  
+  lanelet::ConstPoint3d end_pConst = lstring[lstring.size()-1]; 
+    if (!is_start){
+      closest_idx=0;  
+      end_pConst = lstring[0]; 
+    }
+    double dist_from_current_to_end= sqrt(pow((end_pConst.x()-point_.position.x),2) + pow((end_pConst.y()-point_.position.y),2));      
+    
+    for (int j = 0; j < lstring.size(); j++ ){
+      
+      lanelet::ConstPoint3d pConst = lstring[j]; 
+      
+      double dist_= sqrt(pow(pConst.x()-point_.position.x,2) + pow(pConst.y()-point_.position.y,2));     
+      double dist_from_tmp_to_end= sqrt(pow(pConst.x()-end_pConst.x(),2) + pow(pConst.y()-end_pConst.y(),2));     
+      
+      if( (min_dist_ >= dist_)&& (dist_from_tmp_to_end <= dist_from_current_to_end)){
+          closest_idx = j;
+          min_dist_ =  dist_;        
+        }  
+      
+    }
+  //  if((dist_from_tmp_to_end >= dist_from_current_to_end) && (closest_idx >= lstring.size()-1)){
+  //       closest_idx = closest_idx+1;
+  //     }
+  return closest_idx;
+}
