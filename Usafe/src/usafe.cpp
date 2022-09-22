@@ -55,10 +55,10 @@ Usafe::Usafe(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :
   pp_planner_ = new planner::PathPlanner();
   vel_planner_ = new planner::VelocityPlanner();
   planner_common_ = new planner::PlannerCommon();
-  race_planner_ = new planner::RacingLinePlanner();
-  race_planner_->number_of_node = 3;
+  race_planner_ = new planner::RacingLinePlanner(nh_,nh_p_);
+  race_planner_->number_of_node = 4;
   race_planner_->gen_random_graph();
-  // race_planner_->compute_best_route();
+  race_planner_->compute_best_route(1);
   
 
   // controller initiazlie 

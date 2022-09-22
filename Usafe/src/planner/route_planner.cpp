@@ -51,7 +51,7 @@ RoutePlanner::~RoutePlanner()
 {}
 
 void RoutePlanner::load_map(){  
-    ROS_INFO("Route planner loaded");
+    // ROS_INFO("Route planner loaded");
 }    
 
 }

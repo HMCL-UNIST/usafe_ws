@@ -16,8 +16,6 @@
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 
 
-
-
 template<typename T>
 std::vector<double> linspaces(T start_in, T end_in, int num_in)
 {

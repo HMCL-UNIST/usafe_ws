@@ -22,14 +22,20 @@
 #include <queue>
 #include <boost/filesystem.hpp>
 #include <boost/thread/thread.hpp>
-
+#include <chrono>
 #include <ros/ros.h>
 #include <ros/time.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/Point32.h>
+#include <geometry_msgs/PoseStamped.h>
+
 #include <eigen3/Eigen/Geometry>
 
 #include <vector>
 
 #include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
@@ -39,7 +45,7 @@
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_routing/RoutingGraphContainer.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
-#include <tools/amathutils.hpp>
+#include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 #include <random>
 #define INF 0x3f3f3f3f
 #define PI 3.14159265358979323846264338
@@ -57,6 +63,8 @@ class Graph {
     // and weight pair for every edge
     list<pair<int, int> >* adj; 
 public:
+    Graph();
+    ~Graph();
     Graph(int V); // Constructor 
     void clearEdges();
     // function to add an edge to graph
@@ -66,37 +74,65 @@ public:
 };
  
 
+class Waypoint{        
+public:
+    double x_pose,y_pose;    
+    double cost;         
+    Waypoint(){}
+    ~Waypoint(){}
+    Waypoint(double x_pose_, double y_pose_, double cost_){
+        x_pose = x_pose_;
+        y_pose = y_pose_;
+        cost = cost_;
+    }
+    
+ };
+
+
 
 class RacingLinePlanner 
 {
   
 private:
     int tmp;
+    ros::NodeHandle nh_, nh_p_;
+    ros::Publisher  g_map_pub, waypoints_pub;
+    ros::Subscriber point_sub;
+    ros::Timer viz_timer;
+    std::vector<Waypoint> waypoints;
+    std::vector<geometry_msgs::Pose> waypoints_pose;
+    visualization_msgs::MarkerArray map_marker_array, waypoint_marker_array;
+    lanelet::LaneletMapPtr map;
+    lanelet::routing::RoutingGraphUPtr routingGraph;
+    lanelet::Lanelets road_lanelets;
+    lanelet::ConstLanelets road_lanelets_const;
+    std::string osm_file_name;
+    double origin_lat, origin_lon, origin_att;
     
-    
- 
-public:
 
-RacingLinePlanner(); 
+public:
+RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p); 
 ~RacingLinePlanner();
 
 int number_of_node;
 Eigen::MatrixXd route_graph;
 std::vector<int> best_route_idx;
-planner::Graph* g;
+planner::Graph g;
 
 void load_map();
 
 void gen_random_graph();
 
 
-int get_min_cost_index(std::vector<double> costs,std::vector<bool> sptSet);
+void viz_pub(const ros::TimerEvent& time);
 bool compute_best_route(int src_idx);
 
 void waypoint_to_graph();
 void compute_edge_cost();
-
-
+void construct_lanelets_with_viz();
+void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
+bool is_forward(const geometry_msgs::Pose& from_waypoint, const geometry_msgs::Pose& to_waypoint);
+void setupGraph();
 // void constrcut_viz();
 // void viz_pub(const ros::TimerEvent& time);
 
