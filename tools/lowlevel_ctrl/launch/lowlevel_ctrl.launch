@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- <include file="$(find pid)/launch/servo_sim.launch"/> -->
+  
+
+  <node name="lowlevel_ctrl" pkg="lowlevel_ctrl" type="lowlevel_ctrl" output="screen">      
+        <!-- <remap from="AA" to="BB"/> -->
+  </node>
+  
+</launch>

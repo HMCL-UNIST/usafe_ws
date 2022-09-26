@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node name="pcl_loader" pkg="pcl_loader" type="pcl_loader" output="screen">              
+      
+      <param name="map_file_dir" value="/home/hjpc/ADcompetition/usafe_ws/src/percept_pkg/pcl_loader/maps/unist_full_v2_1.pcd"/> 
+      
+
+
+
+    
+  </node>
+</launch>
