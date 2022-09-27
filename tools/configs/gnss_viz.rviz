@@ -142,13 +142,21 @@ Visualization Manager:
           Marker Topic: /Waypoint_edges
           Name: edges
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
           Enabled: true
           Marker Topic: /shortest_path
           Name: shortest_path
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /global_path
+          Name: global_path_wps
           Namespaces:
             {}
           Queue Size: 100
@@ -363,25 +371,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 73.23001098632812
+      Distance: 314.2486877441406
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -393.691162109375
-        Y: 595.546875
-        Z: -0.000408477004384622
+        X: -469.12591552734375
+        Y: 624.2452392578125
+        Z: -0.0005642298492603004
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5697963237762451
+      Pitch: 0.9797968864440918
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.7782344818115234
+      Yaw: 3.6632907390594482
     Saved: ~
 Window Geometry:
   Displays:
@@ -399,5 +407,5 @@ Window Geometry:
   Views:
     collapsed: true
   Width: 1657
-  X: 257
-  Y: 32
+  X: 2003
+  Y: 340

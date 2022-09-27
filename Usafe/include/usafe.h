@@ -100,7 +100,8 @@
 #include <perception/v2x.h>
 #include <perception/surrounding_environment.h>
 #include <perception/vehicle_state.h>
-
+#include <dynamic_reconfigure/server.h>
+#include <usafe/testConfig.h>
 #define PI 3.14159265358979323846264338
 
 class Usafe 
@@ -127,7 +128,11 @@ controller::LongitudinalCtrl*         long_ctrl_;
 controller::LateralCtrl*            lat_ctrl_;
 
 
+dynamic_reconfigure::Server<usafe::testConfig> srv;
+dynamic_reconfigure::Server<usafe::testConfig>::CallbackType f;
 
+bool Sum_compute_shortest_path_, Above_compute_shortest_path_,Below_compute_shortest_path_;
+bool positive_cost_assign_;
 public:
 Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p);
 ~Usafe();
@@ -136,6 +141,7 @@ void planner_loop();
 void perception_loop();
 void controller_loop();
 void tools_loop();
+void dyn_callback(usafe::testConfig& config, uint32_t level);
 
 
 

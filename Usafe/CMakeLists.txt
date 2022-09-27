@@ -38,8 +38,11 @@ find_package(catkin REQUIRED COMPONENTS
   lanelet2_extension
   autoware_msgs
   mobileye_msgs
+  dynamic_reconfigure
 )
-
+generate_dynamic_reconfigure_options(
+     cfg/test.cfg
+)
 catkin_package( 
   CATKIN_DEPENDS 
   nav_msgs 
@@ -59,15 +62,37 @@ catkin_package(
   lanelet2_extension
   autoware_msgs
   mobileye_msgs
+  dynamic_reconfigure
   LIBRARIES
 )
 
 include_directories(
   include
   maps  
+  ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
+
+add_executable(dynamic_reconfigure_node src/usafe.cpp
+            src/tools/Amathutils.cpp             
+            src/tools/debugger.cpp             
+            src/tools/healthmonitoring.cpp             
+            src/planner/route_planner.cpp
+            src/planner/behaviour_planner.cpp
+            src/planner/mission_state_machine.cpp
+            src/planner/path_planner.cpp
+            src/planner/planner_common.cpp
+            src/planner/velocity_planner.cpp
+            src/planner/racing_planner.cpp            
+            src/controller/lat_ctrl.cpp            
+            src/controller/lon_ctrl.cpp      
+            src/perception/surrounding_environment.cpp                        
+            src/perception/v2x.cpp
+            src/perception/vehicle_state.cpp
+            )
+add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
+target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 

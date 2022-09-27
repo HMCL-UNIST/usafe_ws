@@ -40,36 +40,76 @@ Usafe::Usafe(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :
 {
   
   // tools initialize
-  debugger_ = new tools::Debugger();
-  system_monitor_ = new tools::HeatlMonitoring();                         
+  // debugger_ = new tools::Debugger();
+  // system_monitor_ = new tools::HeatlMonitoring();                         
   
   // perception modules initialize  
-  v2x_receiver_ = new perception::V2X();
-  sensors_ = new perception::VehicleStates();
-  environmet_ = new perception::SurroundingEnvironment();
+  // v2x_receiver_ = new perception::V2X();
+  // sensors_ = new perception::VehicleStates();
+  // environmet_ = new perception::SurroundingEnvironment();
 
   //planner initialize 
-  ms_planner_ = new planner::MissionStateMachine();
-  rt_planner_ = new planner::RoutePlanner();
-  bh_planner_ = new planner::BehaviorStatMachine();
-  pp_planner_ = new planner::PathPlanner();
-  vel_planner_ = new planner::VelocityPlanner();
-  planner_common_ = new planner::PlannerCommon();
+  // ms_planner_ = new planner::MissionStateMachine();
+  // rt_planner_ = new planner::RoutePlanner();
+  // bh_planner_ = new planner::BehaviorStatMachine();
+  // pp_planner_ = new planner::PathPlanner();
+  // vel_planner_ = new planner::VelocityPlanner();
+  // planner_common_ = new planner::PlannerCommon();
   race_planner_ = new planner::RacingLinePlanner(nh_,nh_p_);
+  
+  Above_compute_shortest_path_ = false;
+  Below_compute_shortest_path_ = false;
+  Sum_compute_shortest_path_ = false;
+  positive_cost_assign_ = false;
+  f = boost::bind(&Usafe::dyn_callback,this, _1, _2);
+	srv.setCallback(f);
   // race_planner_->number_of_node = 4;
   // race_planner_->gen_random_graph();
   // race_planner_->compute_best_route(1);
   
 
   // controller initiazlie 
-  long_ctrl_ = new controller::LongitudinalCtrl();
-  lat_ctrl_ = new controller::LateralCtrl();
+  // long_ctrl_ = new controller::LongitudinalCtrl();
+  // lat_ctrl_ = new controller::LateralCtrl();
 
 }
+
 
 Usafe::~Usafe()
 {}
 
+void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)
+{
+  Above_compute_shortest_path_ = config.Above_compute_shortest_path;
+  Below_compute_shortest_path_ = config.Below_compute_shortest_path;  
+  Sum_compute_shortest_path_ = config.Sum_compute_shortest_path;
+  positive_cost_assign_ = config.positive_cost_assign;
+  race_planner_->positive_cost_assign_ = positive_cost_assign_;
+  if(Above_compute_shortest_path_ && !Below_compute_shortest_path_){
+    if(race_planner_->setup_for_abovePath()){
+      race_planner_->getShortestPath();
+    }else{
+      ROS_WARN("Set up fail for above path");
+    }    
+  }
+  if(Below_compute_shortest_path_ && !Above_compute_shortest_path_){
+    if(race_planner_->setup_for_belowPath()){
+      race_planner_->getShortestPath();
+      }else{
+        ROS_WARN("Set up fail for below path");
+      }
+  }
+  if(Sum_compute_shortest_path_ &&  !Above_compute_shortest_path_ && !Below_compute_shortest_path_){
+    if(race_planner_->compute_global_path()){
+        ROS_WARN("Global Path found");
+      }else{
+        ROS_WARN("Global Path Not Found");
+      }
+  }
+    
+  
+ return;  
+}
 // Usafe::planner_loop(){
   
 //   // get the mission state 

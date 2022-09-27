@@ -103,7 +103,7 @@ public:
     // output shortest path from s to 0
     std::vector<int> shortestPath(int s);
     // generate marker array for edges 
-    visualization_msgs::MarkerArray GenEdgeMarkerArray(const std::vector<Waypoint>& waypoints);
+    visualization_msgs::MarkerArray GenEdgeMarkerArray(const std::deque<Waypoint>& waypoints);
 };
  
 
@@ -116,13 +116,13 @@ class RacingLinePlanner
 private:
     int tmp;
     ros::NodeHandle nh_, nh_p_;
-    ros::Publisher  shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
+    ros::Publisher  global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
     ros::Subscriber point_sub;
     ros::Timer viz_timer;
-    std::vector<Waypoint> waypoints;
-    std::vector<geometry_msgs::Pose> waypoints_pose;
+    std::deque<Waypoint> waypoints;
+    std::deque<geometry_msgs::Pose> waypoints_pose;
     visualization_msgs::MarkerArray edgeMarkerArray, map_marker_array, waypoint_marker_array;
-    visualization_msgs::Marker shortestPathMarker;
+    visualization_msgs::Marker shortestPathMarker, globalPathMarker;
     lanelet::LaneletMapPtr map;
     lanelet::routing::RoutingGraphUPtr routingGraph;
     lanelet::Lanelets road_lanelets;
@@ -132,16 +132,22 @@ private:
     double edge_valid_dist_to_line_thres = 3.0;
     double edge_centerline_aling_angle_limit = PI/6;
     double avoidance_wp_add_green_dist = 3.0;
+    double distance_cost_weight = 2;
     int scenario_cout; 
+    bool start_and_goal_wps_setup;
+    bool above_path_complete,below_path_complete;    
+    bool random_cost_assign; 
 public:
 RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p); 
 ~RacingLinePlanner();
 
+bool positive_cost_assign_;
 int number_of_node;
 Eigen::MatrixXd route_graph;
 std::vector<int> best_route_idx;
 planner::Graph g;
 planner::Graph g2;
+std::deque<Waypoint> global_path_wps;
 
 void load_map();
 
@@ -167,9 +173,13 @@ std::vector<Waypoint> getclosest2Waypoints(const Waypoint& wp);
 
 // void get_distance_to_stop_line(poseition pose)
 void insertDefaultWaypoints(int scenario_num);
-void inserWaypoints(double x, double y, int cost);
+void inserWaypoints(double x, double y, int cost, bool push_front);
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
-void getShortestPath();
+bool getShortestPath();
+bool setup_for_belowPath();
+bool setup_for_abovePath();
+bool compute_global_path();
+visualization_msgs::Marker getGlobalPathMarker(std::deque<Waypoint> wps);
 
 };
 
