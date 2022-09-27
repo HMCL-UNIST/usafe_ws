@@ -72,6 +72,7 @@
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/geometry/LaneletMap.h>
+#include <lanelet2_core/geometry/impl/Area.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
@@ -175,15 +176,14 @@ float local_path_length;
 double origin_lat;
 double origin_lon;
 double origin_att;
-double max_dist;
+double max_dist, max_dist_vel;
 bool global_traj_available;
 bool goal_available;
 bool lir_available;
 bool gla_available;
-hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array;
+hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
 
-
-
+geometry_msgs::Pose pose_a, pose_b;
 
 
 
@@ -198,11 +198,13 @@ float weight_decay_rate;
 double pose_x,pose_y,pose_z;
 float odom_x,odom_y,odom_z;
 bool pose_init;
+std::vector<geometry_msgs::Pose> v2x_nodes;
 geometry_msgs::Pose cur_pose, prev_pose;
 geometry_msgs::Pose cur_goal;
 
 lanelet::Lanelets road_lanelets;
 lanelet::ConstLanelets road_lanelets_const;
+lanelet::Areas areas;
 
 bool left_change_signal, right_change_signal;
 LaneChangeState lane_change_state, prev_lane_change_state;
@@ -232,6 +234,30 @@ bool init_cuv_fit;
 
 
 public:
+
+struct Waypoint
+{
+    int wp_id;
+    geometry_msgs::PoseStamped pose;
+    bool junction_in, crosswalk_in, stopline_in;
+};
+
+typedef struct
+{
+    int lane_id;
+    bool lane_change_flag;
+    int corner;
+    std::vector<Waypoint> waypoints;
+}Lane;
+
+struct surface_mark
+{
+    int mark_id;
+    int mark_type;
+    double mark_dist;
+    std::vector<geometry_msgs::Pose> points;
+};
+
 MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path);
 ~MapLoader();
 
@@ -269,7 +295,10 @@ void compute_global_path();
 void compute_local_path();
 void current_lanefollow();
 void lane_in_range();
+void wp_inArea();
+void ego_in();
 bool calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist);
+void v2x_goal_nodes();
 
 void LaneChangeStateMachine();
 
