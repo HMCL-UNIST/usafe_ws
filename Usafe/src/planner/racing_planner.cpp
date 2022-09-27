@@ -34,14 +34,18 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     // Graph reset
     g.clearEdges();
     positive_cost_assign_ = false;
+    cur_pose_available = false;
     // Set publisher and subscriber 
     g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);      
     waypoints_pub = nh_.advertise<visualization_msgs::MarkerArray>("/waypoints", 2, true);          
     edges_pub = nh_.advertise<visualization_msgs::MarkerArray>("/Waypoint_edges", 2, true);          
     shortest_path_pub = nh_.advertise<visualization_msgs::Marker>("/shortest_path", 2, true);          
     global_path_pub = nh_.advertise<visualization_msgs::Marker>("/global_path", 2, true);          
+    target_path_pub = nh_.advertise<visualization_msgs::Marker>("/target_path", 2, true);          
     point_sub = nh_.subscribe("move_base_simple/goal", 1, &RacingLinePlanner::callbackGetGoalPose, this);
-
+    curpose_sub = nh_.subscribe("/initialpose", 1, &RacingLinePlanner::currentposeCallback, this);
+    
+    
     // Set timer callbacks
     viz_timer = nh_.createTimer(ros::Duration(0.1), &RacingLinePlanner::viz_pub,this);    
 
@@ -56,6 +60,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     waypoints_pose.clear();
     scenario_cout = 0;
     insertDefaultWaypoints(scenario_cout);
+
+    boost::thread local_path_generation(&RacingLinePlanner::localPathGenCallback,this); 
     
   return;  
 }
@@ -63,6 +69,112 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
 
 RacingLinePlanner::~RacingLinePlanner()
 {}
+
+
+void RacingLinePlanner::localPathGenCallback() {
+  ros::Rate loop_rate(10); 
+  ROS_INFO_ONCE("Init local path generation thread");
+  
+  while (ros::ok())
+  {      
+    if(cur_pose_available && global_path_wps.size() > 0){
+        // Find the target lookahead point given the target waypoint 
+        auto start_time=  std::chrono::high_resolution_clock::now();                   
+        double lookahead_dist = 50;
+        geometry_msgs::Pose wp_pose;        
+        wp_pose.position.x = global_path_wps.front().x_pose;
+        wp_pose.position.y = global_path_wps.front().y_pose;
+        int wp_closest_lane_idx = get_closest_lanelet(road_lanelets_const,wp_pose);      
+        lanelet::ConstLineString3d target_centerline = road_lanelets_const.at(wp_closest_lane_idx).centerline();
+        lanelet::Point3d cur_point(lanelet::utils::getId(), cur_pose.pose.position.x, cur_pose.pose.position.y,0.0);        
+        auto projected_point = lanelet::geometry::project(target_centerline, cur_point);  // gets the projecion of point on ls
+        geometry_msgs::Pose projected_pose;
+        projected_pose.position.x = projected_point.x();
+        projected_pose.position.y = projected_point.y();
+        int closest_idx = getClosestWaypoint(true, target_centerline, projected_pose);
+        double cum_dist = 0.0;
+        int while_count = 0;        
+        int idx_tmp = closest_idx;
+        auto target_point = target_centerline[closest_idx];
+        lanelet::Point3d prev_point;
+        prev_point.x() = target_point.x();
+        prev_point.y() = target_point.y();
+        std::vector<lanelet::Point3d> target_points;
+        auto following_lanes = routingGraph->following(road_lanelets_const.at(wp_closest_lane_idx),false);
+        if(following_lanes.size() > 0 ){            
+            auto next_target_centerline = following_lanes[0].centerline();
+            for(int i = closest_idx; i < target_centerline.size(); i++){
+                lanelet::Point3d iter_point; 
+                iter_point.x() = target_centerline[i].x();
+                iter_point.y() = target_centerline[i].y();
+                double dist_tmp = lanelet::geometry::distance(iter_point,prev_point);
+                cum_dist += dist_tmp;
+                prev_point = iter_point;
+                target_points.push_back(iter_point);
+                if(cum_dist > lookahead_dist)
+                    continue;
+            }
+            if(cum_dist < lookahead_dist){
+                for(int i = 0; i< next_target_centerline.size(); i++){
+                lanelet::Point3d iter_point;
+                iter_point.x() = next_target_centerline[i].x();
+                iter_point.y() = next_target_centerline[i].y();                
+                    double dist_tmp = lanelet::geometry::distance(iter_point,prev_point);
+                    cum_dist += dist_tmp;
+                    prev_point = iter_point;
+                    target_points.push_back(iter_point);
+                    if(cum_dist > lookahead_dist)
+                        continue; 
+                }
+            }            
+        }else{
+            ROS_WARN(" waypoints are end of the track ");
+            
+            for(int i = closest_idx; i < target_centerline.size(); i++){
+                lanelet::Point3d iter_point; 
+                iter_point.x() = target_centerline[i].x();
+                iter_point.y() = target_centerline[i].y();
+                double dist_tmp = lanelet::geometry::distance(iter_point,prev_point);
+                cum_dist += dist_tmp;
+                prev_point = iter_point;
+                target_points.push_back(iter_point);
+                if(cum_dist > lookahead_dist)
+                    continue;
+            }
+        }
+      
+
+
+        // mu_mtx.lock();     
+        Eigen::VectorXd cur_state = Eigen::VectorXd::Zero(4);
+        cur_state(0) = cur_pose.pose.position.x;
+        cur_state(1) = cur_pose.pose.position.y;        
+        cur_state(2) = amathutils::getPoseYawAngle(cur_pose.pose);        
+        cur_state(3) = 80.0/3.6;
+        vehicle_model_->set_state(cur_state);
+        vehicle_model_->target_points = target_points;        
+
+        
+        
+        
+        
+      
+        std::vector<Eigen::VectorXd> state_hist = vehicle_model_->getVehiclePredictedPath(10);
+        visualization_msgs::Marker state_hist_marker = vehicle_model_->getPredictedPathMarker(state_hist);
+        target_path_pub.publish(state_hist_marker);
+
+        // mu_mtx.unlock();
+        auto stop_time=  std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time);
+        ROS_INFO("LocalPath computation time = %d ms",duration.count() );              
+    }
+    loop_rate.sleep();
+    
+  }
+}
+
+
+
 
 bool RacingLinePlanner::compute_global_path(){
     global_path_wps.clear();
@@ -299,6 +411,50 @@ bool RacingLinePlanner::is_EdgeValid(const Waypoint& wp1, const Waypoint& wp2){
 
 
 
+void RacingLinePlanner::sortGlobalWaypoints(){
+    bool sorting = true;
+    int while_count = 0;
+    
+    while(sorting && while_count < 200){
+        while_count++;
+        if(global_path_wps.size() == 0){
+            return;
+        }            
+        geometry_msgs::Pose wp_pose;        
+        wp_pose.position.x = global_path_wps.front().x_pose;
+        wp_pose.position.y = global_path_wps.front().y_pose;
+
+        bool from_to_valid = false;
+        int wp_closest_lane_idx = get_closest_lanelet(road_lanelets_const,wp_pose);      
+        
+        lanelet::ConstLineString3d centerline = road_lanelets_const.at(wp_closest_lane_idx).centerline();
+        lanelet::ArcCoordinates cur_pose_cord = get_ArcCoordinate(centerline,cur_pose.pose);
+        lanelet::ArcCoordinates wp_pose_cord = get_ArcCoordinate(centerline,wp_pose);            
+        if (cur_pose_cord.length < wp_pose_cord.length){
+            sorting = false;                    
+        }else{
+            global_path_wps.pop_front();
+        }
+    }
+    return;
+}
+
+
+void RacingLinePlanner::currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg){
+    
+    mu_mtx.lock();
+    cur_pose.header = msg->header;
+    cur_pose.pose = msg->pose.pose;
+    cur_pose_available = true;      
+    sortGlobalWaypoints();
+    mu_mtx.unlock();  
+    globalPathMarker = getGlobalPathMarker(global_path_wps);
+    
+}
+
+
+
+
 
 void RacingLinePlanner::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg){
     
@@ -503,26 +659,19 @@ void RacingLinePlanner::construct_lanelets_with_viz(){
   road_lanelets = roadLanelets(all_lanelets);  
   road_lanelets_const = roadLaneletsConst(all_laneletsConst);    
   
-  std::vector<std::shared_ptr<const lanelet::TrafficLight>> tl_reg_elems = get_trafficLights(all_lanelets);
-  std::vector<lanelet::LineString3d> tl_stop_lines = getTrafficLightStopLines(road_lanelets);
-  std_msgs::ColorRGBA cl_road, cl_cross, cl_ll_borders, cl_tl_stoplines, cl_ss_stoplines, cl_trafficlights;
+  std_msgs::ColorRGBA cl_road, cl_cross, cl_ll_borders;
   setColor(&cl_road, 0.2, 0.7, 0.7, 0.3);
   setColor(&cl_cross, 0.2, 0.7, 0.2, 0.3);
   setColor(&cl_ll_borders, 1.0, 1.0, 0.0, 0.3);
-  setColor(&cl_tl_stoplines, 1.0, 0.5, 0.0, 0.5);
-  setColor(&cl_ss_stoplines, 1.0, 0.0, 0.0, 0.5);
-  setColor(&cl_trafficlights, 0.0, 0.0, 1.0, 0.8);
+  
 
   insertMarkerArray(&map_marker_array, laneletsBoundaryAsMarkerArray(
     road_lanelets, cl_ll_borders));
-  insertMarkerArray(&map_marker_array, trafficLightsAsTriangleMarkerArray(
-    tl_reg_elems, cl_trafficlights));
   
-  insertMarkerArray(&map_marker_array, lineStringsAsMarkerArray(
-    tl_stop_lines, "traffic_light_stop_lines", cl_tl_stoplines));
+  
 
-  ROS_INFO("Visualizing lanelet2 map with %lu lanelets, %lu stop lines",
-    all_lanelets.size(), tl_stop_lines.size());
+  ROS_INFO("Visualizing lanelet2 map with %lu lanelets",
+    road_lanelets.size());
  
 }
 

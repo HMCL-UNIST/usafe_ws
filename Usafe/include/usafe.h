@@ -87,6 +87,7 @@
 #include <planner/velocity_planner.h>
 #include <planner/route_planner.h>
 #include <planner/racing_planner.h>
+#include <planner/vehicle_model.h>
 // tools include 
 #include <tools/debugger.h>
 #include <tools/healthmonitoring.h>
@@ -108,7 +109,7 @@ class Usafe
 {
   
 private:
-ros::NodeHandle nh_, nh_p_;
+ros::NodeHandle nh_, nh_local_, nh_p_;
 
 tools::Debugger*                      debugger_;
 tools::HeatlMonitoring*               system_monitor_;                         
@@ -124,6 +125,7 @@ planner::PathPlanner*                 pp_planner_;
 planner::VelocityPlanner*             vel_planner_;
 planner::PlannerCommon*               planner_common_;
 planner::RacingLinePlanner*           race_planner_;
+planner::VehicleModel*                 vehicle_model_;
 controller::LongitudinalCtrl*         long_ctrl_;
 controller::LateralCtrl*            lat_ctrl_;
 
@@ -134,7 +136,7 @@ dynamic_reconfigure::Server<usafe::testConfig>::CallbackType f;
 bool Sum_compute_shortest_path_, Above_compute_shortest_path_,Below_compute_shortest_path_;
 bool positive_cost_assign_;
 public:
-Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p);
+Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local, const ros::NodeHandle& nh_p);
 ~Usafe();
 
 void planner_loop();

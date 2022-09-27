@@ -85,6 +85,7 @@ add_executable(dynamic_reconfigure_node src/usafe.cpp
             src/planner/planner_common.cpp
             src/planner/velocity_planner.cpp
             src/planner/racing_planner.cpp            
+            src/planner/vehicle_model.cpp            
             src/controller/lat_ctrl.cpp            
             src/controller/lon_ctrl.cpp      
             src/perception/surrounding_environment.cpp                        
@@ -111,7 +112,8 @@ add_executable(usafe src/usafe.cpp
             src/planner/path_planner.cpp
             src/planner/planner_common.cpp
             src/planner/velocity_planner.cpp
-            src/planner/racing_planner.cpp            
+            src/planner/racing_planner.cpp  
+            src/planner/vehicle_model.cpp              
             src/controller/lat_ctrl.cpp            
             src/controller/lon_ctrl.cpp      
             src/perception/surrounding_environment.cpp                        

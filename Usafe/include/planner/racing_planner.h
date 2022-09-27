@@ -13,11 +13,13 @@
 //   limitations under the License.
 
 //   Authour : Hojin Lee, hojinlee@unist.ac.kr
+#pragma once
 #include <cmath>
 #include <sstream>
 #include <string>
 #include <list>
 #include <iostream>
+#include <mutex>
 #include <fstream>
 #include <queue>
 #include <boost/filesystem.hpp>
@@ -27,10 +29,14 @@
 #include <ros/time.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
+#include "planner/vehicle_model.h"
+#include "tools/amathutils.hpp"
 
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <nav_msgs/Odometry.h>
 
 #include <eigen3/Eigen/Geometry>
 
@@ -114,10 +120,13 @@ class RacingLinePlanner
 {
   
 private:
+    
+    std::mutex mu_mtx;
     int tmp;
     ros::NodeHandle nh_, nh_p_;
-    ros::Publisher  global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
+    ros::Publisher  target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
     ros::Subscriber point_sub;
+    ros::Subscriber curpose_sub, curodom_sub;    
     ros::Timer viz_timer;
     std::deque<Waypoint> waypoints;
     std::deque<geometry_msgs::Pose> waypoints_pose;
@@ -137,10 +146,16 @@ private:
     bool start_and_goal_wps_setup;
     bool above_path_complete,below_path_complete;    
     bool random_cost_assign; 
+    bool cur_pose_available;
+    geometry_msgs::PoseStamped cur_pose;
+    nav_msgs::Odometry cur_odom;
 public:
+
 RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p); 
 ~RacingLinePlanner();
 
+
+planner::VehicleModel* vehicle_model_;
 bool positive_cost_assign_;
 int number_of_node;
 Eigen::MatrixXd route_graph;
@@ -150,7 +165,6 @@ planner::Graph g2;
 std::deque<Waypoint> global_path_wps;
 
 void load_map();
-
 void gen_random_graph();
 
 
@@ -161,6 +175,8 @@ bool compute_best_route(int src_idx);
 void compute_edge_cost();
 void construct_lanelets_with_viz();
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
+void currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);
+void odomCallback(const nav_msgs::OdometryConstPtr& msg);
 // bool is_forward(const geometry_msgs::Pose& from_waypoint, const geometry_msgs::Pose& to_waypoint);
 bool is_forward(const Waypoint& from_wp, Waypoint& to_wp);
 void setupGraph();
@@ -180,6 +196,9 @@ bool setup_for_belowPath();
 bool setup_for_abovePath();
 bool compute_global_path();
 visualization_msgs::Marker getGlobalPathMarker(std::deque<Waypoint> wps);
+void sortGlobalWaypoints();
+void localPathGenCallback();
+
 
 };
 

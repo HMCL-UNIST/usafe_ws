@@ -35,8 +35,8 @@
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
 
-Usafe::Usafe(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :  
-  nh_(nh), nh_p_(nh_p)
+Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ros::NodeHandle& nh_p) :  
+  nh_(nh), nh_local_(nh_local), nh_p_(nh_p)
 {
   
   // tools initialize
@@ -56,6 +56,8 @@ Usafe::Usafe(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p) :
   // vel_planner_ = new planner::VelocityPlanner();
   // planner_common_ = new planner::PlannerCommon();
   race_planner_ = new planner::RacingLinePlanner(nh_,nh_p_);
+  vehicle_model_ = new planner::VehicleModel(nh_local_,nh_p_);
+  race_planner_->vehicle_model_ = vehicle_model_;
   
   Above_compute_shortest_path_ = false;
   Below_compute_shortest_path_ = false;
@@ -148,11 +150,28 @@ void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)
 int main (int argc, char** argv)
 {
 ros::init(argc, argv, "Usafe");
-ros::NodeHandle nh_;
+ros::NodeHandle nh, nh_local;
 ros::NodeHandle nh_private("~");
-Usafe Usafe_(nh_,nh_private);
+
+Usafe Usafe_(nh,nh_local,nh_private);
+
+ros::CallbackQueue callback_queue_nh, callback_queue_nh_local;
+nh.setCallbackQueue(&callback_queue_nh);
+nh_local.setCallbackQueue(&callback_queue_nh_local);
+
+std::thread spinner_thread_nh([&callback_queue_nh]() {
+    ros::SingleThreadedSpinner spinner_nh;
+    spinner_nh.spin(&callback_queue_nh);
+  });
+
+  std::thread spinner_thread_nh_local_path([&callback_queue_nh_local]() {
+    ros::SingleThreadedSpinner spinner_nh_local_path;
+    spinner_nh_local_path.spin(&callback_queue_nh_local);
+  });
+
 
   ros::spin();
 
-
+  spinner_thread_nh.join();
+  spinner_thread_nh_local_path.join();
 }
