@@ -264,7 +264,8 @@ MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::Nod
 void load_map();
 void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
-void global_traj_handler(const ros::TimerEvent& time);
+void global_traj_handler();
+void callbackthread();
 void local_traj_handler(const ros::TimerEvent& time);
 void lir_handler(const ros::TimerEvent& time);
 void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);

@@ -102,7 +102,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     g_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/global_traj_viz", 1, true);
     l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
     lir_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lir_viz",1,true);  
-    viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
+    // viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
   }
   
   global_traj_available = true;    
@@ -130,20 +130,31 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   }
   // lane_in_range();
   // wp_inArea();
-  rp_.setMap(map);   
+  rp_.setMap(map); 
+
+  callbackthread();  
 }
 
+void MapLoader::callbackthread()
+{   
+    ros::Rate loop_rate(10); // rate  
+    while(ros::ok()){
+        global_traj_handler();
+        loop_rate.sleep();
+    }
+}
 
 MapLoader::~MapLoader()
 {}
 
-void MapLoader::global_traj_handler(const ros::TimerEvent& time){
+void MapLoader::global_traj_handler(){
   if(goal_available){
     compute_global_path();
   }  
 
   if(global_traj_available){
     way_pub.publish(global_lane_array);  
+    ROS_INFO("GLOBAL");
   }  
 
 }

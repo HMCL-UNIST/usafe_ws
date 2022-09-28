@@ -78,7 +78,7 @@ void BehaviorPlanner::callbackthread()
     ros::Rate loop_rate(10); // rate  
     while(ros::ok()){
         updateFactors();
-        ROS_INFO("DKJF");
+        // ROS_INFO("DKJF");
         loop_rate.sleep();
     }
 }
@@ -246,7 +246,7 @@ void BehaviorPlanner::updateFactors(){
     // if(esssentialLaneChange == true){
     //     if(this->needLC == false && abs(lEgo)<thresLC) this->doneLC = true; 
     // }
-
+    ROS_INFO("DKJF");
     //update behavior factor
     behaviorFactor.front_id = front_id;
     behaviorFactor.stop_line_stop = stop_line_stop;
