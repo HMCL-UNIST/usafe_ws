@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <node name="mission_planner" pkg="mission_planner" type="mission_planner" output="screen">         
+        
+    </node>
+</launch>

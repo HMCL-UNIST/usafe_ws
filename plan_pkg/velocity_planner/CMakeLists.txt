@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(velocity)
+project(velocity_planner)
 
 # find_package(PCL REQUIRED)
 
@@ -14,9 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   autoware_msgs
   tf  
   dynamic_reconfigure
-)
-generate_dynamic_reconfigure_options(
-     cfg/test.cfg
 )
 
 catkin_package(
@@ -42,24 +39,20 @@ include_directories(
 
 
 
-add_executable(dynamic_reconfigure_node src/acc_node.cpp)
-add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
-target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
-SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
+#add_executable(dynamic_reconfigure_node src/acc_node.cpp)
+#add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
+#target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
+#SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(velocity_generator src/velocity_generator.cpp)
-target_link_libraries(velocity_generator ${catkin_LIBRARIES})
-add_dependencies(velocity_generator ${catkin_EXPORTED_TARGETS})
+add_executable(velocity_planner src/velocity_planner.cpp)
+target_link_libraries(velocity_planner ${catkin_LIBRARIES})
+add_dependencies(velocity_planner ${catkin_EXPORTED_TARGETS})
 
-add_executable(acc_node src/acc_node.cpp)
-target_link_libraries(acc_node ${catkin_LIBRARIES})
-add_dependencies(acc_node ${catkin_EXPORTED_TARGETS})
 
 
 install(
   TARGETS    
-  acc_node 
-  velocity_generator
+  velocity_planner
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

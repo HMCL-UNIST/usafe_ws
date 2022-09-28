@@ -4,4 +4,4 @@ bool lane_change_flag
 float32 speed_limit 
 Waypoint[] waypoints
 Trafficlight[] trafficlights
-Waypoint[] speedbumps
+Waypoint[] speedbumps 

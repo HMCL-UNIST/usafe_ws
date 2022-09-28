@@ -40,6 +40,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <GeographicLib/LocalCartesian.hpp>
+#include <GeographicLib/UTMUPS.hpp>
 
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
@@ -70,6 +71,7 @@ bool ahrs_heading_switch;
 GeographicLib::LocalCartesian enu_gnss_;   /// Object to put lat/lon coordinates into local cartesian
 
 double latOrigin, lonOrigin, altOrigin;
+double utm_x_Origin,utm_y_Origin,utm_z_Origin;
 bool gnss_recieved;
 double init_x, init_y;
 public:

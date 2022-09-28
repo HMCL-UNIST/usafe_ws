@@ -47,7 +47,6 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/base/timing.h>
 #include <GeographicLib/LocalCartesian.hpp>
-#include <GeographicLib/UTMUPS.hpp>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/navigation/GPSFactor.h>
 
@@ -65,6 +64,9 @@
 #include "state_estimator/Diagnostics.h"
 #include "BlockingQueue.h"
 
+#include <autorally_msgs/wheelSpeeds.h>
+#include <autorally_msgs/imageMask.h>
+#include <autorally_msgs/stateEstimatorStatus.h>
 #include <imu_3dm_gx4/FilterOutput.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -84,7 +86,7 @@ namespace localization_core
   private:
     ros::NodeHandle nh_;
     ros::Subscriber gpsSub_, imuSub_, odomSub_, localPoseSub_;
-    ros::Publisher  posePub_, estPosePub, pub_optPose, test_pub;
+    ros::Publisher  posePub_, estPosePub;
     ros::Publisher  biasAccPub_, biasGyroPub_;
     ros::Publisher  timePub_;
     ros::Publisher statusPub_;
@@ -119,18 +121,12 @@ namespace localization_core
     imu_3dm_gx4::FilterOutput initialPose_;
     gtsam::Pose3 bodyPSensor_, carENUPcarNED_;
     gtsam::Pose3 imuPgps_;
-    gtsam::Pose3 last_pose_input;
-    bool relPoseInit = false;
 
     bool fixedOrigin_;
     GeographicLib::LocalCartesian enu_;   /// Object to put lat/lon coordinates into local cartesian
-    // GeographicLib::UTMUPS utm_;
-    int zone_;
-    bool northp;
-    double utm_ori_x, utm_ori_y, utm_ori_z;
     bool gotFirstFix_, gotFirstLocalPose_;
     bool invertx_, inverty_, invertz_;
-    bool usingOdom_, usingLocalPose_, usingWheelAsOdom_;
+    bool usingOdom_, usingLocalPose_;
     double maxGPSError_, maxLocalPoseError_;
 
     gtsam::SharedDiagonal priorNoisePose_;
@@ -145,18 +141,14 @@ namespace localization_core
   public:
     StateEstimator();
     ~StateEstimator();
-    void testDebug();
     void GpsCallback(sensor_msgs::NavSatFixConstPtr fix);
     void ImuCallback(sensor_msgs::ImuConstPtr imu);
-    void OdomCallback(nav_msgs::OdometryConstPtr odom_);
     void WheelOdomCallback(nav_msgs::OdometryConstPtr odom);
     void localPoseCallback(geometry_msgs::PoseStampedConstPtr pose);
     void GpsHelper();
     void GpsHelper_1();
     void diagnosticStatus(const ros::TimerEvent& time);
     gtsam::BetweenFactor<gtsam::Pose3> integrateWheelOdom(double prevTime, double stopTime, int curFactor);
-    gtsam::BetweenFactor<gtsam::Pose3> OdomToFactor(double prevTime, double stopTime, int curFactor);
-    void SetLastPose(double prevTime, double stopTime, int curKey);
     void GetAccGyro(sensor_msgs::ImuConstPtr imu, gtsam::Vector3 &acc, gtsam::Vector3 &gyro);
     
   };

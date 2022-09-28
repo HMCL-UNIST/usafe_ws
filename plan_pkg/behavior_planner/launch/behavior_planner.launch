@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+
+<launch>
+
+    <node name="behavior_planner" pkg="behavior_planner" type="behavior_planner" output="screen">         
+        
+    </node>
+</launch>

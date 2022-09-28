@@ -15,17 +15,17 @@
   limitations under the License.
 -->
 <package>
-  <name>velocity</name>
+  <name>mission_planner</name>
   <version>0.1.0</version>
   <description>Load Lanelet2 map from osm file</description>
 
-  <maintainer email="hojinlee@unist.ac.kr">Hojin Lee</maintainer>
+  <maintainer email="nyi0944@unist.ac.kr">Youngim Nam</maintainer>
 
-  <author email="hojinlee@unist.ac.kr">Hojin Lee</author>
+  <author email="nyi0944@unist.ac.kr">Youngim Nam</author>
 
   <license>BSD</license>
 
-  <author>Hojin Lee</author>
+  <author>Youngim Nam</author>
 
   <buildtool_depend>catkin</buildtool_depend>
 
@@ -38,8 +38,7 @@
   <build_depend>nav_msgs</build_depend>
   <build_depend>cmake_modules</build_depend> 
   <build_depend>autoware_msgs</build_depend> 
-  <build_depend>tf</build_depend> 
-  <build_depend>dynamic_reconfigure</build_depend>
+
 
 
   
@@ -51,8 +50,6 @@
   <run_depend>nav_msgs</run_depend>
   <run_depend>autoware_msgs</run_depend>
   <run_depend>cmake_modules</run_depend>
-  <run_depend>tf</run_depend>
-  <run_depend>dynamic_reconfigure</run_depend>
   
 
 </package>

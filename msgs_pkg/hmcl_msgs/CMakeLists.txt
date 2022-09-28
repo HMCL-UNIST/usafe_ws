@@ -12,9 +12,15 @@ add_message_files(
   DIRECTORY msg
   FILES
     Trafficlight.msg
+    BehaviorFactor.msg
+    TransitionCondition.msg
+    DTLane.msg
     Lane.msg
     LaneArray.msg
     Waypoint.msg    
+    WaypointArray.msg    
+    WaypointState.msg    
+    Waypointhmcl.msg    
     RemoteButton.msg
     VehicleGear.msg
     VehicleLight.msg

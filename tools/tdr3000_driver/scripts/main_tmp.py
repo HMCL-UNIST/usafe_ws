@@ -16,7 +16,7 @@ from std_msgs.msg import String, Header, Float64
 
 from sensor_msgs.msg import NavSatFix 
 import numpy as np
-from nav_msgs.msg import Path, Odometry
+from nav_msgs.msg import Path
 from geometry_msgs.msg import PoseStamped
 from tf.transformations import euler_from_quaternion, quaternion_from_euler, unit_vector
 import time
@@ -137,10 +137,6 @@ if __name__ == '__main__':
     viz_fix_pub = rospy.Publisher('viz_fix', Path, queue_size=1)
     heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
     heading_raw_pub = rospy.Publisher('heading_ned', Float64, queue_size=1)
-
-    
-
-
     rospy.init_node('tdr3000', anonymous=True)
     rate = rospy.Rate(5) # 10hz
     fix_msg = NavSatFix()

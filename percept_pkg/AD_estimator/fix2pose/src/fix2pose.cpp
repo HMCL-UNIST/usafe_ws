@@ -47,6 +47,11 @@ Fix2Pose::Fix2Pose() :
   nh_.param<double>("latOrigin", latOrigin, 0.0);
   nh_.param<double>("lonOrigin", lonOrigin, 0.0);
   nh_.param<double>("altOrigin", altOrigin, 0.0);
+
+  nh_.param<double>("utm_x_Origin", utm_x_Origin, 0.0);
+  nh_.param<double>("utm_y_Origin", utm_y_Origin, 0.0);
+  nh_.param<double>("utm_z_Origin", utm_z_Origin, 0.0);
+  
   
   enu_gnss_.Reset(latOrigin,lonOrigin,altOrigin);
 
@@ -70,10 +75,18 @@ void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   
   
   double gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z;  
-  enu_gnss_.Forward(pose->pose.position.x, pose->pose.position.y, pose->pose.position.z, gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z);
+  int zone_;
+  bool northp;
+  GeographicLib::UTMUPS::Forward(pose->pose.position.x, pose->pose.position.y, zone_,northp, gnss_pose_global_x, gnss_pose_global_y);
+  gnss_pose_global_x -= utm_x_Origin;
+  gnss_pose_global_y -= utm_y_Origin;
+  gnss_pose_global_z = pose->pose.position.z -utm_z_Origin;
+  
+  // enu_gnss_.Forward(pose->pose.position.x, pose->pose.position.y, pose->pose.position.z, gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z);
   geometry_msgs::PoseStamped global_gnss_pose;
   global_gnss_pose = *pose;
-  global_gnss_pose.header.frame_id = pose->header.frame_id;
+  // global_gnss_pose.header.frame_id = pose->header.frame_id;
+  global_gnss_pose.header.frame_id = "map";
   global_gnss_pose.pose.position.x = gnss_pose_global_x;
   global_gnss_pose.pose.position.y = gnss_pose_global_y;
   global_gnss_pose.pose.position.z = gnss_pose_global_z;

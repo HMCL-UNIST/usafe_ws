@@ -23,7 +23,11 @@
       <!-- KIAPI MAP -->
       <param name="latOrigin" value="35.6470671983"/> 
       <param name="lonOrigin" value="128.401913578"/>  
-      <param name="altOrigin" value="25.797"/> 
+      <param name="altOrigin" value="25.797"/>
+
+      <param name="utm_x_Origin" value="445785.133970"/> 
+      <param name="utm_y_Origin" value="3944960.359526"/>  
+      <param name="utm_z_Origin" value="26.126000"/>
 
 
 
