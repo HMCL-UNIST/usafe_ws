@@ -75,6 +75,16 @@ lanelet::ConstLanelets laneletLayerConst(lanelet::LaneletMapPtr ll_map)
   return lanelets;
 }
 
+lanelet::Areas AreaLayer(lanelet::LaneletMapPtr ll_map)
+{
+  lanelet::Areas areas;
+  for (auto li = ll_map->areaLayer.begin(); li != ll_map->areaLayer.end(); li++)
+  {
+    areas.push_back(*li);
+  }
+
+  return areas;
+}
 
 lanelet::Lanelets laneletLayer(lanelet::LaneletMapPtr ll_map)
 {
@@ -420,6 +430,28 @@ void lineString2Marker(const lanelet::ConstLineString3d ls, visualization_msgs::
   }
 }
 
+visualization_msgs::MarkerArray areaMarkerArray(lanelet::Areas& areas, const std_msgs::ColorRGBA c){
+  double lss = 0.2;
+  visualization_msgs::MarkerArray marker_array;
+  std_msgs::ColorRGBA bound_a;
+  setColor(&bound_a, 0.0, 1.0, 0.0, 0.5);
+  for (auto li = areas.begin(); li != areas.end(); li++)
+  {
+    lanelet::Area area =  *li;
+
+    const lanelet::LineStrings3d ls = area.outerBound();
+    for(auto lli = ls.begin(); lli != ls.end(); lli++)
+    {
+      lanelet::LineString3d lls = *lli;
+
+      visualization_msgs::Marker lm;
+
+      lineString2Marker(lls, &lm, "map", "Area_boundary", c, lss, false);
+      marker_array.markers.push_back(lm);
+    }
+  }
+  return marker_array;
+}
 
 visualization_msgs::MarkerArray laneletsBoundaryAsMarkerArray(lanelet::Lanelets& lanelets,
                                                                              const std_msgs::ColorRGBA c)
