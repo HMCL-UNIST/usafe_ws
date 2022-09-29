@@ -242,6 +242,9 @@ void BehaviorPlanner::updateFactors(){
             }
         }
     }
+    if(currentMission == MissionState::DriveToStartPos){
+        missionStart = true;
+    }
 
     // calculate safe distance
     if(frontCar){

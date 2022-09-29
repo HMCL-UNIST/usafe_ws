@@ -21,7 +21,7 @@
 
 MissionStateMachine::MissionStateMachine(){
 
-    v2x_mission_sub = nh_.subscribe("Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
+    v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
     v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
     mission_pub = nh_.advertise<std_msgs::Int16>("/mission_state",1,true);
     // mission_timer = nh_.createTimer(ros::Duration(0.05), &MissionStateMachine::mission_handler,this);
@@ -43,12 +43,13 @@ void MissionStateMachine::callbackthread()
     ros::Rate loop_rate(10); // rate  
     while(ros::ok()){
         updateMissionState();
+        ROS_INFO("DKJF");
         loop_rate.sleep();
     }
 }
 MissionStateMachine::MissionStateMachine(MissionState mState){
 
-    v2x_mission_sub = nh_.subscribe("Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
+    v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
     v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
     behavior_sub = nh_.subscribe("/behavior_state", 1, &MissionStateMachine::behaviorCallback, this);
 
@@ -77,17 +78,18 @@ MissionState MissionStateMachine::getCurrentMission(){
 
 void MissionStateMachine::updateFactors(){
 
-    statusWait = false;
-    statusStart = false;
+    // statusWait = false;
+    // statusStart = false;
+    statusWait = true; //for test
     arriveAtStartPos = false;
     arriveAtGoalPos = false;
 
     switch(v2xMissionStat)
     {
-    case 1:
+    case 0:
         statusWait = true;
         break;
-    case 2:
+    case 1:
         statusStart = true;
     default:
         break;
@@ -142,6 +144,8 @@ void MissionStateMachine::updateMissionState(){
         default:
             break;
     }
+    mission_msg.data = currentMission;
+    mission_pub.publish(mission_msg);
 }
 
 bool MissionStateMachine::getParam(int param_id){

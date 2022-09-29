@@ -21,8 +21,8 @@
 #include <std_msgs/Int16.h>
 
 #define PI 3.14159265358979323846264338
-typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArrivalRequest, DriveToGoalPos,
-            GoalArrivalRequest, MissionComplete} MissionState;
+typedef enum{Init = 0, ChooseDifficulty = 1, MissionRequest = 2, DriveToStartPos = 3, StartArrivalRequest = 4, DriveToGoalPos = 5,
+            GoalArrivalRequest = 6, MissionComplete = 7} MissionState;
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
             Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival} BehaviorState;
 
@@ -33,6 +33,7 @@ class MissionStateMachine
         ros::NodeHandle nh_;
         ros::Subscriber v2x_mission_sub, v2x_rsp_sub, behavior_sub;
         ros::Publisher mission_pub;
+        std_msgs::Int16 mission_msg;
         // ros::Timer mission_timer;
         //transition conditions
         bool statusWait, statusStart, missionRequestSuccess, arriveAtStartPos,startArrivalSuccess, arriveAtGoalPos, goalArrivalSuccess;
