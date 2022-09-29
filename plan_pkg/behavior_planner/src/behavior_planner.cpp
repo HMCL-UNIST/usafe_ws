@@ -39,8 +39,8 @@ BehaviorPlanner::BehaviorPlanner(){
     vel_sub = nh_.subscribe("/vehicle_status", 1, &BehaviorPlanner::vehicleStatusCallback, this);
     objs_sub = nh_.subscribe("/detection/lidar_tracker/objects",1, &BehaviorPlanner::objsCallback,this);
     //goal_sub = nh_.subscribe("move_base_simple/goal", 1, &BehaviorPlanner::callbackGetGoalPose, this);
-    // v2x_mission_sub = nh_.subscribe("/V2X/Missionlist", 1, &BehaviorPlanner::v2xMissionCallback, this);
-    // v2x_spat_sub = nh_.subscribe("/V2X/SPAT",1, &BehaviorPlanner::v2xSPATCallback, this);
+    v2x_mission_sub = nh_.subscribe("/Mission1", 1, &BehaviorPlanner::v2xMissionCallback, this);
+    v2x_spat_sub = nh_.subscribe("/SPAT",1, &BehaviorPlanner::v2xSPATCallback, this);
     route_sub = nh_.subscribe("/global_traj", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
     mission_sub = nh_.subscribe("/mission_state", 1, &BehaviorPlanner::missionCallback, this);
     behavior_pub = nh_.advertise<hmcl_msgs::BehaviorFactor>("/behavior_factor",1,true);
@@ -68,6 +68,7 @@ BehaviorPlanner::BehaviorPlanner(){
     speedBumpPass = false;
     approachToGoalPos = false;
 
+    get_global = false;
     // to velocity planner
     front_id = -1;
     stop_line_stop = false;
@@ -147,7 +148,11 @@ void BehaviorPlanner::calculateSafeDistance(float vFront, float vRear, float &dS
 }
 
 void BehaviorPlanner::updateFactors(){
-
+    
+    if (!get_global){
+        ROS_INFO("No Global");
+        return;
+    }
     // behavior factors
     missionStart = true; //for test
     // missionStart = false;
@@ -285,16 +290,25 @@ void BehaviorPlanner::objsCallback(const autoware_msgs::DetectedObjectArray& msg
     detectedObjects = msg;
 }
 
-// void BehaviorPlanner::v2xMissionCallback(const hmcl_v2x::MissionArray::ConstPtr& msg){
-//     //startpos info 
-//     //goalpos
-// }
+void BehaviorPlanner::v2xMissionCallback(const v2x_msgs::Mission1& msg){
+    //startpos info 
+    //goalpos
+    //msg.start_lat;
+    //msg.start_lon;
+}
 
-// void BehaviorPlanner::v2xSPATCallback(const hmcl_v2x::SPAT::ConstPtr& msg){
-//     //traffic_signal
-// }
+void BehaviorPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
+    //traffic_signal
+    // msg.id;
+    // msg.states;
+}
 
 void BehaviorPlanner::routeCallback(const hmcl_msgs::LaneArray &msg){
+    if (msg.lanes.size() < 1){
+        return;
+    }
+    
+    get_global = true;
     globalLaneArray = msg;
 }
 

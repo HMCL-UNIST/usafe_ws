@@ -16,8 +16,8 @@
 #include <ros/time.h>
 #include <ros/package.h>
 
-// #include <hmcl_v2x/MissionArray.h>
-// #include <hmcl_v2x/Reply.h>
+#include <v2x_msgs/Mission1.h>
+#include <v2x_msgs/Request.h>
 #include <std_msgs/Int16.h>
 
 #define PI 3.14159265358979323846264338
@@ -49,8 +49,8 @@ class MissionStateMachine
         void updateFactors();
         void updateMissionState();
         bool getParam(int param_id);
-        // void v2xMissionCallback(const hmcl_v2x::MissionArray::ConstPtr& msg);
-        // void v2xResponseCallback(const hmcl_v2x::Reply::ConstPtr& msg);
+        void v2xMissionCallback(const v2x_msgs::Mission1& msg);
+        void v2xResponseCallback(const v2x_msgs::Request& msg);
         void behaviorCallback(const std_msgs::Int16::ConstPtr& msg);
 
 };

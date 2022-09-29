@@ -25,8 +25,8 @@
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <hmcl_msgs/VehicleStatus.h>
-// #include <hmcl_v2x/MissionArray.h>
-// #include <hmcl_v2x/SPAT.h>
+#include <v2x_msgs/Mission1.h>
+#include <v2x_msgs/SPAT.h>
 
 #define PI 3.14159265358979323846264338
 typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArrivalRequest, DriveToGoalPos,
@@ -40,8 +40,8 @@ class BehaviorPlanner
 {
     private:
         ros::NodeHandle nh_;
-        // ros::Subscriber pose_sub, vel_sub, objs_sub, v2x_mission_sub, v2x_spat_sub, route_sub, mission_sub;
-        ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
+        ros::Subscriber pose_sub, vel_sub, objs_sub, v2x_mission_sub, v2x_spat_sub, route_sub, mission_sub;
+        // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
         ros::Publisher behavior_pub;
         // ros::Timer behavior_timer;
         float minBrake, maxBrake, maxAccel, rho, wLane, lenEgo, frontlenEgo, minFront, thresLC;
@@ -58,6 +58,7 @@ class BehaviorPlanner
         bool esssentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos;
         short front_id;
         bool stop_line_stop;
+        bool get_global;
         hmcl_msgs::BehaviorFactor behaviorFactor;
 
     public:
@@ -72,8 +73,8 @@ class BehaviorPlanner
         void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);
         // void twistCallback(const geometry_msgs::TwistStampedConstPtr& msg);
         void objsCallback(const autoware_msgs::DetectedObjectArray& msg);
-        // void v2xMissionCallback(const hmcl_v2x::MissionArray::ConstPtr& msg);
-        // void v2xSPATCallback(const hmcl_v2x::SPAT::ConstPtr& msg);
+        void v2xMissionCallback(const v2x_msgs::Mission1& msg);
+        void v2xSPATCallback(const v2x_msgs::SPAT& msg);
         void routeCallback(const hmcl_msgs::LaneArray &msg);
         void missionCallback(const std_msgs::Int16::ConstPtr& msg);
 };

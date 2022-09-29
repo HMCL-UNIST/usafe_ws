@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   hmcl_msgs
   autoware_msgs
+  v2x_msgs
 )
 
 catkin_package(
@@ -23,6 +24,7 @@ catkin_package(
   hmcl_msgs
   std_msgs
   autoware_msgs
+  v2x_msgs
   LIBRARIES
 )
 

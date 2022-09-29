@@ -21,8 +21,8 @@
 
 MissionStateMachine::MissionStateMachine(){
 
-    // v2x_mission_sub = nh_.subscribe("/V2X/MissionList", 1, &MissionStateMachine::v2xMissionCallback, this);
-    // v2x_rsp_sub = nh_.subscribe("/Reply", 1, &MissionStateMachine::v2xResponseCallback, this);
+    v2x_mission_sub = nh_.subscribe("Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
+    v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
     mission_pub = nh_.advertise<std_msgs::Int16>("/mission_state",1,true);
     // mission_timer = nh_.createTimer(ros::Duration(0.05), &MissionStateMachine::mission_handler,this);
 
@@ -48,8 +48,8 @@ void MissionStateMachine::callbackthread()
 }
 MissionStateMachine::MissionStateMachine(MissionState mState){
 
-    // v2x_mission_sub = nh_.subscribe("/V2X/MissionList", 1, &MissionStateMachine::v2xMissionCallback, this);
-    // v2x_rsp_sub = nh_.subscribe("/Reply", 1, &MissionStateMachine::v2xResponseCallback, this);
+    v2x_mission_sub = nh_.subscribe("Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
+    v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
     behavior_sub = nh_.subscribe("/behavior_state", 1, &MissionStateMachine::behaviorCallback, this);
 
     mission_pub = nh_.advertise<std_msgs::Int16>("/mission_state",1,true);
@@ -154,15 +154,15 @@ bool MissionStateMachine::getParam(int param_id){
     else if(param_id == 7) return goalArrivalSuccess;
 }
 
-// void MissionStateMachine::v2xMissionCallback(const hmcl_v2x::MissionArray::ConstPtr& msg){
-//     v2xMissionStat = msg->status;
-// }
+void MissionStateMachine::v2xMissionCallback(const v2x_msgs::Mission1& msg){
+    v2xMissionStat = msg.status;
+}
 
-// void MissionStateMachine::v2xResponseCallback(const hmcl_v2x::Reply::ConstPtr& msg){
-//     missionRequestSuccess = msg->mission;
-//     startArrivalSuccess = msg->arrive_start;
-//     goalArrivalSuccess = msg->arrive_goal;
-// }
+void MissionStateMachine::v2xResponseCallback(const v2x_msgs::Request& msg){
+    missionRequestSuccess = msg.mission;
+    startArrivalSuccess = msg.start;
+    goalArrivalSuccess = msg.goal;
+}
 
 void MissionStateMachine::behaviorCallback(const std_msgs::Int16::ConstPtr& msg){
     currentBehavior = (BehaviorState)msg->data;
