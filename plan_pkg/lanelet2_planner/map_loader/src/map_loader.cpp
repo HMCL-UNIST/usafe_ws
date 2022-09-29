@@ -630,32 +630,32 @@ void MapLoader::compute_global_path(){
 
 
               ///////////////////////// Encode trafficlights  /////////////////////////////////////////              
-              auto trafficLightRegelems = local_path[i].regulatoryElementsAs<lanelet::TrafficLight>();
-              if(trafficLightRegelems.size()>0){
-                //////////// Encode (multiple) traffics light in a single lanelet
-                for(int i=0; i < trafficLightRegelems.size(); i++){
-                  auto tlRegelem = trafficLightRegelems[i];
-                  lanelet::ConstLineStringOrPolygon3d thelight = tlRegelem->trafficLights().front();
-                  hmcl_msgs::Trafficlight tl_;                  
-                  auto thelight_ls = thelight.lineString();     
-                  if(thelight_ls){
-                    tl_.pose.x = (thelight_ls->front().x()+thelight_ls->back().x())/2.0;
-                    tl_.pose.y = (thelight_ls->front().y()+thelight_ls->back().y())/2.0;
-                    tl_.pose.z = (thelight_ls->front().z()+thelight_ls->back().z())/2.0;                    
-                  }             
-                  auto stopline_ = tlRegelem->stopLine();
-                  if (stopline_){
-                  tl_.valid_stop_line = true;
-                  tl_.stop_line.x = (stopline_->front().x()+stopline_->back().x())/2.0;
-                  tl_.stop_line.y = (stopline_->front().y()+stopline_->back().y())/2.0;
-                  tl_.stop_line.z = (stopline_->front().z()+stopline_->back().z())/2.0;                         
-                  }else{
-                    tl_.valid_stop_line = false;                      
-                    ROS_WARN("Stop line is not defined .... !!!");
-                  } 
-                  ll_.trafficlights.push_back(tl_);
-                }
-              }              
+              // auto trafficLightRegelems = local_path[i].regulatoryElementsAs<lanelet::TrafficLight>();
+              // if(trafficLightRegelems.size()>0){
+              //   //////////// Encode (multiple) traffics light in a single lanelet
+              //   for(int i=0; i < trafficLightRegelems.size(); i++){
+              //     auto tlRegelem = trafficLightRegelems[i];
+              //     lanelet::ConstLineStringOrPolygon3d thelight = tlRegelem->trafficLights().front();
+              //     hmcl_msgs::Trafficlight tl_;                  
+              //     auto thelight_ls = thelight.lineString();     
+              //     if(thelight_ls){
+              //       tl_.pose.x = (thelight_ls->front().x()+thelight_ls->back().x())/2.0;
+              //       tl_.pose.y = (thelight_ls->front().y()+thelight_ls->back().y())/2.0;
+              //       tl_.pose.z = (thelight_ls->front().z()+thelight_ls->back().z())/2.0;                    
+              //     }             
+              //     auto stopline_ = tlRegelem->stopLine();
+              //     if (stopline_){
+              //     tl_.valid_stop_line = true;
+              //     tl_.stop_line.x = (stopline_->front().x()+stopline_->back().x())/2.0;
+              //     tl_.stop_line.y = (stopline_->front().y()+stopline_->back().y())/2.0;
+              //     tl_.stop_line.z = (stopline_->front().z()+stopline_->back().z())/2.0;                         
+              //     }else{
+              //       tl_.valid_stop_line = false;                      
+              //       ROS_WARN("Stop line is not defined .... !!!");
+              //     } 
+              //     ll_.trafficlights.push_back(tl_);
+              //   }
+              //   }              
               global_lane_array.lanes.push_back(ll_);
 
                 

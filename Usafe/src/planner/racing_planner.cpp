@@ -242,18 +242,18 @@ void RacingLinePlanner::insertDefaultWaypoints(int scenario_num){
     // Insert Start and Goal waypoint
     if(scenario_num == 0){
         // First goal point --> x = 215, y = -44.1;
-        double goal_x = 222.59;
-        double goal_y = -52.13;  
+        double goal_x = -921.8;
+        double goal_y = 908.4;  
         inserWaypoints(goal_x, goal_y, 0, true);    
-        double start_x = -510.7;
-        double start_y = 754.54;
+        double start_x = 69.5;
+        double start_y = -132.8;
         inserWaypoints(start_x, start_y, 100, true);    
     }else{
-        double goal_x = -424.38;
-        double goal_y = 645.4;  
+        double goal_x = -237.1;
+        double goal_y = 456.4;  
         inserWaypoints(goal_x, goal_y, 0, true);    
-        double start_x = -10.0;
-        double start_y = 192.6;
+        double start_x = -729.6;
+        double start_y = 998.5;
         inserWaypoints(start_x, start_y, 100, true);
     }
     // Second goal point --> x = 215, y = -44.1;
