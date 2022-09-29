@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="hmcl_v2x" type="spat_pub" name="v2x_info" output="screen">
+    </node>
+    <node pkg="hmcl_v2x" type="pvd_pub" name="v2x_pvd" output="screen">
+    </node>
+    <node pkg="hmcl_v2x" type="mission_pub" name="v2x_mission" output="screen">
+    </node>
+
+</launch>

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+set -e
+
+
+docker run -it --rm --net=host --device=/dev/ttyACM1 -v /home/hmcl/hj_ws/tmp_folder/ros_entrypoint.sh:/ros_entrypoint.sh -v export ROS_MASTER_URI="http://192.168.10.118:11311/" 
+export ROS_IP=192.168.10.118
+export ROS_HOSTNAME=192.168.10.118 os-microstrain_inertial_driver:ros params_file:=/home/user/microstrain_param.yaml
