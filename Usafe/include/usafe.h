@@ -45,8 +45,6 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <autoware_msgs/Lane.h>
-#include <autoware_msgs/Waypoint.h>
 
 #include <GeographicLib/LocalCartesian.hpp>
 
@@ -78,6 +76,8 @@
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
 #include <hmcl_msgs/VehicleStatus.h>
+
+#include <v2x_msgs/Mission2.h>
 
 // planner include
 #include <planner/behaviour_planner.h>
@@ -111,6 +111,9 @@ class Usafe
 private:
 ros::NodeHandle nh_, nh_local_, nh_p_;
 
+ros::Subscriber v2xSub;
+
+
 tools::Debugger*                      debugger_;
 tools::HeatlMonitoring*               system_monitor_;                         
 
@@ -128,7 +131,7 @@ planner::RacingLinePlanner*           race_planner_;
 planner::VehicleModel*                 vehicle_model_;
 controller::LongitudinalCtrl*         long_ctrl_;
 controller::LateralCtrl*            lat_ctrl_;
-
+v2x_msgs::Mission2  v2x_waypoints;
 
 dynamic_reconfigure::Server<usafe::testConfig> srv;
 dynamic_reconfigure::Server<usafe::testConfig>::CallbackType f;
@@ -144,8 +147,7 @@ void perception_loop();
 void controller_loop();
 void tools_loop();
 void dyn_callback(usafe::testConfig& config, uint32_t level);
-
-
+void callbackV2X(const v2x_msgs::Mission2ConstPtr &msg);
 
 
 };

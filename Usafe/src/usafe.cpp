@@ -38,7 +38,7 @@
 Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ros::NodeHandle& nh_p) :  
   nh_(nh), nh_local_(nh_local), nh_p_(nh_p)
 {
-  
+  v2xSub = nh_.subscribe("/Mission2", 1, &Usafe::callbackV2X, this);
   // tools initialize
   // debugger_ = new tools::Debugger();
   // system_monitor_ = new tools::HeatlMonitoring();                         
@@ -80,6 +80,13 @@ Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ro
 Usafe::~Usafe()
 {}
 
+void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
+
+
+  race_planner_->v2x_data=*msg; 
+  // ROS_INFO("waypoints size = %d",msg->States.size() );
+}
+
 void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)
 {
   Above_compute_shortest_path_ = config.Above_compute_shortest_path;
@@ -112,38 +119,7 @@ void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)
   
  return;  
 }
-// Usafe::planner_loop(){
-  
-//   // get the mission state 
-//   //*** (HyunBIN) //*** 
-//   mission_state =  ms_planner_.get_ms_state();
-  
-//   // retrive goal action (pose) 
-//   // (Sanghyun) //*** 
-//   goal_ = v2x_receiver_.get_goal(mission_state);
- 
-//   // compute the behaviour state 
-//   // (HyunBin) //*** 
-//   behaviour_state = bh_planner_.get_behaviour(mission_state);
-  
-//   // Compute the local path and velocity profile depends on the behaviour state
-//   //*** Junseoung //*** 
-//   local_path = pp_planner_.get_local_path(behaviour_state)
-//   //***  NAM //***  
-//   local_vel_profile = vel_planner.get_local_velocity_profile(behaviour_state)
 
-//   // Compute the lateral and longitudinal cmd 
-//   //***MINU //*** 
-//   long_ctrl_.get_vel_cmd(local_vel_profile)
-//   //***MINU //*** 
-//   lat_ctrl.get_vel_cmd(local_path)
-
-// }
-
-// Usafet::perception_loop(){
-  
-
-// }
 
 
 

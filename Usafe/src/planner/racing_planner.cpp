@@ -676,13 +676,49 @@ void RacingLinePlanner::construct_lanelets_with_viz(){
 }
 
 
+void RacingLinePlanner::convert_v2x_data(){
+//   int64 mission_status
+// int64 item_count
+// v2x_msgs/Mission2data[] States
+//   int32 item_id
+//   int32 item_type
+//   int32 item_status
+//   int32 score
+//   int32 speed
+//   int32 duration
+//   float64 pos_lat
+//   float64 pos_long
+//   int32 extend
+if ( v2x_data.States.size()  < 1){
+    ROS_WARN("No v2x data available");
+}
+v2x_waypoints.clear();
+for(int i = 0; i < v2x_data.States.size(); i++){
+  double Lat_data =v2x_data.States.pos_lat;
+  double Lon_data = v2x_data.States.pos_long;
+  lanelet::GPSPoint gnssPoint{Lat_data, Lon_data, 0.};
+  lanelet::BasicPoint3d converted_point = utmProjector->forward(gnssPoint);
+    
+    Waypoint tmp_wp;
+    tmp_wp.x_pose = converted_point.x();
+    tmp_wp.y_pose = converted_point.y();
+
+    if(v2x_data.score)
+
+}
+ 
+
+
+}
 
 void RacingLinePlanner::load_map(){
   
   ROS_INFO("map loading");
   lanelet::ErrorMessages errors;  
-  lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
-  map = load(osm_file_name, "osm_handler",projector,&errors);
+//   lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
+ projector = new lanelet::projection::UtmProjector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
+ 
+  map = load(osm_file_name, "osm_handler",*projector,&errors);
   assert(errors.empty()); 
   ROS_INFO("map loaded succesfully");
 }

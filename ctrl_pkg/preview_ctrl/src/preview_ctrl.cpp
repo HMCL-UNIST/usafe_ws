@@ -351,7 +351,7 @@ void PreviewCtrl::ControlLoop()
         steering_frame.data[0] = (steer_value & 0b11111111);
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
-        // AcanPub.publish(steering_frame);
+        AcanPub.publish(steering_frame);
           
 
         ///////////

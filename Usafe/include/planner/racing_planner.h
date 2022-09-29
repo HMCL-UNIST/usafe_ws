@@ -39,7 +39,7 @@
 #include <nav_msgs/Odometry.h>
 
 #include <eigen3/Eigen/Geometry>
-
+#include <v2x_msgs/Mission2.h>
 #include <vector>
 
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -149,12 +149,15 @@ private:
     bool cur_pose_available;
     geometry_msgs::PoseStamped cur_pose;
     nav_msgs::Odometry cur_odom;
+    lanelet::projection::UtmProjector* projector;    
+    
 public:
 
 RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p); 
 ~RacingLinePlanner();
 
-
+v2x_msgs::Mission2  v2x_data;
+std::deque<Waypoint> v2x_waypoints;
 planner::VehicleModel* vehicle_model_;
 bool positive_cost_assign_;
 int number_of_node;
@@ -167,6 +170,7 @@ std::deque<Waypoint> global_path_wps;
 void load_map();
 void gen_random_graph();
 
+void convert_v2x_data();
 
 void viz_pub(const ros::TimerEvent& time);
 bool compute_best_route(int src_idx);

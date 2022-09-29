@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   geometry_msgs
+  v2x_msgs
   std_msgs
   hmcl_msgs
   tf  
@@ -34,9 +35,6 @@ find_package(catkin REQUIRED COMPONENTS
   lanelet2_routing
   lanelet2_traffic_rules
   lanelet2_validation
-  autoware_lanelet2_msgs
-  lanelet2_extension
-  autoware_msgs
   mobileye_msgs
   dynamic_reconfigure
 )
@@ -50,6 +48,7 @@ catkin_package(
   sensor_msgs 
   geometry_msgs 
   hmcl_msgs
+  v2x_msgs
   std_msgs 
   tf  
   lanelet2_core
@@ -59,8 +58,6 @@ catkin_package(
   lanelet2_routing
   lanelet2_traffic_rules
   lanelet2_validation
-  lanelet2_extension
-  autoware_msgs
   mobileye_msgs
   dynamic_reconfigure
   LIBRARIES

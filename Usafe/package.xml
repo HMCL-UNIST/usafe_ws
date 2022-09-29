@@ -35,11 +35,11 @@
   <build_depend>sensor_msgs</build_depend>
   <build_depend>geometry_msgs</build_depend>
   <build_depend>hmcl_msgs</build_depend>  
+  <build_depend>v2x_msgs</build_depend>  
+  
   <build_depend>nav_msgs</build_depend>
   <build_depend>cmake_modules</build_depend> 
   <build_depend>tf</build_depend> 
-  <build_depend>pcl_ros</build_depend> 
-  <build_depend>pcl_conversions</build_depend> 
   <build_depend>lanelet2_core</build_depend>
   <build_depend>lanelet2_io</build_depend>
   <build_depend>lanelet2_maps</build_depend>
@@ -47,8 +47,6 @@
   <build_depend>lanelet2_routing</build_depend>
   <build_depend>lanelet2_traffic_rules</build_depend>
   <build_depend>lanelet2_validation</build_depend>
-  <build_depend>autoware_lanelet2_msgs</build_depend>
-  <build_depend>lanelet2_extension</build_depend>
   <build_depend>dynamic_reconfigure</build_depend>
 
   
@@ -56,14 +54,11 @@
    <run_depend>mobileye_msgs</run_depend>
   
   
-  <run_depend>lanelet2_extension</run_depend>
-  <run_depend>autoware_lanelet2_msgs</run_depend>
-  <build_depend>autoware_msgs</build_depend>
 
   
-
+  <run_depend>v2x_msgs</run_depend>
   <run_depend>dynamic_reconfigure</run_depend>
-  <run_depend>autoware_msgs</run_depend>
+  
   <run_depend>lanelet2_core</run_depend>
   <run_depend>lanelet2_io</run_depend>
   <run_depend>lanelet2_maps</run_depend>
@@ -71,8 +66,6 @@
   <run_depend>lanelet2_routing</run_depend>
   <run_depend>lanelet2_traffic_rules</run_depend>
   <run_depend>lanelet2_validation</run_depend>
-  <run_depend>pcl_conversions</run_depend>
-  <run_depend>pcl_ros</run_depend>
   <run_depend>roscpp</run_depend>
   <run_depend>std_msgs</run_depend>
   <run_depend>sensor_msgs</run_depend>
