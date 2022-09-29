@@ -36,7 +36,7 @@ MissionStateMachine::MissionStateMachine(){
     goalArrivalSuccess = false;
 
     currentMission = Init;
-    callbackthread();
+    boost::thread callbackhandler(&MissionStateMachine::callbackthread,this); 
 }
 void MissionStateMachine::callbackthread()
 {   

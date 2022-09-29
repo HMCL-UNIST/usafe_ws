@@ -57,7 +57,7 @@ void V2XPvd::publisher(){
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "V2X_PVD");
+    ros::init(argc, argv, "pvd_pub");
     ros::NodeHandle nh, nhlocal;
     V2XPvd V2XPvd(nh, nhlocal);
     

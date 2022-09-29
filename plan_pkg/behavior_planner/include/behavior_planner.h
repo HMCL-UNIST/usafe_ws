@@ -22,6 +22,7 @@
 #include <hmcl_msgs/BehaviorFactor.h>
 #include <hmcl_msgs/TransitionCondition.h>
 #include <autoware_msgs/DetectedObjectArray.h>
+#include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <hmcl_msgs/VehicleStatus.h>
@@ -69,7 +70,8 @@ class BehaviorPlanner
         void calculateFrenet(int n, float* psarr, float px, float py, float vx, float vy, float* psl, hmcl_msgs::Lane &lane);
         void calculateSafeDistance(float vFront, float vRear, float &dSafe);
         void updateFactors();
-        void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+        // void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+        void odometryCallback(const nav_msgs::Odometry& msg);
         void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);
         // void twistCallback(const geometry_msgs::TwistStampedConstPtr& msg);
         void objsCallback(const autoware_msgs::DetectedObjectArray& msg);

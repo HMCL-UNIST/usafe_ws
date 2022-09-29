@@ -34,7 +34,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("thresLC", thresLC, 0.5); // need to check if 0.5 is sufficient
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
-    pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::poseCallback, this);
+    pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::odometryCallback, this);
     // vel_sub = nh_.subscribe("/current_velocity", 1, &BehaviorPlanner::twistCallback,this);
     vel_sub = nh_.subscribe("/vehicle_status", 1, &BehaviorPlanner::vehicleStatusCallback, this);
     objs_sub = nh_.subscribe("/detection/lidar_tracker/objects",1, &BehaviorPlanner::objsCallback,this);
@@ -72,7 +72,8 @@ BehaviorPlanner::BehaviorPlanner(){
     // to velocity planner
     front_id = -1;
     stop_line_stop = false;
-    callbackthread();
+
+    boost::thread callbackhandler(&BehaviorPlanner::callbackthread,this); 
 }
 void BehaviorPlanner::callbackthread()
 {   
@@ -153,9 +154,10 @@ void BehaviorPlanner::updateFactors(){
         ROS_INFO("No Global");
         return;
     }
+
     // behavior factors
-    missionStart = true; //for test
-    // missionStart = false;
+    // missionStart = true; //for test
+    missionStart = false;
     approachToStartPos = false;
     startArrivalSuccess = false;
     frontCar = false;
@@ -278,8 +280,12 @@ void BehaviorPlanner::updateFactors(){
     behavior_pub.publish(behaviorFactor);
 }
 
-void BehaviorPlanner::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){
-    egoPose = msg->pose;
+// void BehaviorPlanner::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){
+//     egoPose = msg->pose;
+// }
+
+void BehaviorPlanner::odometryCallback(const nav_msgs::Odometry& msg){
+    egoPose = msg.pose.pose;
 }
 
 void BehaviorPlanner::vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg){
@@ -304,10 +310,10 @@ void BehaviorPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
 }
 
 void BehaviorPlanner::routeCallback(const hmcl_msgs::LaneArray &msg){
-    if (msg.lanes.size() < 1){
-        return;
-    }
-    
+    // if (msg.lanes.size() < 1){
+    //     return;
+    // }
+    ROS_INFO("Behavior_planner");
     get_global = true;
     globalLaneArray = msg;
 }

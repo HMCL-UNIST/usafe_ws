@@ -90,7 +90,6 @@ void VelocityPlanner::PlanVel()
   std_msgs::Float64 vel_msg;
   vel_msg.data = ref_speed;
   vel_pub.publish(vel_msg);
-  getLocalTraj = false;
 }
 
 void VelocityPlanner::CheckMotionState()
@@ -549,7 +548,7 @@ void VelocityPlanner::VelocitySmoother()
         break;
       }
       else if (k >= 50 || fail2solve) {
-        ref_speed = xf[1];
+        ref_speed = xf[1]/3;
         std::cout << "Fail" << std::endl;
         previous_step = true;
         break;
@@ -685,7 +684,7 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
       return;
   }
   getLocalTraj = true;
-  MaxVel = msg.speed_limit/3.6;
+  MaxVel = 30/3.6;
 
   double dis = 0;
   double old_dis = 150;
@@ -706,7 +705,10 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
     old_dis = dis;
   }
 
-  std::copy(msg.waypoints.begin()+current_idx,msg.waypoints.end(),traj.waypoints.begin());
+  for (int i = current_idx; i < msg.waypoints.size(); i++){
+    traj.waypoints.push_back(msg.waypoints[i]);
+  }
+  // std::copy(msg.waypoints.begin()+current_idx,msg.waypoints.end(),traj.waypoints.begin());
 
   
   std::cout << "Get reference velocity: " << MaxVel << std::endl;

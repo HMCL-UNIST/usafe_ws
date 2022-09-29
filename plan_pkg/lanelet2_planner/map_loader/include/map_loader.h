@@ -264,7 +264,7 @@ MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::Nod
 void load_map();
 void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
-void global_traj_handler();
+// void global_traj_handler();
 void callbackthread();
 void local_traj_handler(const ros::TimerEvent& time);
 void lir_handler(const ros::TimerEvent& time);
@@ -291,7 +291,7 @@ void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>
 
 
 void init_kalman_filters();
-
+void global_traj_handler(const ros::TimerEvent& time);
 void compute_global_path();
 void compute_local_path();
 void current_lanefollow();

@@ -168,12 +168,12 @@ int V2XMission::RecvMissionStage1(unsigned char* buf)
         }
         printf("select mission %d \n", msg.mission_list[mission_ind].mission_id);
 
-        if (msg.mission_list[mission_ind].status == 0)
-        {
-            printf("%d번 미션 선택 요구 \n", msg.mission_list[mission_ind].mission_id);
-            SendRequest(msg.mission_list[mission_ind].mission_id, RequestType::REQ_SELECT_MISSION);
-            select = true;
-        }
+        // if (msg.mission_list[mission_ind].status == 0)
+        // {
+        printf("%d번 미션 선택 요구 \n", msg.mission_list[mission_ind].mission_id);
+        SendRequest(msg.mission_list[mission_ind].mission_id, RequestType::REQ_SELECT_MISSION);
+        select = true;
+        // }
     }
 
     if(msg.mission_list != nullptr)
@@ -700,7 +700,7 @@ void V2XMission::PrintItemAck(Item_Ack *msg)
 
 int main (int argc, char** argv)
 {
-    ros::init(argc, argv, "Mission_pub");
+    ros::init(argc, argv, "mission_pub");
     ros::NodeHandle nh, nhlocal;
     
     V2XMission V2XMission(nh,nhlocal);

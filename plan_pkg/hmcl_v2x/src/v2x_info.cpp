@@ -370,7 +370,7 @@ void V2XInfo::car_info_callback(const v2x_msgs::PVD& msg)
 
 int main (int argc, char** argv)
 {
-    ros::init(argc, argv, "Info_pub");
+    ros::init(argc, argv, "spat_pub");
     ros::NodeHandle nh_;
     V2XInfo V2XInfo(nh_);
 

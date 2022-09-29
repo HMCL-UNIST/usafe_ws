@@ -102,7 +102,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     g_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/global_traj_viz", 1, true);
     l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
     lir_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lir_viz",1,true);  
-    // viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
+    viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
   }
   
   global_traj_available = true;    
@@ -118,7 +118,11 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   routingGraph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);  
   
   construct_lanelets_with_viz();
-  compute_global_path();
+  // compute_global_path();
+   
+    g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);    
+
+
   if(global_lane_array.lanes.size() == 0){
     ROS_INFO("Routing not occured");
   }
@@ -132,22 +136,23 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   // wp_inArea();
   rp_.setMap(map); 
 
-  callbackthread();  
+  // callbackthread();  
 }
 
-void MapLoader::callbackthread()
-{   
-    ros::Rate loop_rate(10); // rate  
-    while(ros::ok()){
-        global_traj_handler();
-        loop_rate.sleep();
-    }
-}
+// void MapLoader::callbackthread()
+// {   
+//     ros::Rate loop_rate(10); // rate  
+//     while(ros::ok()){
+//         global_traj_handler();
+//         loop_rate.sleep();
+//     }
+// }
 
 MapLoader::~MapLoader()
 {}
 
-void MapLoader::global_traj_handler(){
+void MapLoader::global_traj_handler(const ros::TimerEvent& time){
+// void MapLoader::global_traj_handler(){
   if(goal_available){
     compute_global_path();
   }  
@@ -631,7 +636,8 @@ void MapLoader::construct_lanelets_with_viz(){
  
 
 
-void MapLoader::viz_pub(const ros::TimerEvent& time){  
+void MapLoader::viz_pub(const ros::TimerEvent& time){ 
+  //  ROS_INFO("viz viz");
     g_map_pub.publish(map_marker_array);
     g_traj_lanelet_viz_pub.publish(traj_lanelet_marker_array);
     g_traj_viz_pub.publish(traj_marker_array);
