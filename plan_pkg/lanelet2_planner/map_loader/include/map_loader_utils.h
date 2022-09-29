@@ -4,6 +4,8 @@
 #include <ros/time.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/Attribute.h>
+#include <lanelet2_core/primitives/Primitive.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
@@ -140,6 +142,26 @@ lanelet::ConstLanelets subtypeLanelets(lanelet::ConstLanelets lls, const char su
   return subtype_lanelets;
 }
 
+lanelet::Areas subtypeAreas(lanelet::Areas areas, const char subtype[])
+{
+  lanelet::Areas subtype_areas;
+
+  for (auto li = areas.begin(); li !=areas.end(); li++)
+  {
+    lanelet::Area area = *li;
+    if (area.hasAttribute(lanelet::AttributeName::Subtype))
+    {
+      lanelet::Attribute attr = area.attribute(lanelet::AttributeName::Subtype);
+      if (attr.value() == subtype)
+      {
+        subtype_areas.push_back(area);
+      }
+    }
+  }
+
+  return subtype_areas;
+}
+
 // lanelet::Lanelets crosswalkLanelets(const lanelet::Lanelets lls)
 // {
 //   return (subtypeLanelets(lls, lanelet::AttributeValueString::Crosswalk));
@@ -155,6 +177,20 @@ lanelet::ConstLanelets roadLaneletsConst(lanelet::ConstLanelets lls)
   return (subtypeLanelets(lls, lanelet::AttributeValueString::Road));
 }
 
+lanelet::Areas junctionAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Junction));
+}
+
+lanelet::Areas crosswalkAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Crosswalk));
+}
+
+lanelet::Areas stoplineAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Stopline));
+}
 
 
 

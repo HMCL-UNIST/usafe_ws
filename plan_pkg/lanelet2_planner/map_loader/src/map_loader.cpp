@@ -19,6 +19,7 @@
 #include <string>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 #include <fstream>
 #include <stdlib.h>
 #include <unistd.h>
@@ -27,6 +28,7 @@
 #include <ros/ros.h>
 #include <chrono>
 
+#include <GeographicLib/UTMUPS.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
 #include <vector>
@@ -63,10 +65,10 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   lir_pub= nh_.advertise<hmcl_msgs::LaneArray>("/lane_in_range",2,true);
   
-  max_dist=150;
+  max_dist=100;
   
-  cur_pose.position.x=-77.5211;
-  cur_pose.position.y=2.9457;
+  cur_pose.position.x=-127.8411;
+  cur_pose.position.y=52.5457;
 
   pose_init = true; 
   goal_available = true;
@@ -104,7 +106,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     lir_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lir_viz",1,true);  
     viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
   }
-  
+  v2x_goal_nodes();
   global_traj_available = true;    
   load_map();
   bool map_fix;
@@ -128,7 +130,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   else{
     ROS_INFO("road lanelets are %d",road_lanelets_const.size());
   }
-  // lane_in_range();
+  lane_in_range();
   // wp_inArea();
   rp_.setMap(map);   
 }
@@ -149,13 +151,19 @@ void MapLoader::global_traj_handler(const ros::TimerEvent& time){
 }
 
 void MapLoader::compute_global_path(){
-  pose_a.position.x=-77.5211;
-  pose_a.position.y=2.9457;
+  // pose_a.position.x=-77.5211;
+  // pose_a.position.y=2.9457;
   // pose_b.position.x=-168.8611;
   // pose_b.position.y=64.2857;
-  pose_b.position.x=-194.1411;
-  pose_b.position.y=70.8257;
-  global_lane_array.lanes.clear();  
+  // pose_b.position.x=-194.1411;
+  // pose_b.position.y=70.8257;
+  global_lane_array.lanes.clear();
+  for(int t=0; t<xyz.size()-1; t++){ 
+    pose_a.position.x = xyz[t].first;
+    pose_a.position.y = xyz[t].second;
+    pose_b.position.x = xyz[t+1].first;
+    pose_b.position.y = xyz[t+1].second;
+
   if(pose_init && road_lanelets_const.size() > 0){
       int start_closest_lane_idx = get_closest_lanelet(road_lanelets_const,pose_a);      
       int goal_closest_lane_idx = get_closest_lanelet(road_lanelets_const,pose_b);
@@ -224,17 +232,17 @@ void MapLoader::compute_global_path(){
               // initial lanelet , add current position as the waypoint
               
               if(i==_lane_idx){
-                waypoint_idx_init = getClosestWaypoint(true,lstring,cur_pose);                                                 
+                waypoint_idx_init = getClosestWaypoint(true,lstring,pose_a);                                                 
                 if(i==0){
                     hmcl_msgs::Waypoint wp_;  
                     wp_.lane_id = _lane_idx;
-                    wp_.pose.pose.position.x = cur_pose.position.x;
-                    wp_.pose.pose.position.y = cur_pose.position.y;
-                    wp_.pose.pose.position.z = cur_pose.position.z;
-                    wp_.pose.pose.orientation.x = cur_pose.orientation.x;
-                    wp_.pose.pose.orientation.y = cur_pose.orientation.y;
-                    wp_.pose.pose.orientation.z = cur_pose.orientation.z;
-                    wp_.pose.pose.orientation.w = cur_pose.orientation.w;
+                    wp_.pose.pose.position.x = pose_a.position.x;
+                    wp_.pose.pose.position.y = pose_a.position.y;
+                    wp_.pose.pose.position.z = pose_a.position.z;
+                    wp_.pose.pose.orientation.x = pose_a.orientation.x;
+                    wp_.pose.pose.orientation.y = pose_a.orientation.y;
+                    wp_.pose.pose.orientation.z = pose_a.orientation.z;
+                    wp_.pose.pose.orientation.w = pose_a.orientation.w;
                     wp_.twist.twist.linear.x = ll_.speed_limit;
                     ll_.waypoints.push_back(wp_);
                 }                
@@ -315,10 +323,9 @@ void MapLoader::compute_global_path(){
                   ll_.trafficlights.push_back(tl_);
                 }
               }              
-              global_lane_array.lanes.push_back(ll_);
-
-                
-            }   
+              global_lane_array.lanes.push_back(ll_);   
+             
+        }  
           global_traj_available = true;
           // way_pub.publish(global_lane_array);          
           global_lane_array_for_local = global_lane_array;
@@ -334,8 +341,10 @@ void MapLoader::compute_global_path(){
                       setColor(&traj_marker_color, 0.0, 1.0, 0.0, 0.5);                        
                     insertMarkerArray(&traj_lanelet_marker_array, trajectory_draw(
                     traj_lanelets, traj_marker_color));
-                      std_msgs::ColorRGBA in_cross_color;
+                      std_msgs::ColorRGBA in_cross_color, in_junc_color, in_sl_color;
                       setColor(&in_cross_color, 1.0, 0.0, 0.0, 0.5);
+                      setColor(&in_junc_color, 0.0, 0.0, 1.0, 0.5);
+                      setColor(&in_sl_color, 1.0, 1.0, 0.0, 0.5);
 
               // Construct Traj_marker               
               traj_marker_array.markers.clear();
@@ -357,6 +366,12 @@ void MapLoader::compute_global_path(){
                       if(global_lane_array.lanes[i].waypoints[j].Crosswalk){
                         marker_tmp.color = in_cross_color;
                       }
+                      else if(global_lane_array.lanes[i].waypoints[j].Junction){
+                        marker_tmp.color = in_junc_color;
+                      }
+                      else if(global_lane_array.lanes[i].waypoints[j].Stop_line){
+                        marker_tmp.color = in_sl_color;
+                      }
                       else{
                       marker_tmp.color = traj_marker_color;
                       }
@@ -373,6 +388,7 @@ void MapLoader::compute_global_path(){
   }
   else{
     ROS_WARN("[MAP_LOADER] = Current pose is not initialized or map is not loaded");
+  }
   }   
 
 }
@@ -421,81 +437,93 @@ void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){
 
 void MapLoader::lane_in_range(){
   hmcl_msgs::LaneArray tmp_array;
-  hmcl_msgs::LaneArray lir_array;
   tmp_array = global_lane_array;
   int cl_lane_idx, cl_pt_idx, in_lane_idx, in_pt_idx;
+  bool add_stop = false;
+  bool in_lc;
+  int flag_num = 0;
+  int flag_n = 0;
+
+  for(int i=0; i<global_lane_array.lanes.size(); i++){
+    if(global_lane_array.lanes[i].lane_change_flag){
+      flag_num++;
+    }
+  }
+
+  ROS_INFO("global %d flags are", flag_num);
 
   lir_array.lanes.clear();
-
-  if(lir_array.lanes.empty()){
-    lir_available = false;
-  }
-
-  in_lane_idx = 0;
-
   findnearest_lane_and_point_idx(tmp_array, cur_pose, cl_lane_idx, cl_pt_idx);
-  if(cl_lane_idx < in_lane_idx + 2){
-    in_lane_idx =  cl_lane_idx;
-    in_pt_idx = cl_pt_idx;
+
+  for(int i=0; i<cl_pt_idx; i++){
+    tmp_array.lanes[cl_lane_idx].waypoints.erase(tmp_array.lanes[cl_lane_idx].waypoints.begin());
+  }
+  for(int i=0; i<cl_lane_idx; i++){
+    tmp_array.lanes.erase(tmp_array.lanes.begin());
   }
 
-  if(in_lane_idx>0){
-    for(int i=0; i<in_lane_idx; i++){
-      tmp_array.lanes.erase(tmp_array.lanes.begin()+i);
+  for(int i=0; i<tmp_array.lanes.size(); i++){
+    if(tmp_array.lanes[i].lane_change_flag){
+      flag_n++;
     }
   }
-  for(int i=0; i<in_pt_idx; i++){
-    tmp_array.lanes[in_lane_idx].waypoints.erase(tmp_array.lanes[in_lane_idx].waypoints.begin()+i);
-  }
+  ROS_INFO("cutting %d flags are", flag_n);
 
-  bool add_stop = true;
-  int lane_idx, pt_idx;
-  lane_idx = in_lane_idx;
-  pt_idx =  in_pt_idx;
-  while(add_stop){
-    hmcl_msgs::Lane lir_lane;
-    while(calculate_distance(cur_pose,tmp_array.lanes[lane_idx].waypoints[pt_idx],max_dist)){
-      if(pt_idx<tmp_array.lanes[lane_idx].waypoints.size()){
-        hmcl_msgs::Waypoint wp;
-        wp = tmp_array.lanes[lane_idx].waypoints[pt_idx];
-        lir_lane.waypoints.push_back(wp);
-        pt_idx++;
-      }
-      else{
-        lane_idx++;
-        pt_idx=0;
-      }
-      if(tmp_array.lanes[lane_idx].lane_change_flag){
-        break;
-      }
-    }
-    lir_array.lanes.push_back(lir_lane);
-    if(calculate_distance(cur_pose,tmp_array.lanes[lane_idx].waypoints[pt_idx],max_dist)){
-      hmcl_msgs::Lane lir_lane;
-      int i=0;
-      while(add_stop){
-        if(calculate_distance(cur_pose,tmp_array.lanes[lane_idx+1].waypoints[i],max_dist)){
-          hmcl_msgs::Waypoint wp;
-          wp = tmp_array.lanes[lane_idx+1].waypoints[i];
-          lir_lane.waypoints.push_back(wp);
-          i++;
+  hmcl_msgs::Lane ll;
+  for(int i=0; i<tmp_array.lanes.size(); i++){
+    for(int j=0; j<tmp_array.lanes[i].waypoints.size(); j++){
+      if(!tmp_array.lanes[i].lane_change_flag){
+        if(in_lc){
+          lir_array.lanes.push_back(ll);
+          ll.waypoints.clear();
+          in_lc = false;
+        }
+        if(calculate_distance(cur_pose,tmp_array.lanes[i].waypoints[j], max_dist)){
+          ll.waypoints.push_back(tmp_array.lanes[i].waypoints[j]);
         }
         else{
-        add_stop=false;
-        lir_array.lanes.push_back(lir_lane);
+          add_stop = true;
+          break;
+        }
+      }
+      else{
+        if(calculate_distance(cur_pose,tmp_array.lanes[i].waypoints[j], max_dist)){
+          ll.waypoints.push_back(tmp_array.lanes[i].waypoints[j]);
+          in_lc = true;
+        }
+        else{
+          lir_array.lanes.push_back(ll);
+          ll.waypoints.clear();
+          break;
         }
       }
     }
+    if(add_stop){
+      lir_array.lanes.push_back(ll);
+      ll.waypoints.clear();
+      break;
+    }
   }
-  if(lir_array.lanes.size()>0)
-  {
+  if(ll.waypoints.size()>0){
+    lir_array.lanes.push_back(ll);
+  }
+  if(lir_array.lanes.size()>0){
     lir_available = true;
+    ROS_INFO("lir is ready");
+    viz_lir(lir_array);
+    if(lir_marker_array.markers.size()>0){
+      ROS_INFO("lir_marker is ready");
+    }
   }
 }
 
 void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
-  std_msgs::ColorRGBA lir_marker_color;
-  setColor(&lir_marker_color, 1.0, 0.0, 0.0, 0.5);
+  std_msgs::ColorRGBA lir_marker_color, lir_marker_even, junction_cl, crosswalk_cl, stopline_cl;
+  setColor(&lir_marker_color, 0.0, 1.0, 1.0, 0.5);
+  setColor(&lir_marker_even, 1.0, 0.0, 1.0, 0.5);
+  setColor(&junction_cl, 0.0, 0.0, 1.0, 0.5);
+  setColor(&crosswalk_cl, 1.0, 0.0, 0.0, 0.5);
+  setColor(&stopline_cl, 1.0, 1.0, 0.0, 0.5);
   lir_marker_array.markers.clear();
   if(lir_available){
     for(int i=0; i<lanes.lanes.size(); i++){
@@ -503,8 +531,8 @@ void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
         visualization_msgs::Marker marker_tmp;
         marker_tmp.header.stamp = ros::Time::now();
         marker_tmp.header.frame_id = "map" ; //global_lane_array.header.frame_id;
-        marker_tmp.id = 10000+i;
-        marker_tmp.ns = "ltraj";
+        marker_tmp.id = 10000+i*1000+j;
+        marker_tmp.ns = "lir";
         marker_tmp.type = visualization_msgs::Marker::ARROW;
         marker_tmp.action = visualization_msgs::Marker::ADD;                  
         marker_tmp.pose.position.x = lanes.lanes[i].waypoints[j].pose.pose.position.x;
@@ -514,7 +542,21 @@ void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
         marker_tmp.pose.orientation.y = lanes.lanes[i].waypoints[j].pose.pose.orientation.y;
         marker_tmp.pose.orientation.z = lanes.lanes[i].waypoints[j].pose.pose.orientation.z;
         marker_tmp.pose.orientation.w = lanes.lanes[i].waypoints[j].pose.pose.orientation.w;
-        marker_tmp.color = lir_marker_color;
+        if(lanes.lanes[i].waypoints[j].Crosswalk){
+          marker_tmp.color = crosswalk_cl;
+        }
+        else if(lanes.lanes[i].waypoints[j].Junction){
+          marker_tmp.color = junction_cl;
+        }
+        else if(lanes.lanes[i].waypoints[j].Stop_line){
+          marker_tmp.color = stopline_cl;
+        }
+        else if(i%2 == 0){
+          marker_tmp.color = lir_marker_color;  
+        }
+        else if(i%2 == 1){
+          marker_tmp.color = lir_marker_even;
+        }
         marker_tmp.lifetime = ros::Duration(0.1);
         marker_tmp.scale.x = 1.2;
         marker_tmp.scale.y = 0.6;
@@ -527,7 +569,6 @@ void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
 void MapLoader::lir_handler(const ros::TimerEvent& time){
   if(global_traj_available){
     lane_in_range();
-    wp_inArea();
     if(lir_array.lanes.size()>0){
       std::cout<<"lir ready"<<std::endl;
       lir_pub.publish(lir_array);
@@ -539,19 +580,24 @@ void MapLoader::lir_handler(const ros::TimerEvent& time){
 }
 
 void MapLoader::wp_inArea(){
-  ROS_INFO("wp is");
   if(global_traj_available){
-    ROS_INFO("Hi");
-    ROS_INFO("%d area", areas.size());
     for(int i=0; i<global_lane_array.lanes.size(); i++){
       for(int j=0; j<global_lane_array.lanes[i].waypoints.size(); j++){
         for(int k=0; k<areas.size(); k++){
           hmcl_msgs::Waypoint wp=global_lane_array.lanes[i].waypoints[j];
           lanelet::Area area = areas[k];
           if(lanelet::geometry::inside(area,lanelet::BasicPoint2d(wp.pose.pose.position.x,wp.pose.pose.position.y))){
-            ROS_INFO("%d lane %d point is in Area",i,j);
+            lanelet::Attribute attr = area.attribute(lanelet::AttributeName::Subtype);
+            if(attr.value() == lanelet::AttributeValueString::Crosswalk){
             global_lane_array.lanes[i].waypoints[j].Crosswalk = true;
-          };
+            }
+            else if(attr.value() == lanelet::AttributeValueString::Junction){
+            global_lane_array.lanes[i].waypoints[j].Junction = true;
+            }
+            else if(attr.value() == lanelet::AttributeValueString::Stopline){
+            global_lane_array.lanes[i].waypoints[j].Stop_line = true;
+            }
+          }
         }
       }
     }
@@ -589,19 +635,26 @@ void MapLoader::construct_lanelets_with_viz(){
   road_lanelets = roadLanelets(all_lanelets);  
   road_lanelets_const = roadLaneletsConst(all_laneletsConst);
   areas = AreaLayer(map);
+  junction = junctionAreas(areas); 
+  crosswalk = crosswalkAreas(areas);
+  stopline = stoplineAreas(areas);
+
+  ROS_INFO("%d areas, %d junction, %d crosswalk, %d stopline", areas.size(), junction.size(), crosswalk.size(), stopline.size());
 
   std::vector<std::shared_ptr<const lanelet::TrafficLight>> tl_reg_elems = get_trafficLights(all_lanelets);
   std::vector<lanelet::LineString3d> tl_stop_lines = getTrafficLightStopLines(road_lanelets);
-  std_msgs::ColorRGBA cl_road, cl_area, cl_cross, cl_ll_borders, cl_tl_stoplines, cl_ss_stoplines, cl_trafficlights;
+  std_msgs::ColorRGBA cl_road, cl_junction, cl_cross, cl_ll_borders, cl_tl_stoplines, cl_ss_stoplines, cl_trafficlights;
   setColor(&cl_road, 0.2, 0.7, 0.7, 0.3);
-  setColor(&cl_area, 0.0, 1.0, 0.0, 0.5);
+  setColor(&cl_junction, 0.0, 1.0, 0.0, 0.5);
   setColor(&cl_cross, 0.2, 0.7, 0.2, 0.3);
   setColor(&cl_ll_borders, 1.0, 1.0, 0.0, 0.3);
   setColor(&cl_tl_stoplines, 1.0, 0.5, 0.0, 0.5);
   setColor(&cl_ss_stoplines, 1.0, 0.0, 0.0, 0.5);
   setColor(&cl_trafficlights, 0.0, 0.0, 1.0, 0.8);
 
-  insertMarkerArray(&map_marker_array, areaMarkerArray(areas,cl_area));
+  insertMarkerArray(&map_marker_array, areaMarkerArray(junction,cl_junction));
+  insertMarkerArray(&map_marker_array, areaMarkerArray(crosswalk, cl_cross));
+  insertMarkerArray(&map_marker_array, areaMarkerArray(stopline,cl_ss_stoplines));
   insertMarkerArray(&map_marker_array, laneletsBoundaryAsMarkerArray(
     road_lanelets, cl_ll_borders));
   insertMarkerArray(&map_marker_array, trafficLightsAsTriangleMarkerArray(
@@ -614,11 +667,6 @@ void MapLoader::construct_lanelets_with_viz(){
     all_lanelets.size(), tl_stop_lines.size());
  
 }
-
-
-
- 
-
 
 void MapLoader::viz_pub(const ros::TimerEvent& time){  
     g_map_pub.publish(map_marker_array);
@@ -648,6 +696,57 @@ double MapLoader::get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::Co
       _angle = _angle + 2*M_PI;
     }
   return _angle;
+}
+
+void MapLoader::v2x_goal_nodes(){
+  double origin_x, origin_y;
+  int zone=52, setzone=-1;
+  double gamma, k;
+  bool north=true, mgrs=false;
+
+  std::vector<std::pair<double,double>> lla;
+  std::pair<double, double> n1 = {128.4007912, 35.6473269};
+  std::pair<double, double> n2 = {128.4004897, 35.6475503};
+  std::pair<double, double> n3 = {128.400041, 35.6476327};
+  std::pair<double, double> n4 = {128.3994251, 35.6479669};
+  std::pair<double, double> n5 = {128.3991161, 35.6484246};
+  std::pair<double, double> n6 = {128.3991183, 35.6487722};
+  std::pair<double, double> n7 = {128.3988279, 35.6490777};
+  std::pair<double, double> n8 = {128.3986198, 35.649262};
+  std::pair<double, double> n9 = {128.3985271, 35.6495136};
+  std::pair<double, double> n10 = {128.3990426, 35.6492655};
+  std::pair<double, double> n11 = {128.3994456, 35.6487118};
+  std::pair<double, double> n12 = {128.3990969, 35.648453};
+  std::pair<double, double> n13 = {128.3984583, 35.6487572};
+  std::pair<double, double> n14 = {128.39822, 35.6492807};
+  std::pair<double, double> n15 = {128.3985405, 35.6491925};
+  std::pair<double, double> n16 = {128.3987532, 35.6490049};
+  std::pair<double, double> n17 = {128.3990167, 35.6488157};
+  std::pair<double, double> n18 = {128.3994719, 35.6486958};
+  std::pair<double, double> n19 = {128.4000283, 35.6483885};
+  std::pair<double, double> n20 = {128.400377, 35.6478831};
+  std::pair<double, double> n21 = {128.4004214, 35.6475648};
+  std::pair<double, double> n22 = {128.4007492, 35.6472273};
+
+  lla.push_back(n1); lla.push_back(n2); lla.push_back(n3); lla.push_back(n4);
+  lla.push_back(n5); lla.push_back(n6); lla.push_back(n7); lla.push_back(n8);
+  lla.push_back(n9); lla.push_back(n10); lla.push_back(n11); lla.push_back(n12);
+  lla.push_back(n13); lla.push_back(n14); lla.push_back(n15); lla.push_back(n16);
+  lla.push_back(n17); lla.push_back(n18); lla.push_back(n19); lla.push_back(n20);
+  lla.push_back(n21); lla.push_back(n22);
+
+  GeographicLib::UTMUPS::Forward(origin_lat, origin_lon, zone, north, origin_x, origin_y, setzone, mgrs);
+  
+  for(int i=0; i<lla.size(); i++){
+    double x, y;
+    GeographicLib::UTMUPS::Forward(lla[i].second, lla[i].first, zone, north, x, y, setzone, mgrs);
+    std::pair<double,double> xy = {x-origin_x, y-origin_y};
+    xyz.push_back(xy);
+  }
+
+  // for(int i=0; i<xyz.size(); i++){
+  //   ROS_INFO("%f, %f", xyz[i].first, xyz[i].second);
+  // }
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////

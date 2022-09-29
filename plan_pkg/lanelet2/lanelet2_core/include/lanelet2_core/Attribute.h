@@ -342,7 +342,7 @@ struct AttributeValueString {
   static constexpr const char BicycleLane[] = "bicycle_lane";
   static constexpr const char Walkway[] = "walkway";
   static constexpr const char SharedWalkway[] = "shared_walkway";
-  static constexpr const char Crosswalk[] = "crosswalk";
+  // static constexpr const char Crosswalk[] = "crosswalk";
   static constexpr const char Stairs[] = "stairs";
 
   // Lanelet location tag
@@ -357,6 +357,9 @@ struct AttributeValueString {
   static constexpr const char Building[] = "building";
   static constexpr const char TrafficIsland[] = "traffic_island";
   static constexpr const char Exit[] = "exit";
+  static constexpr const char Junction[] = "Junction";
+  static constexpr const char Crosswalk[] = "Crosswalk";
+  static constexpr const char Stopline[] = "Stopline";
 
   // Regulatory elements
   static constexpr const char TrafficLight[] = "traffic_light";

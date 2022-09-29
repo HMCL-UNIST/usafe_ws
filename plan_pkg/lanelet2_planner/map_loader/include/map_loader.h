@@ -171,6 +171,7 @@ std::vector<lanelet::ConstLanelet> target_lanes;
 std::vector<lanelet::ConstLanelet> lanes;
 std::vector<lanelet::ConstLanelet> lir;
 std::vector<hmcl_msgs::Lane> traj_ll;
+std::vector<std::pair<double,double>> xyz;
 bool map_loaded;
 float local_path_length;
 double origin_lat;
@@ -205,6 +206,9 @@ geometry_msgs::Pose cur_goal;
 lanelet::Lanelets road_lanelets;
 lanelet::ConstLanelets road_lanelets_const;
 lanelet::Areas areas;
+lanelet::Areas junction;
+lanelet::Areas crosswalk;
+lanelet::Areas stopline;
 
 bool left_change_signal, right_change_signal;
 LaneChangeState lane_change_state, prev_lane_change_state;
