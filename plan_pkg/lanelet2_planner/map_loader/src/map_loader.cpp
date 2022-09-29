@@ -70,9 +70,9 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   // cur_pose.position.x=-127.8411;
   // cur_pose.position.y=52.5457;
 
-  pose_init = true; 
+  pose_init = false; 
   goal_available = true;
-  pose_sub = nh_.subscribe("/current_pose",1,&MapLoader::poseCallback,this);
+  pose_sub = nh_.subscribe("/gnss_pose_world",1,&MapLoader::poseCallback,this);
   // odom_sub = nh_.subscribe("/carla/hero/odometry",100, &MapLoader::llaCallback,this);
   // goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
   // vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
@@ -425,36 +425,25 @@ void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){
 void MapLoader::lane_in_range(){
   hmcl_msgs::LaneArray tmp_array;
   tmp_array = global_lane_array;
-  int cl_lane_idx, cl_pt_idx, in_lane_idx, in_pt_idx;
+  int near_lane_idx, near_pt_idx, in_lane_idx, in_pt_idx;
   bool add_stop = false;
   bool in_lc;
-  int flag_num = 0;
-  int flag_n = 0;
-
-  for(int i=0; i<global_lane_array.lanes.size(); i++){
-    if(global_lane_array.lanes[i].lane_change_flag){
-      flag_num++;
-    }
-  }
-
-  ROS_INFO("global %d flags are", flag_num);
 
   lir_array.lanes.clear();
-  findnearest_lane_and_point_idx(tmp_array, cur_pose, cl_lane_idx, cl_pt_idx);
+  findnearest_lane_and_point_idx(tmp_array, cur_pose, near_lane_idx, near_pt_idx);
 
+  if(near_lane_idx < cl_lane_idx+2 && near_lane_idx > cl_lane_idx-2){
+    cl_lane_idx = near_lane_idx;
+    cl_pt_idx = near_pt_idx;
+  }
+  ROS_INFO("%d is closest lane", cl_lane_idx);
+  ROS_INFO("%d is cloesest point",cl_pt_idx);
   for(int i=0; i<cl_pt_idx; i++){
     tmp_array.lanes[cl_lane_idx].waypoints.erase(tmp_array.lanes[cl_lane_idx].waypoints.begin());
   }
   for(int i=0; i<cl_lane_idx; i++){
     tmp_array.lanes.erase(tmp_array.lanes.begin());
   }
-
-  for(int i=0; i<tmp_array.lanes.size(); i++){
-    if(tmp_array.lanes[i].lane_change_flag){
-      flag_n++;
-    }
-  }
-  ROS_INFO("cutting %d flags are", flag_n);
 
   hmcl_msgs::Lane ll;
   for(int i=0; i<tmp_array.lanes.size(); i++){
@@ -496,11 +485,7 @@ void MapLoader::lane_in_range(){
   }
   if(lir_array.lanes.size()>0){
     lir_available = true;
-    ROS_INFO("lir is ready");
     viz_lir(lir_array);
-    if(lir_marker_array.markers.size()>0){
-      ROS_INFO("lir_marker is ready");
-    }
   }
 }
 

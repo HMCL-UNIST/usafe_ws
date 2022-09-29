@@ -186,7 +186,8 @@ hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, 
 
 geometry_msgs::Pose pose_a, pose_b;
 
-
+int cl_lane_idx = 0; 
+int cl_pt_idx = 0;
 
 
 std::string osm_file_name;
