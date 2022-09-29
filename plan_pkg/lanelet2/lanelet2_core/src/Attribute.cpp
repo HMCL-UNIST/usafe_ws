@@ -226,7 +226,7 @@ constexpr const char AttributeValueString::EmergencyLane[];
 constexpr const char AttributeValueString::BicycleLane[];
 constexpr const char AttributeValueString::Walkway[];
 constexpr const char AttributeValueString::SharedWalkway[];
-constexpr const char AttributeValueString::Crosswalk[];
+// constexpr const char AttributeValueString::Crosswalk[];
 constexpr const char AttributeValueString::Stairs[];
 
 // Lanelet location tag
@@ -241,6 +241,9 @@ constexpr const char AttributeValueString::Vegetation[];
 constexpr const char AttributeValueString::Building[];
 constexpr const char AttributeValueString::TrafficIsland[];
 constexpr const char AttributeValueString::Exit[];
+constexpr const char AttributeValueString::Junction[];
+constexpr const char AttributeValueString::Crosswalk[];
+constexpr const char AttributeValueString::Stopline[];
 
 // Regulatory elements
 constexpr const char AttributeValueString::TrafficLight[];

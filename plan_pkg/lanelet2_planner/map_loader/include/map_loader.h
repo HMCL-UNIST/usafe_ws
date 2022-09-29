@@ -171,6 +171,7 @@ std::vector<lanelet::ConstLanelet> target_lanes;
 std::vector<lanelet::ConstLanelet> lanes;
 std::vector<lanelet::ConstLanelet> lir;
 std::vector<hmcl_msgs::Lane> traj_ll;
+std::vector<std::pair<double,double>> xyz;
 bool map_loaded;
 float local_path_length;
 double origin_lat;
@@ -205,6 +206,9 @@ geometry_msgs::Pose cur_goal;
 lanelet::Lanelets road_lanelets;
 lanelet::ConstLanelets road_lanelets_const;
 lanelet::Areas areas;
+lanelet::Areas junction;
+lanelet::Areas crosswalk;
+lanelet::Areas stopline;
 
 bool left_change_signal, right_change_signal;
 LaneChangeState lane_change_state, prev_lane_change_state;
@@ -264,8 +268,7 @@ MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p, const ros::Nod
 void load_map();
 void construct_lanelets_with_viz();
 void viz_pub(const ros::TimerEvent& time);
-// void global_traj_handler();
-void callbackthread();
+void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
 void lir_handler(const ros::TimerEvent& time);
 void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
@@ -291,7 +294,7 @@ void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>
 
 
 void init_kalman_filters();
-void global_traj_handler(const ros::TimerEvent& time);
+
 void compute_global_path();
 void compute_local_path();
 void current_lanefollow();
