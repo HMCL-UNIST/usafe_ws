@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   hmcl_msgs
   autoware_msgs
+  v2x_msgs
 )
 
 catkin_package(
@@ -23,6 +24,7 @@ catkin_package(
   hmcl_msgs
   std_msgs
   autoware_msgs 
+  v2x_msgs
   LIBRARIES
 )
 
@@ -34,21 +36,23 @@ include_directories(
 )
 
 
-
 #add_executable(dynamic_reconfigure_node src/acc_node.cpp)
 #add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
 #target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 #SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(local_planner src/local_planner.cpp)
-target_link_libraries(local_planner ${catkin_LIBRARIES})
-add_dependencies(local_planner ${catkin_EXPORTED_TARGETS})
+# add_executable(local_planner src/local_planner.cpp)
+# target_link_libraries(local_planner ${catkin_LIBRARIES})
+# add_dependencies(local_planner ${catkin_EXPORTED_TARGETS})
 
+add_executable(publisher src/publisher.cpp)
+target_link_libraries(publisher ${catkin_LIBRARIES})
+add_dependencies(publisher ${catkin_EXPORTED_TARGETS})
 
 
 install(
   TARGETS    
-  local_planner
+  publisher
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

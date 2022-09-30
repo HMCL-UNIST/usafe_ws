@@ -307,6 +307,10 @@ void VelocityPlanner::CheckMotionState()
     //     }
     //   }
     }
+  else if(CurrentMode ==  BehaviorState::Init){
+    targetVel = 0;
+    MotionMode = MotionState::STOP; 
+  }
   else{
     targetVel = MaxVel;
     MotionMode = MotionState::GO; 

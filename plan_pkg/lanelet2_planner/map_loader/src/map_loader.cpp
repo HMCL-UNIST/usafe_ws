@@ -72,7 +72,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   pose_init = false; 
   goal_available = true;
-  pose_sub = nh_.subscribe("/gnss_pose_world",1,&MapLoader::poseCallback,this);
+  pose_sub = nh_.subscribe("/pose_estimate",1,&MapLoader::poseCallback,this);
   // odom_sub = nh_.subscribe("/carla/hero/odometry",100, &MapLoader::llaCallback,this);
   // goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
   // vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
@@ -407,14 +407,14 @@ unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLi
   return closest_idx;
 }
 
-void MapLoader::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){  
+void MapLoader::poseCallback(const nav_msgs::OdometryConstPtr& msg){  
   if(!pose_init){
     pose_init = true;
   }
-  cur_pose = msg->pose;
-  pose_x = msg->pose.position.x;
-  pose_y = msg->pose.position.y;
-  pose_z = msg->pose.position.z;
+  cur_pose = msg->pose.pose;
+  odom_x = msg->pose.pose.position.x;
+  odom_y = msg->pose.pose.position.y;
+  odom_z = msg->pose.pose.position.z;
 }
 void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){ 
   odom_x = msg->pose.pose.position.x;

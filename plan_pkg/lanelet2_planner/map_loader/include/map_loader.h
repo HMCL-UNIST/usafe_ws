@@ -272,7 +272,7 @@ void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
 void lir_handler(const ros::TimerEvent& time);
-void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+void poseCallback(const nav_msgs::OdometryConstPtr& msg);
 void llaCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);

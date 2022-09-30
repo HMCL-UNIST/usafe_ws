@@ -26,8 +26,13 @@
       <param name="map_origin_att" value="55.494"/>  -->
       
       <!-- KIAPI -->
-      <param name="map_origin_lat" value="35.6470671983"/> 
+      <!-- <param name="map_origin_lat" value="35.6470671983"/> 
       <param name="map_origin_lon" value="128.401913578"/>  
+      <param name="map_origin_att" value="25.797"/>   -->
+
+      <!-- KIAPI -->
+      <param name="map_origin_lat" value="35.64698633754966"/> 
+      <param name="map_origin_lon" value="128.40112675332395"/>  
       <param name="map_origin_att" value="25.797"/>  
 
       <!-- <param name="map_origin_lat" value="0.0"/> 

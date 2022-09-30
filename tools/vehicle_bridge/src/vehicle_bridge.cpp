@@ -43,7 +43,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   Ccan_recv_status(false), 
   emergency_count(0),
   emergency_stop_activate(false),
-  drivingState(DrivingState::Parking),  
+  drivingState(DrivingState::Init),  
   missionState(MissionState::ACC),
   scc_overwrite(false)
 {
@@ -72,7 +72,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   // velPub  = nh_light_.advertise<std_msgs::Float64>("/setpoint", 2);   
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  // SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);  
+  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdFloatCallback, this);  
   VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);  
   emergency_stopSub = nh_acc.subscribe("/volt", 2, &VehicleBridge::emergencyRemoteCallback, this);
   // setpointSub = nh_acc.subscribe("/setpoint", 2, &VehicleBridge::SetpointCallback, this);
@@ -85,7 +85,7 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   // boost::thread AcanWatch(&VehicleBridge::AcanWatchdog,this); 
   boost::thread statemachine(&VehicleBridge::DrivingStateMachine,this); 
   // boost::thread missionMachine(&VehicleBridge::MissionStateMachine,this); 
-  boost::thread test(&VehicleBridge::TestCase,this); 
+  // boost::thread test(&VehicleBridge::TestCase,this); 
 
   
   // f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
@@ -320,9 +320,9 @@ void VehicleBridge::AcanSender()
       }
       // ROS_INFO("@@ scc frame = %d", scc_frame.data[1]);
       usleep(10);
-      AcanPub.publish(scc_frame);
+      // AcanPub.publish(scc_frame);
       usleep(10);
-      AcanPub.publish(gear_frame);
+      // AcanPub.publish(gear_frame);
       usleep(10);
       AcanPub.publish(steering_frame);
       // usleep(10);     
@@ -354,6 +354,18 @@ void VehicleBridge::controlEffortCallback(const std_msgs::Float64& control_effor
       scc_frame.data[1] = (accel_value & 0b11111111);
 	    scc_frame.data[2] = ((accel_value >> 8)&0b11111111);  
   }
+}
+void VehicleBridge::SteeringCmdFloatCallback(std_msgs::Float64ConstPtr msg){
+  ROS_INFO("!!!");
+ steering_frame.header.stamp = ros::Time::now();
+  steering_frame.id = 0x300;
+  steering_frame.dlc = 3;
+  steering_frame.is_error = false;
+  steering_frame.is_extended = false;
+  steering_frame.is_rtr = false;
+  short steer_value = (short)((msg->data)*gear_ratio*180/PI*10)+steering_offset;
+  steering_frame.data[0] = (steer_value & 0b11111111);
+	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
 }
 
 void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
@@ -640,6 +652,7 @@ void VehicleBridge::DrivingStateMachine() {
         steering_frame.is_error = false;
         steering_frame.is_extended = false;
         steering_frame.is_rtr = false;
+        steering_frame.data[2] = (unsigned int)STR_mode_on & 0b11111111;
         // GO TO DRIVING GEAR        
         // GO TO NORMAL DRIVING STAT
         

@@ -166,6 +166,7 @@ void SetpointCallback(std_msgs::Float64ConstPtr msg);
 void dyn_callback(vehicle_bridge::testConfig& config, uint32_t level);
 void InitCanmsg();
 // Vehicle commands Callbacks
+void SteeringCmdFloatCallback(std_msgs::Float64ConstPtr msg);
 void SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg);
 void AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg);
 void ShiftCmdCallback(hmcl_msgs::VehicleGearConstPtr msg);

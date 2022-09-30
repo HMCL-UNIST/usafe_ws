@@ -32,6 +32,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("frontlenEgo", frontlenEgo, 4.180/2);// need to check lidar position in real vehicle
     nh_.param<float>("minFront", minFront, 100);
     nh_.param<float>("thresLC", thresLC, 0.5); // need to check if 0.5 is sufficient
+    nh_.param<float>("thresStop", thresStop, 0.01); // need to check if 0.01 is sufficient
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
     pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::odometryCallback, this);
@@ -41,7 +42,8 @@ BehaviorPlanner::BehaviorPlanner(){
     //goal_sub = nh_.subscribe("move_base_simple/goal", 1, &BehaviorPlanner::callbackGetGoalPose, this);
     v2x_mission_sub = nh_.subscribe("/Mission1", 1, &BehaviorPlanner::v2xMissionCallback, this);
     v2x_spat_sub = nh_.subscribe("/SPAT",1, &BehaviorPlanner::v2xSPATCallback, this);
-    route_sub = nh_.subscribe("/global_traj", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
+    // route_sub = nh_.subscribe("/global_traj", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
+    route_sub = nh_.subscribe("/lane_in_range", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
     mission_sub = nh_.subscribe("/mission_state", 1, &BehaviorPlanner::missionCallback, this);
     behavior_pub = nh_.advertise<hmcl_msgs::BehaviorFactor>("/behavior_factor",1,true);
     // behavior_timer = nh_.createTimer(ros::Duration(0.05), &BehaviorPlanner::behavior_handler,this);
@@ -75,8 +77,7 @@ BehaviorPlanner::BehaviorPlanner(){
 
     boost::thread callbackhandler(&BehaviorPlanner::callbackthread,this); 
 }
-void BehaviorPlanner::callbackthread()
-{   
+void BehaviorPlanner::callbackthread(){   
     ros::Rate loop_rate(10); // rate  
     while(ros::ok()){
         updateFactors();
@@ -242,37 +243,47 @@ void BehaviorPlanner::updateFactors(){
             }
         }
     }
+    // check mission start
     if(currentMission == MissionState::DriveToStartPos){
         missionStart = true;
     }
 
-    // calculate safe distance
+    // check if ego stop
+    if(dsEgo < thresStop) stopCheck = true;
+    // calculate safe distance and check if it is stationary car
     if(frontCar){
         this->calculateSafeDistance(dsObj[front_id],dsEgo,safeFront);
         gapFront = minFront - detectedObjects.objects[front_id].dimensions.x/2 - frontlenEgo;
+        if (abs(dsObj[front_id]) < thresStop){
+            stationaryFrontCar = true;
+        }
     }
+
+    // get turn flag from global
+    
+    turn = leftTurn || rightTurn;
 
     // determine doneLC
     // if(esssentialLaneChange == true){
     //     if(this->needLC == false && abs(lEgo)<thresLC) this->doneLC = true; 
     // }
-    ROS_INFO("DKJF");
+    // ROS_INFO("DKJF");
     //update behavior factor
-    behaviorFactor.front_id = front_id;
+    behaviorFactor.front_id = front_id; // done
     behaviorFactor.stop_line_stop = stop_line_stop;
-    behaviorFactor.transition_condition.missionStart = missionStart;
+    behaviorFactor.transition_condition.missionStart = missionStart; // done
     behaviorFactor.transition_condition.approachToStartPos = approachToStartPos;
     behaviorFactor.transition_condition.startArrivalSuccess = startArrivalSuccess;
-    behaviorFactor.transition_condition.frontCar = frontCar;
-    behaviorFactor.transition_condition.stationaryFrontCar = stationaryFrontCar;
+    behaviorFactor.transition_condition.frontCar = frontCar; // need to test
+    behaviorFactor.transition_condition.stationaryFrontCar = stationaryFrontCar; //need to test
     behaviorFactor.transition_condition.approachToCrosswalk = approachToCrosswalk;
     behaviorFactor.transition_condition.crosswalkPass = crosswalkPass;
     behaviorFactor.transition_condition.pedestrianOnCrosswalk = pedestrianOnCrosswalk;
-    behaviorFactor.transition_condition.leftTurn = leftTurn;
-    behaviorFactor.transition_condition.rightTurn = rightTurn;
-    behaviorFactor.transition_condition.turn = turn;
+    behaviorFactor.transition_condition.leftTurn = leftTurn; // need to get from global (request to SH)
+    behaviorFactor.transition_condition.rightTurn = rightTurn; // need to get from global (requers to SH)
+    behaviorFactor.transition_condition.turn = turn; // done
     behaviorFactor.transition_condition.trafficLightStop = trafficLightStop;
-    behaviorFactor.transition_condition.stopCheck = stopCheck;
+    behaviorFactor.transition_condition.stopCheck = stopCheck; // need to test
     behaviorFactor.transition_condition.luggageDrop = luggageDrop;
     behaviorFactor.transition_condition.brokenFrontCar = brokenFrontCar;
     behaviorFactor.transition_condition.laneChangeDone = laneChangeDone;

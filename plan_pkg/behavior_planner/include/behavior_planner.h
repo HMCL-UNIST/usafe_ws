@@ -45,7 +45,7 @@ class BehaviorPlanner
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
         ros::Publisher behavior_pub;
         // ros::Timer behavior_timer;
-        float minBrake, maxBrake, maxAccel, rho, wLane, lenEgo, frontlenEgo, minFront, thresLC;
+        float minBrake, maxBrake, maxAccel, rho, wLane, lenEgo, frontlenEgo, minFront, thresLC, thresStop;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
         autoware_msgs::DetectedObjectArray detectedObjects;

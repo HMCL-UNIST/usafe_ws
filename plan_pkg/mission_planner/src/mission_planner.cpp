@@ -23,6 +23,8 @@ MissionStateMachine::MissionStateMachine(){
 
     v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
     v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
+    behavior_sub = nh_.subscribe("/behavior_state", 1, &MissionStateMachine::behaviorCallback, this);
+
     mission_pub = nh_.advertise<std_msgs::Int16>("/mission_state",1,true);
     // mission_timer = nh_.createTimer(ros::Duration(0.05), &MissionStateMachine::mission_handler,this);
 
