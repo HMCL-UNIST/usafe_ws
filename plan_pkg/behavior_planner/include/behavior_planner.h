@@ -59,7 +59,7 @@ class BehaviorPlanner
         bool esssentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos;
         short front_id;
         bool stop_line_stop;
-        bool get_global;
+        bool getGlobal, getPose;
         hmcl_msgs::BehaviorFactor behaviorFactor;
 
     public:

@@ -145,7 +145,6 @@ void convertTrajToMarker(const Trajectory &traj, visualization_msgs::Marker &mar
 void dyn_callback(preview_ctrl::testConfig& config, uint32_t level);
 
 
-
 };
 
 

@@ -70,7 +70,8 @@ BehaviorPlanner::BehaviorPlanner(){
     speedBumpPass = false;
     approachToGoalPos = false;
 
-    get_global = false;
+    getGlobal = false;
+    getPose = false;
     // to velocity planner
     front_id = -1;
     stop_line_stop = false;
@@ -150,15 +151,25 @@ void BehaviorPlanner::calculateSafeDistance(float vFront, float vRear, float &dS
 }
 
 void BehaviorPlanner::updateFactors(){
-    
-    if (!get_global){
-        ROS_INFO("No Global");
+    ROS_INFO("BEHAVIOR_PLANNER");
+    if (!getGlobal){
+        ROS_INFO("Can not receive global trajectory");
         return;
     }
-
+    if(!getPose){
+        ROS_INFO("Can not receive pose");
+        return;
+    }
+    ROS_INFO("globalposex: %f", globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x);
+    float distToGlobal = sqrt(pow(egoPose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,2)+pow(egoPose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y,2));
+    ROS_INFO("kdjjeo");
+    if(distToGlobal > 5){
+        ROS_INFO("ego vehicle is not located on the global lane");
+        return;
+    }
     // behavior factors
     // missionStart = true; //for test
-    missionStart = false;
+    // missionStart = false;
     approachToStartPos = false;
     startArrivalSuccess = false;
     frontCar = false;
@@ -183,6 +194,11 @@ void BehaviorPlanner::updateFactors(){
     front_id = -1;
     stop_line_stop = false;
 
+    // check mission start
+    if(currentMission == MissionState::DriveToStartPos){
+        missionStart = true;
+    }
+    if(missionStart == false) return;
     int n0 = globalLaneArray.lanes[0].waypoints.size();
     float sarr0[n0];
     float slEgo[4], slObj[4];
@@ -195,16 +211,16 @@ void BehaviorPlanner::updateFactors(){
     float xObj[on],yObj[on],vxObj[on],vyObj[on];
 
     float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
-        // ROS_INFO("egopose x: %f, y: %f",egoPose.position.x, egoPose.position.y);
+    ROS_INFO("egopose x: %f, y: %f",egoPose.position.x, egoPose.position.y);
+    ROS_INFO("globalpose x: %f, y: %f",globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y);
+
     for(int i = 0; i < on; i++){
         xObj[i] = egoPose.position.x + detectedObjects.objects[i].pose.position.x*cos(yaw)-detectedObjects.objects[i].pose.position.y*sin(yaw);
         yObj[i] = egoPose.position.y + detectedObjects.objects[i].pose.position.x*sin(yaw)+detectedObjects.objects[i].pose.position.y*cos(yaw);
         vxObj[i] = detectedObjects.objects[i].velocity.linear.x*cos(yaw) - detectedObjects.objects[i].velocity.linear.y*sin(yaw);
         vyObj[i] = detectedObjects.objects[i].velocity.linear.x*sin(yaw) + detectedObjects.objects[i].velocity.linear.y*cos(yaw);
-        // ROS_INFO("i:%d,x: %f,y: %f,vx: %f,vy: %f",i,xObj[i],yObj[i],vxObj[i],vxObj[i]);
+        ROS_INFO("i:%d,x: %f,y: %f,vx: %f,vy: %f",i,xObj[i],yObj[i],vxObj[i],vxObj[i]);
     }
-
-
     // calculate Frenet longitudinal length of egolane            
     psarr = sarr0;
     this->calculateLon(n0, psarr, globalLaneArray.lanes[0]);
@@ -215,6 +231,7 @@ void BehaviorPlanner::updateFactors(){
     sEgo = slEgo[0];
     lEgo = slEgo[1];
     dsEgo = egoSpeed;
+    ROS_INFO("egopose s: %f, l: %f, dsEgo: %f",sEgo,lEgo, dsEgo);
 
     // determine the necessity of lane change
 
@@ -243,9 +260,11 @@ void BehaviorPlanner::updateFactors(){
             }
         }
     }
-    // check mission start
-    if(currentMission == MissionState::DriveToStartPos){
-        missionStart = true;
+
+    // float distToFront;
+
+    if(distToGlobal < 10){//need to change dist to front
+        approachToStartPos = true;
     }
 
     // check if ego stop
@@ -299,6 +318,7 @@ void BehaviorPlanner::updateFactors(){
 // }
 
 void BehaviorPlanner::odometryCallback(const nav_msgs::Odometry& msg){
+    getPose = true;
     egoPose = msg.pose.pose;
 }
 
@@ -324,11 +344,7 @@ void BehaviorPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
 }
 
 void BehaviorPlanner::routeCallback(const hmcl_msgs::LaneArray &msg){
-    // if (msg.lanes.size() < 1){
-    //     return;
-    // }
-    ROS_INFO("Behavior_planner");
-    get_global = true;
+    getGlobal = true;
     globalLaneArray = msg;
 }
 

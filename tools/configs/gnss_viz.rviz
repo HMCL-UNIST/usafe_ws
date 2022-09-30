@@ -5,10 +5,14 @@ Panels:
     Property Tree Widget:
       Expanded:
         - /Status1
+        - /plan1
+        - /plan1/globalpathsegment1
         - /localization1
         - /localization1/pose_est1/Shape1
+        - /Perception1
+        - /MarkerArray1
       Splitter Ratio: 0.6852940917015076
-    Tree Height: 549
+    Tree Height: 726
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -92,13 +96,13 @@ Visualization Manager:
     - Class: rviz/Group
       Displays:
         - Class: rviz/MarkerArray
-          Enabled: true
-          Marker Topic: /global_traj_lanelets_viz
+          Enabled: false
+          Marker Topic: /global_traj_viz
           Name: globalpathsegment
           Namespaces:
             {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/MarkerArray
           Enabled: true
           Marker Topic: /local_traj_viz
@@ -112,6 +116,7 @@ Visualization Manager:
           Marker Topic: /lanelet2_map_viz
           Name: lanelet2
           Namespaces:
+            Area_boundary: true
             center_lane_line: true
             left_lane_bound: true
             right_lane_bound: true
@@ -248,7 +253,7 @@ Visualization Manager:
           Marker Topic: /detected_objs_viz
           Name: Mobileye_DetectedObj
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -256,21 +261,17 @@ Visualization Manager:
           Marker Topic: /target_vehicle_viz
           Name: sim_targetVehicle
           Namespaces:
-            my_namespace: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
-          Enabled: true
+          Enabled: false
           Marker Topic: /detection/lidar_tracker/objects_markers
           Name: LidarTrackerMarker
           Namespaces:
-            /detection/lidar_tracker/arrow_markers: true
-            /detection/lidar_tracker/box_markers: true
-            /detection/lidar_tracker/centroid_markers: true
-            /detection/lidar_tracker/hull_markers: true
-            /detection/lidar_tracker/label_markers: true
+            {}
           Queue Size: 100
-          Value: true
+          Value: false
       Enabled: true
       Name: Perception
     - Class: rviz/TF
@@ -279,6 +280,10 @@ Visualization Manager:
       Frames:
         All Enabled: true
         base_link:
+          Value: true
+        body:
+          Value: true
+        camera_init:
           Value: true
         gnss_link:
           Value: true
@@ -299,16 +304,32 @@ Visualization Manager:
       Show Names: true
       Tree:
         map:
-          base_link:
-            gnss_link:
-              imu_link:
-                {}
-            os_sensor:
-              os_imu:
-                {}
-              os_lidar:
-                {}
+          os_sensor:
+            base_link:
+              gnss_link:
+                imu_link:
+                  {}
+            os_imu:
+              {}
+            os_lidar:
+              {}
       Update Interval: 0
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /motionstate_viz
+      Name: Marker
+      Namespaces:
+        vel_prof: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /lir_viz
+      Name: MarkerArray
+      Namespaces:
+        lir: true
+      Queue Size: 100
       Value: true
   Enabled: true
   Global Options:
@@ -338,33 +359,33 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 51.21958923339844
+      Distance: 96.01011657714844
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: 4.39597225189209
-        Y: 1.8888037204742432
+        X: 0.08386969566345215
+        Y: 12.390336990356445
         Z: 3.285054390289588e-6
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.5347963571548462
+      Pitch: 1.179796576499939
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.3554046154022217
+      Yaw: 3.0754001140594482
     Saved: ~
 Window Geometry:
   Displays:
     collapsed: false
-  Height: 846
+  Height: 1023
   Hide Left Dock: false
   Hide Right Dock: true
-  QMainWindow State: 000000ff00000000fd000000040000000000000156000002b0fc0200000008fb000000100044006900730070006c006100790073010000003d000002b0000000c900fffffffb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002b0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002b0000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b2000000000000000000000002000004f3000000c9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e10000019700000003000004040000003efc0100000002fb0000000800540069006d0065010000000000000404000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000002a8000002b000000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
+  QMainWindow State: 000000ff00000000fd00000004000000000000015600000361fc0200000008fb000000100044006900730070006c006100790073010000003d00000361000000c900fffffffb0000001200530065006c0065006300740069006f006e00000001e10000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f007000650072007400690065007302000001ed000001df00000185000000a3fb000000120056006900650077007300200054006f006f02000001df000002110000018500000122fb000000200054006f006f006c002000500072006f0070006500720074006900650073003203000002880000011d000002210000017afb0000002000730065006c0065006300740069006f006e00200062007500660066006500720200000138000000aa0000023a00000294fb00000014005700690064006500530074006500720065006f02000000e6000000d2000003ee0000030bfb0000000c004b0069006e0065006300740200000186000001060000030c00000261000000010000010f000002b0fc0200000003fb0000001e0054006f006f006c002000500072006f00700065007200740069006500730100000041000000780000000000000000fb0000000a00560069006500770073000000003d000002b0000000a400fffffffb0000001200530065006c0065006300740069006f006e010000025a000000b2000000000000000000000002000004f3000000c9fc0100000001fb0000000a00560069006500770073030000004e00000080000002e100000197000000030000042e0000003efc0100000002fb0000000800540069006d006501000000000000042e000002eb00fffffffb0000000800540069006d00650100000000000004500000000000000000000002d20000036100000004000000040000000800000008fc0000000100000002000000010000000a0054006f006f006c00730100000000ffffffff0000000000000000
   Selection:
     collapsed: false
   Time:
@@ -373,6 +394,6 @@ Window Geometry:
     collapsed: false
   Views:
     collapsed: true
-  Width: 1028
-  X: 822
-  Y: 84
+  Width: 1070
+  X: 67
+  Y: 95

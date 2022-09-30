@@ -72,7 +72,8 @@ VehicleBridge::VehicleBridge(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ro
   // velPub  = nh_light_.advertise<std_msgs::Float64>("/setpoint", 2);   
   // test_pub = nh_light_.advertise<std_msgs::Float64>("/str_test", 5);    
   // debug_pub = nh_can.advertise<std_msgs::UInt8MultiArray>("/debug_sig",10);
-  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdFloatCallback, this);  
+  // SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdFloatCallback, this); 
+  SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &VehicleBridge::SteeringCmdCallback, this);  
   VelSub = nh_acc.subscribe("control_effort", 2, &VehicleBridge::controlEffortCallback, this);  
   emergency_stopSub = nh_acc.subscribe("/volt", 2, &VehicleBridge::emergencyRemoteCallback, this);
   // setpointSub = nh_acc.subscribe("/setpoint", 2, &VehicleBridge::SetpointCallback, this);
@@ -285,7 +286,7 @@ void VehicleBridge::InitCanmsg(){
   gear_frame.is_error = false;
   gear_frame.is_extended = false;
   gear_frame.is_rtr = false;
-  gear_frame.data[0] = (unsigned int)0 & 0b11111111;  
+  gear_frame.data[0] = (unsigned int)1 & 0b11111111;  
 
   light_frame.header.stamp = ros::Time::now();
   light_frame.id = 0x306;
@@ -320,11 +321,13 @@ void VehicleBridge::AcanSender()
       }
       // ROS_INFO("@@ scc frame = %d", scc_frame.data[1]);
       usleep(10);
-      // AcanPub.publish(scc_frame);
+      ROS_INFO("HERE");
+      AcanPub.publish(scc_frame);
       usleep(10);
-      // AcanPub.publish(gear_frame);
+      gear_frame.data[0] = (unsigned int)1 & 0b11111111;  
+      AcanPub.publish(gear_frame);
       usleep(10);
-      AcanPub.publish(steering_frame);
+      // AcanPub.publish(steering_frame);
       // usleep(10);     
       // AcanPub.publish(light_frame);      
       mtx_.unlock();
@@ -342,18 +345,18 @@ void VehicleBridge::controlEffortCallback(const std_msgs::Float64& control_effor
   scc_frame.is_extended = false;
   scc_frame.is_rtr = false;
   acc_cmd = control_effort_input.data;
-  if(drivingState == DrivingState::NormalDriving){  
-    if(gear_info_.gear == 0){
-          scc_overwrite_value = ((round(0.0 *100)/100)*100);        
-          scc_overwrite = true;
-        }
-        
-      control_effort = round(control_effort_input.data *100)/100;      
-      accel_value = (control_effort*100);  
-      ROS_INFO("accel_value %d", accel_value);
-      scc_frame.data[1] = (accel_value & 0b11111111);
-	    scc_frame.data[2] = ((accel_value >> 8)&0b11111111);  
-  }
+  // if(drivingState == DrivingState::NormalDriving){  
+  if(gear_info_.gear == 0){
+        scc_overwrite_value = ((round(0.0 *100)/100)*100);        
+        scc_overwrite = true;
+      }
+      
+    control_effort = round(control_effort_input.data *100)/100;      
+    accel_value = (control_effort*100);  
+    ROS_INFO("accel_value %d", accel_value);
+    scc_frame.data[1] = (accel_value & 0b11111111);
+    scc_frame.data[2] = ((accel_value >> 8)&0b11111111);  
+  // }
 }
 void VehicleBridge::SteeringCmdFloatCallback(std_msgs::Float64ConstPtr msg){
   ROS_INFO("!!!");
@@ -375,7 +378,8 @@ void VehicleBridge::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
   steering_frame.is_error = false;
   steering_frame.is_extended = false;
   steering_frame.is_rtr = false;
-  short steer_value = (short)((0.0)*gear_ratio*180/PI*10)+steering_offset;
+  short steer_value = (short)((msg->steering_angle)*gear_ratio*180/PI*10)+steering_offset;
+  ROS_INFO("steer  value : %d", steer_value);
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
   
@@ -632,6 +636,7 @@ void VehicleBridge::DrivingStateMachine() {
       case DrivingState::Init: 
         // AWAIT BEHAVIOR & GO TO DRIVING GEAR -> NORMAL DRIVING STAT
         mtx_.lock();
+        ROS_INFO_ONCE("start init");
         // AWAITING BEHAVIOR : Always SCC Ready with 0 accel      
         scc_frame.header.stamp = ros::Time::now();
         scc_frame.id = 0x303;
@@ -668,7 +673,7 @@ void VehicleBridge::DrivingStateMachine() {
 
       case DrivingState::NormalDriving:
 
-
+        ROS_INFO("normal_driving");
          // NORMAL DRIVING BEHAVIOR
         scc_frame.header.stamp = ros::Time::now();
         scc_frame.id = 0x303;

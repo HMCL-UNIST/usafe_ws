@@ -111,7 +111,6 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   simStatusSub = nh_traj.subscribe(simstatus_topic, 2, &PreviewCtrl::simstatusCallback, this);
   StatusSub = nh_traj.subscribe(status_topic, 2, &PreviewCtrl::statusCallback, this);
   
-  
   odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
   
   debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
@@ -338,6 +337,7 @@ void PreviewCtrl::ControlLoop()
         ackmanPub.publish(ctrl_msg);
         
         //////////////////
+        double delta_cmd = 0.1;
         can_msgs::Frame steering_frame;
         steering_frame.header.stamp = ros::Time::now();
         steering_frame.id = 0x300;
@@ -352,6 +352,7 @@ void PreviewCtrl::ControlLoop()
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
         AcanPub.publish(steering_frame);
+
         ROS_INFO("~~~~");
           
 

@@ -94,7 +94,7 @@ void PidObject::setpointCallback(const std_msgs::Float64& setpoint_msg)
 
 void PidObject::plantStateCallback(const hmcl_msgs::VehicleWheelSpeed& state_msg)
 {
-  plant_state_ = state_msg.wheel_speed ;
+  plant_state_ = state_msg.wheel_speed;
 
   new_state_or_setpt_ = true;
 }

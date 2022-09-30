@@ -45,7 +45,8 @@ VelocityPlanner::VelocityPlanner()
   find_stopline = false;
   find_crosswalk = false;
   getLocalTraj = false;
-
+  visualize = true;
+  
   // Subscribe
   pose_sub = nh_.subscribe("/pose_estimate", 1, &VelocityPlanner::poseCallback, this);
   wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityPlanner::wheelCallback, this);
@@ -552,7 +553,7 @@ void VelocityPlanner::VelocitySmoother()
         break;
       }
       else if (k >= 50 || fail2solve) {
-        ref_speed = xf[1]/3;
+        ref_speed = xf[1];
         std::cout << "Fail" << std::endl;
         previous_step = true;
         break;
