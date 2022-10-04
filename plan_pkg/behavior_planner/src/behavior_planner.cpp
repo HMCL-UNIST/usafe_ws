@@ -32,7 +32,8 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("frontlenEgo", frontlenEgo, 4.180/2);// need to check lidar position in real vehicle
     nh_.param<float>("minFront", minFront, 100);
     nh_.param<float>("thresLC", thresLC, 0.5); // need to check if 0.5 is sufficient
-    nh_.param<float>("thresStop", thresStop, 0.01); // need to check if 0.01 is sufficient
+    nh_.param<float>("thresStop", thresStop, 0.1); // need to check if 0.01 is sufficient
+    nh_.param<float>("thresCW", thresCW, 15);
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
     pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::odometryCallback, this);
@@ -70,8 +71,14 @@ BehaviorPlanner::BehaviorPlanner(){
     speedBumpPass = false;
     approachToGoalPos = false;
 
+    getObject = false;
     getGlobal = false;
     getPose = false;
+    getSpeed = false;
+    getSGpos = false;
+    getSPAT = false;
+    getMission = false;
+
     // to velocity planner
     front_id = -1;
     stop_line_stop = false;
@@ -79,7 +86,7 @@ BehaviorPlanner::BehaviorPlanner(){
     boost::thread callbackhandler(&BehaviorPlanner::callbackthread,this); 
 }
 void BehaviorPlanner::callbackthread(){   
-    ros::Rate loop_rate(10); // rate  
+    ros::Rate loop_rate(20); // rate  
     while(ros::ok()){
         updateFactors();
         // ROS_INFO("DKJF");
@@ -160,16 +167,32 @@ void BehaviorPlanner::updateFactors(){
         ROS_INFO("Can not receive pose");
         return;
     }
-    ROS_INFO("globalposex: %f", globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x);
+    if(!getSpeed){
+        ROS_INFO("Can not receive speed")
+        return;
+    }
+    if(!getObject){
+        ROS_INFO("Can not receive objects")
+    }
+    // if(!getSGpos){
+    //     ROS_INFO("Can not receive start and goal pos")
+    // }
+    // if(!getSPAT){
+    //     ROS_INFO("Can not receive SPAT data")
+    // }
+    if(!getMission){
+        ROS_INFO("Can not receive mission state")
+    }
+    ROS_INFO("globalpose_x: %f", globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x);
     float distToGlobal = sqrt(pow(egoPose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,2)+pow(egoPose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y,2));
-    ROS_INFO("kdjjeo");
+    ROS_INFO("cal dist to global");
     if(distToGlobal > 5){
         ROS_INFO("ego vehicle is not located on the global lane");
         return;
     }
+
     // behavior factors
     // missionStart = true; //for test
-    // missionStart = false;
     approachToStartPos = false;
     startArrivalSuccess = false;
     frontCar = false;
@@ -194,11 +217,16 @@ void BehaviorPlanner::updateFactors(){
     front_id = -1;
     stop_line_stop = false;
 
+    inCW = false;
+
     // check mission start
     if(currentMission == MissionState::DriveToStartPos){
         missionStart = true;
     }
+
+    // return if mission doesn't start
     if(missionStart == false) return;
+
     int n0 = globalLaneArray.lanes[0].waypoints.size();
     float sarr0[n0];
     float slEgo[4], slObj[4];
@@ -209,6 +237,7 @@ void BehaviorPlanner::updateFactors(){
     float* psl;
     float gapFront = 100, safeFront = 100;
     float xObj[on],yObj[on],vxObj[on],vyObj[on];
+    float distToCW;
 
     float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
     ROS_INFO("egopose x: %f, y: %f",egoPose.position.x, egoPose.position.y);
@@ -261,14 +290,19 @@ void BehaviorPlanner::updateFactors(){
         }
     }
 
-    // float distToFront;
-
-    if(distToGlobal < 10){//need to change dist to front
+    // float distToStart = ;
+    if(distToGlobal < 10){//need to change dist to start
         approachToStartPos = true;
     }
 
+    // float distToGoal = ;
+    // if(distToGoal < 10){//need to change dist to start
+    //     approachToGoalPos = true;
+    // }
+
     // check if ego stop
     if(dsEgo < thresStop) stopCheck = true;
+    
     // calculate safe distance and check if it is stationary car
     if(frontCar){
         this->calculateSafeDistance(dsObj[front_id],dsEgo,safeFront);
@@ -277,9 +311,29 @@ void BehaviorPlanner::updateFactors(){
             stationaryFrontCar = true;
         }
     }
+    
+    // compute dist to crosswalk
+    for(int i = 0; i < n0; i++){
+
+        if(globalLaneArray.lanes[0].waypoints[i].Crosswalk == true){
+            distToCW = sarr0[i]-sEgo;
+            if(distToCW < thresCW) approachToCrosswalk = true;
+            break;
+        }
+    }
+
+    // decide if ego is in crosswalk
+    if(globalLaneArray.lanes[0].waypoints[0].Crosswalk == true){
+        inCW = true;
+        inCWprev = true;
+    }
+    else if(inCWprev == true){
+        crosswalkPass = true;
+        inCWprev = false;
+    }
 
     // get turn flag from global
-    
+
     turn = leftTurn || rightTurn;
 
     // determine doneLC
@@ -323,14 +377,17 @@ void BehaviorPlanner::odometryCallback(const nav_msgs::Odometry& msg){
 }
 
 void BehaviorPlanner::vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg){
+    getSpeed = true;
     egoSpeed = msg->wheelspeed.wheel_speed; 
 }
 
 void BehaviorPlanner::objsCallback(const autoware_msgs::DetectedObjectArray& msg){
+    getObject = true;
     detectedObjects = msg;
 }
 
 void BehaviorPlanner::v2xMissionCallback(const v2x_msgs::Mission1& msg){
+    getSGpos = true;
     //startpos info 
     //goalpos
     //msg.start_lat;
@@ -338,6 +395,7 @@ void BehaviorPlanner::v2xMissionCallback(const v2x_msgs::Mission1& msg){
 }
 
 void BehaviorPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
+    getSPAT = true;
     //traffic_signal
     // msg.id;
     // msg.states;
@@ -349,6 +407,7 @@ void BehaviorPlanner::routeCallback(const hmcl_msgs::LaneArray &msg){
 }
 
 void BehaviorPlanner::missionCallback(const std_msgs::Int16::ConstPtr& msg){
+    getMission = true;
     currentMission = (MissionState)msg->data;
 }
 
