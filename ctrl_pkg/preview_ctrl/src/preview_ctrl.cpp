@@ -57,7 +57,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<std::string>("odom_topic", odom_topic, "pose_estimate");
 
   nh_traj.param<std::string>("steer_cmd_topic", steer_cmd_topic, "/usafe_steer_cmd");
-  nh_traj.param<std::string>("vel_cmd_topic", vel_cmd_topic, "/setpoint");
+  nh_traj.param<std::string>("vel_cmd_topic", vel_cmd_topic, "/control_effort");
   
   
   
@@ -112,7 +112,8 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   StatusSub = nh_traj.subscribe(status_topic, 2, &PreviewCtrl::statusCallback, this);
   
   odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
-  
+  setpointSub = nh_traj.subscribe("/setpoint", 2, &PreviewCtrl::setpointCallback, this);
+
   debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);   
   velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
@@ -154,6 +155,10 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
     my_odom_ok_ = true;
 }
 
+void PreviewCtrl::setpointCallback(const std_msgs::Float64& msg){
+    
+  setpoint = (int) msg.data*100;
+}
 
 void PreviewCtrl::reschedule_weight(double speed){
 
@@ -330,14 +335,29 @@ void PreviewCtrl::ControlLoop()
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
         ackermann_msgs::AckermannDrive ctrl_msg;
         ctrl_msg.acceleration = 1.0;        
-       
+        ctrl_msg.acceleration = setpoint;    
         
         ctrl_msg.steering_angle = delta_cmd;
         
         ackmanPub.publish(ctrl_msg);
         
         //////////////////
-        double delta_cmd = 0.1;
+        int SCC_mode_auto = 2;
+        can_msgs::Frame scc_frame;
+        scc_frame.header.stamp = ros::Time::now();
+        scc_frame.id = 0x303;
+        scc_frame.dlc = 4;
+        scc_frame.is_error = false;
+        scc_frame.is_extended = false;
+        scc_frame.is_rtr = false;
+        scc_frame.data[0] = (unsigned int)SCC_mode_auto & 0b11111111;
+        
+        scc_frame.data[1] = ((setpoint) & 0b11111111);
+        scc_frame.data[2] = ((setpoint >> 8)&0b11111111);
+        scc_frame.data[3] = (unsigned int)0 & 0b11111111;
+        AcanPub.publish(scc_frame);
+        usleep(100);
+
         can_msgs::Frame steering_frame;
         steering_frame.header.stamp = ros::Time::now();
         steering_frame.id = 0x300;

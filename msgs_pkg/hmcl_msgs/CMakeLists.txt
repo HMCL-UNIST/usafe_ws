@@ -20,7 +20,8 @@ add_message_files(
     Waypoint.msg    
     WaypointArray.msg    
     WaypointState.msg    
-    Waypointhmcl.msg    
+    MissionWaypoint.msg    
+    Waypointhmcl.msg 
     RemoteButton.msg
     VehicleGear.msg
     VehicleLight.msg

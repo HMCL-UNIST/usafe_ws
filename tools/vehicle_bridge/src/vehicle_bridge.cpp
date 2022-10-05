@@ -322,10 +322,10 @@ void VehicleBridge::AcanSender()
       // ROS_INFO("@@ scc frame = %d", scc_frame.data[1]);
       usleep(10);
       ROS_INFO("HERE");
-      AcanPub.publish(scc_frame);
+      // AcanPub.publish(scc_frame);
       usleep(10);
       gear_frame.data[0] = (unsigned int)1 & 0b11111111;  
-      AcanPub.publish(gear_frame);
+      // AcanPub.publish(gear_frame);
       usleep(10);
       // AcanPub.publish(steering_frame);
       // usleep(10);     
@@ -713,7 +713,7 @@ void VehicleBridge::DrivingStateMachine() {
 
           scc_frame.data[1] = (-490 & 0b11111111);
           scc_frame.data[2] = ((-490 >> 8)&0b11111111);
-          AcanPub.publish(scc_frame);      
+          // AcanPub.publish(scc_frame);      
           scc_overwrite = true;
           ROS_INFO("over write true emergency driving state");
          if(abs(wheel_info_.wheel_speed) < 0.1){

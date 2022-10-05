@@ -1,8 +1,0 @@
-<?xml version="1.0"?>
-
-<launch>
-
-    <node name="local_planner" pkg="local_planner" type="local_planner" output="screen">         
-
-    </node>
-</launch>

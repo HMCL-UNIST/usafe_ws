@@ -21,8 +21,10 @@
 #include <hmcl_msgs/WaypointArray.h>
 #include <hmcl_msgs/VehicleStatus.h>
 #include <hmcl_msgs/BehaviorFactor.h>
+#include <hmcl_msgs/MissionWaypoint.h>   
 #include <hmcl_msgs/TransitionCondition.h>
 #include <autoware_msgs/DetectedObjectArray.h>
+
 #include <sensor_msgs/Imu.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -79,15 +81,20 @@ class VelocityPlanner
 private:
     ros::NodeHandle nh_;
     ros::Publisher vel_pub, vel_debug, vel_vis_pub, motionstate_vis_pub;
-    ros::Subscriber pose_sub, wheel_sub, acc_sub, predicted_objects_sub,
+    ros::Subscriber pose_sub, wheel_sub, acc_sub, predicted_objects_sub, start_end_sub,
                     traffic_sign_sub, behavior_state_sub, behavior_state_condition_sub, local_traj_sub;
+    
+    double runtime;
     
     double current_acc, current_vel, current_x, current_y;
     double object_x, object_y, object_vel;
 
+    geometry_msgs::Point start, end;
+    
     bool getLocalTraj;
     bool LeadVehicle, Pedestrian, PassStopLine;
-    bool new_behavior_mode, find_stopline, find_crosswalk, passcrosswalk;
+    bool new_behavior_mode, find_stopline, find_crosswalk, find_judgeline;
+    bool passcrosswalk, passjudgeline;
     double wait_tt;
     short LeadVehicleInd;
     double MaxVel;
@@ -140,6 +147,7 @@ void CheckMotionState();
 //**Utility function
 int FindStopLine();
 int FindCrossWalk();
+int FindJudgeLine();
 double CheckLeadVehicle();
 
 //**ACC function
@@ -167,6 +175,7 @@ void trajCallback(const hmcl_msgs::Lane& msg); //from Local Planner
 void BehaviorStateCallback(const std_msgs::Int16& mode); //from Behavior planner
 void BehaviorStateFactorCallback(const hmcl_msgs::BehaviorFactor& msg); //from Behavior planner
 // void TrafficSignCallback(); //from V2X
+void startendCallback(const hmcl_msgs::MissionWaypoint& msg);
 
 void viz_vel_prof(std::vector<double> profile);
 void viz_motionstate();

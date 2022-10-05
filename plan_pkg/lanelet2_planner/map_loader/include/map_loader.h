@@ -90,7 +90,7 @@
 #include <autoware_lanelet2_msgs/MapBin.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <hmcl_msgs/VehicleStatus.h>
-
+#include <hmcl_msgs/MissionWaypoint.h>
 
 
 
@@ -149,6 +149,7 @@ ros::NodeHandle nh_, nh_p_, nh_local_path_;
 ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub;
 ros::Publisher lir_pub;
 ros::Publisher way_pub;
+ros::Publisher mission_pub;
 ros::Subscriber mobileye_sub;
 ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
@@ -158,6 +159,9 @@ visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_
 
 double test_direction;
 bool visualize_path, continuious_global_replan;
+
+hmcl_msgs::MissionWaypoint mission_pt;
+
 
 autoware_msgs::DetectedObjectArray objects, prev_objects; 
 

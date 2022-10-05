@@ -286,17 +286,21 @@ namespace localization_core
     //////////////////////////////////
     int id_ = 0;
     std::vector<std::pair<double, double>> debug_list;
-    debug_list .push_back(std::pair<double, double>(445734.76, 3945020.81));
-    debug_list .push_back(std::pair<double, double>(445688.44, 3945033.38));
-    debug_list .push_back(std::pair<double, double>(445633.22, 3945068.91));
-    debug_list .push_back(std::pair<double, double>(445602.91, 3945120.20));
-    debug_list .push_back(std::pair<double, double>(445636.79, 3945150.46));
-    debug_list .push_back(std::pair<double, double>(445690.10, 3945111.87));
-    debug_list .push_back(std::pair<double, double>(445718.48, 3945060.93));
-    debug_list .push_back(std::pair<double, double>(445684.84, 3945076.19));
-    debug_list .push_back(std::pair<double, double>(445664.31, 3945098.87));
-    debug_list .push_back(std::pair<double, double>(445645.61, 3945119.29));
-    debug_list .push_back(std::pair<double, double>(445589.07, 3945181.55));
+    debug_list.push_back(std::pair<double,double>(445820.20, 3945187.05));
+    debug_list.push_back(std::pair<double,double>(445687.03, 3945328.06));
+    debug_list.push_back(std::pair<double,double>(445597.61, 3945427.05));
+    debug_list.push_back(std::pair<double,double>(445493.89, 3945553.02));
+    debug_list.push_back(std::pair<double,double>(445152.43, 3945849.77));
+    debug_list.push_back(std::pair<double,double>(445191.98, 3945829.56));
+    debug_list.push_back(std::pair<double,double>(444933.60, 3945971.65));
+    debug_list.push_back(std::pair<double,double>(444944.78, 3945998.52));
+    debug_list.push_back(std::pair<double,double>(445201.47, 3945891.55));
+    debug_list.push_back(std::pair<double,double>(445331.17, 3945753.36));
+    debug_list.push_back(std::pair<double,double>(445414.68, 3945655.34));
+    debug_list.push_back(std::pair<double,double>(445183.87, 3945905.04));
+    debug_list.push_back(std::pair<double,double>(445334.55, 3945738.04));
+    debug_list.push_back(std::pair<double,double>(445434.78, 3945633.14));
+    debug_list.push_back(std::pair<double,double>(445549.51, 3945506.42));
      //////TEST DEBUG
      visualization_msgs::MarkerArray marker_array_;
      for (int i=0; i<debug_list.size(); i++){
@@ -322,155 +326,191 @@ namespace localization_core
        tmp_marker_.color.b = 0.0;
        marker_array_.markers.push_back(tmp_marker_);
      }
+    // debug_list .push_back(std::pair<double, double>(445734.76, 3945020.81));
+    // debug_list .push_back(std::pair<double, double>(445688.44, 3945033.38));
+    // debug_list .push_back(std::pair<double, double>(445633.22, 3945068.91));
+    // debug_list .push_back(std::pair<double, double>(445602.91, 3945120.20));
+    // debug_list .push_back(std::pair<double, double>(445636.79, 3945150.46));
+    // debug_list .push_back(std::pair<double, double>(445690.10, 3945111.87));
+    // debug_list .push_back(std::pair<double, double>(445718.48, 3945060.93));
+    // debug_list .push_back(std::pair<double, double>(445684.84, 3945076.19));
+    // debug_list .push_back(std::pair<double, double>(445664.31, 3945098.87));
+    // debug_list .push_back(std::pair<double, double>(445645.61, 3945119.29));
+    // debug_list .push_back(std::pair<double, double>(445589.07, 3945181.55));
+    //  //////TEST DEBUG
+    //  visualization_msgs::MarkerArray marker_array_;
+    //  for (int i=0; i<debug_list.size(); i++){
+    //    visualization_msgs::Marker tmp_marker_;
+    //    tmp_marker_.header.frame_id = "/map";
+    //    tmp_marker_.header.stamp = ros::Time::now();
+    //    tmp_marker_.id = id_++;
+    //    tmp_marker_.type = visualization_msgs::Marker::SPHERE;
+    //    tmp_marker_.action = visualization_msgs::Marker::ADD;
+    //    tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
+    //    tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
+    //    tmp_marker_.pose.position.z = utm_ori_z;
+    //    tmp_marker_.pose.orientation.x = 0.0;
+    //    tmp_marker_.pose.orientation.y = 0.0;
+    //    tmp_marker_.pose.orientation.z = 0.0;
+    //    tmp_marker_.pose.orientation.w = 1.0;
+    //    tmp_marker_.scale.x = 2;
+    //    tmp_marker_.scale.y = 2;
+    //    tmp_marker_.scale.z = 2;
+    //    tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
+    //    tmp_marker_.color.r = 0.0;
+    //    tmp_marker_.color.g = 1.0;
+    //    tmp_marker_.color.b = 0.0;
+    //    marker_array_.markers.push_back(tmp_marker_);
+    //  }
      
-     for (int i=0; i<debug_list.size(); i++){
-       visualization_msgs::Marker tmp_marker_;
-       tmp_marker_.header.frame_id = "/map";
-       tmp_marker_.header.stamp = ros::Time::now();
-       tmp_marker_.id = id_++;
-       tmp_marker_.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-       tmp_marker_.text = std::to_string(i);
-       tmp_marker_.action = visualization_msgs::Marker::ADD;
-       tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
-       tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
-       tmp_marker_.pose.orientation.w = 1.0;
-       tmp_marker_.scale.z = 2;
-       tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
-       marker_array_.markers.push_back(tmp_marker_);
-     }
+    //  for (int i=0; i<debug_list.size(); i++){
+    //    visualization_msgs::Marker tmp_marker_;
+    //    tmp_marker_.header.frame_id = "/map";
+    //    tmp_marker_.header.stamp = ros::Time::now();
+    //    tmp_marker_.id = id_++;
+    //    tmp_marker_.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    //    tmp_marker_.text = std::to_string(i);
+    //    tmp_marker_.action = visualization_msgs::Marker::ADD;
+    //    tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
+    //    tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
+    //    tmp_marker_.pose.orientation.w = 1.0;
+    //    tmp_marker_.scale.z = 2;
+    //    tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
+    //    marker_array_.markers.push_back(tmp_marker_);
+    //  }
 
-     debug_list.clear();
-     debug_list .push_back(std::pair<double, double>(445756.89, 3944996.39));
-     debug_list .push_back(std::pair<double, double>(445732.17, 3945023.83));
-     debug_list .push_back(std::pair<double, double>(445686.10, 3945074.38));
-     debug_list .push_back(std::pair<double, double>(445666.18, 3945097.03));
-     debug_list .push_back(std::pair<double, double>(445643.97, 3945116.09));
-     debug_list .push_back(std::pair<double, double>(445602.12, 3945123.82));
-     debug_list .push_back(std::pair<double, double>(445546.23, 3945156.78));
-     debug_list .push_back(std::pair<double, double>(445523.02, 3945215.97));
-     debug_list .push_back(std::pair<double, double>(445553.11, 3945243.52));
-     debug_list .push_back(std::pair<double, double>(445605.56, 3945205.65));
-     debug_list .push_back(std::pair<double, double>(445635.51, 3945154.06));
-     debug_list .push_back(std::pair<double, double>(445637.23, 3945117.81));
-     debug_list .push_back(std::pair<double, double>(445659.30, 3945089.29));
+    //  debug_list.clear();
+    //  debug_list .push_back(std::pair<double, double>(445756.89, 3944996.39));
+    //  debug_list .push_back(std::pair<double, double>(445732.17, 3945023.83));
+    //  debug_list .push_back(std::pair<double, double>(445686.10, 3945074.38));
+    //  debug_list .push_back(std::pair<double, double>(445666.18, 3945097.03));
+    //  debug_list .push_back(std::pair<double, double>(445643.97, 3945116.09));
+    //  debug_list .push_back(std::pair<double, double>(445602.12, 3945123.82));
+    //  debug_list .push_back(std::pair<double, double>(445546.23, 3945156.78));
+    //  debug_list .push_back(std::pair<double, double>(445523.02, 3945215.97));
+    //  debug_list .push_back(std::pair<double, double>(445553.11, 3945243.52));
+    //  debug_list .push_back(std::pair<double, double>(445605.56, 3945205.65));
+    //  debug_list .push_back(std::pair<double, double>(445635.51, 3945154.06));
+    //  debug_list .push_back(std::pair<double, double>(445637.23, 3945117.81));
+    //  debug_list .push_back(std::pair<double, double>(445659.30, 3945089.29));
 
-    for (int i=0; i<debug_list.size(); i++){
-       visualization_msgs::Marker tmp_marker_;
-       tmp_marker_.header.frame_id = "/map";
-       tmp_marker_.header.stamp = ros::Time::now();
-       tmp_marker_.id = id_++;
-       tmp_marker_.type = visualization_msgs::Marker::SPHERE;
-       tmp_marker_.action = visualization_msgs::Marker::ADD;
-       tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
-       tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
-       tmp_marker_.pose.position.z = utm_ori_z;
-       tmp_marker_.pose.orientation.x = 0.0;
-       tmp_marker_.pose.orientation.y = 0.0;
-       tmp_marker_.pose.orientation.z = 0.0;
-       tmp_marker_.pose.orientation.w = 1.0;
-       tmp_marker_.scale.x = 2;
-       tmp_marker_.scale.y = 2;
-       tmp_marker_.scale.z = 2;
-       tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
-       tmp_marker_.color.r = 0.0;
-       tmp_marker_.color.g = 0.0;
-       tmp_marker_.color.b = 1.0;
-       marker_array_.markers.push_back(tmp_marker_);
-     }
-     for (int i=0; i<debug_list.size(); i++){
-       visualization_msgs::Marker tmp_marker_;
-       tmp_marker_.header.frame_id = "/map";
-       tmp_marker_.header.stamp = ros::Time::now();
-       tmp_marker_.id = id_++;
-       tmp_marker_.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-       tmp_marker_.text = std::to_string(i);
-       tmp_marker_.action = visualization_msgs::Marker::ADD;
-       tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
-       tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
-       tmp_marker_.pose.position.z = utm_ori_z;
-       tmp_marker_.pose.orientation.x = 0.0;
-       tmp_marker_.pose.orientation.y = 0.0;
-       tmp_marker_.pose.orientation.z = 0.0;
-       tmp_marker_.pose.orientation.w = 1.0;
-       tmp_marker_.scale.x = 2;
-       tmp_marker_.scale.y = 2;
-       tmp_marker_.scale.z = 2;
-       tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
-       tmp_marker_.color.r = 0.0;
-       tmp_marker_.color.g = 0.0;
-       tmp_marker_.color.b = 1.0;
-       marker_array_.markers.push_back(tmp_marker_);
-     }
-      debug_list.clear();
-      debug_list .push_back(std::pair<double, double>(445754.99,3944998.32));
-      debug_list .push_back(std::pair<double, double>(445727.84,3945023.26));
-      debug_list .push_back(std::pair<double, double>(445687.28,3945032.65));
-      debug_list .push_back(std::pair<double, double>(445631.75,3945070.05));
-      debug_list .push_back(std::pair<double, double>(445604.09, 3945120.99));
-      debug_list .push_back(std::pair<double, double>(445604.52,3945159.54));
-      debug_list .push_back(std::pair<double, double>(445578.44,3945193.58));
-      debug_list .push_back(std::pair<double, double>(445559.73,3945214.14));
-      debug_list .push_back(std::pair<double, double>(445551.50, 3945242.09));
-      debug_list .push_back(std::pair<double, double>(445598.00, 3945214.29));
-      debug_list .push_back(std::pair<double, double>(445634.11,3945152.66));
-      debug_list .push_back(std::pair<double, double>(445602.37,3945124.15));
-      debug_list .push_back(std::pair<double, double>(445544.76,3945158.25));
-      debug_list .push_back(std::pair<double, double>(445523.55,3945216.43));
-      debug_list .push_back(std::pair<double, double>(445552.50, 3945206.48));
-      debug_list .push_back(std::pair<double, double>(445571.63,3945185.55));
-      debug_list .push_back(std::pair<double, double>(445595.35,3945164.42));
-      debug_list .push_back(std::pair<double, double>(445636.48, 3945150.87));
-      debug_list .push_back(std::pair<double, double>(445686.64,3945116.48));
-      debug_list .push_back(std::pair<double, double>(445717.87,3945060.23));
-      debug_list .push_back(std::pair<double, double>(445721.67,3945024.91));
-      debug_list .push_back(std::pair<double, double>(445751.17, 3900927.79));
-      for (int i=0; i<debug_list.size(); i++){
-       visualization_msgs::Marker tmp_marker_;
-       tmp_marker_.header.frame_id = "/map";
-       tmp_marker_.header.stamp = ros::Time::now();
-       tmp_marker_.id = id_++;
-       tmp_marker_.type = visualization_msgs::Marker::SPHERE;
-       tmp_marker_.action = visualization_msgs::Marker::ADD;
-       tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
-       tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
-       tmp_marker_.pose.position.z = utm_ori_z;
-       tmp_marker_.pose.orientation.x = 0.0;
-       tmp_marker_.pose.orientation.y = 0.0;
-       tmp_marker_.pose.orientation.z = 0.0;
-       tmp_marker_.pose.orientation.w = 1.0;
-       tmp_marker_.scale.x = 2;
-       tmp_marker_.scale.y = 2;
-       tmp_marker_.scale.z = 2;
-       tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
-       tmp_marker_.color.r = 1.0;
-       tmp_marker_.color.g = 0.0;
-       tmp_marker_.color.b = 0.0;
-       marker_array_.markers.push_back(tmp_marker_);
-     }
-     for (int i=0; i<debug_list.size(); i++){
-       visualization_msgs::Marker tmp_marker_;
-       tmp_marker_.header.frame_id = "/map";
-       tmp_marker_.header.stamp = ros::Time::now();
-       tmp_marker_.id = id_++;
-       tmp_marker_.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
-       tmp_marker_.text = std::to_string(i);
-       tmp_marker_.action = visualization_msgs::Marker::ADD;
-       tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
-       tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
-       tmp_marker_.pose.position.z = utm_ori_z;
-       tmp_marker_.pose.orientation.x = 0.0;
-       tmp_marker_.pose.orientation.y = 0.0;
-       tmp_marker_.pose.orientation.z = 0.0;
-       tmp_marker_.pose.orientation.w = 1.0;
-       tmp_marker_.scale.x = 2;
-       tmp_marker_.scale.y = 2;
-       tmp_marker_.scale.z = 2;
-       tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
-       tmp_marker_.color.r = 0.0;
-       tmp_marker_.color.g = 0.0;
-       tmp_marker_.color.b = 1.0;
-       marker_array_.markers.push_back(tmp_marker_);
-     }
+    // for (int i=0; i<debug_list.size(); i++){
+    //    visualization_msgs::Marker tmp_marker_;
+    //    tmp_marker_.header.frame_id = "/map";
+    //    tmp_marker_.header.stamp = ros::Time::now();
+    //    tmp_marker_.id = id_++;
+    //    tmp_marker_.type = visualization_msgs::Marker::SPHERE;
+    //    tmp_marker_.action = visualization_msgs::Marker::ADD;
+    //    tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
+    //    tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
+    //    tmp_marker_.pose.position.z = utm_ori_z;
+    //    tmp_marker_.pose.orientation.x = 0.0;
+    //    tmp_marker_.pose.orientation.y = 0.0;
+    //    tmp_marker_.pose.orientation.z = 0.0;
+    //    tmp_marker_.pose.orientation.w = 1.0;
+    //    tmp_marker_.scale.x = 2;
+    //    tmp_marker_.scale.y = 2;
+    //    tmp_marker_.scale.z = 2;
+    //    tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
+    //    tmp_marker_.color.r = 0.0;
+    //    tmp_marker_.color.g = 0.0;
+    //    tmp_marker_.color.b = 1.0;
+    //    marker_array_.markers.push_back(tmp_marker_);
+    //  }
+    //  for (int i=0; i<debug_list.size(); i++){
+    //    visualization_msgs::Marker tmp_marker_;
+    //    tmp_marker_.header.frame_id = "/map";
+    //    tmp_marker_.header.stamp = ros::Time::now();
+    //    tmp_marker_.id = id_++;
+    //    tmp_marker_.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    //    tmp_marker_.text = std::to_string(i);
+    //    tmp_marker_.action = visualization_msgs::Marker::ADD;
+    //    tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
+    //    tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
+    //    tmp_marker_.pose.position.z = utm_ori_z;
+    //    tmp_marker_.pose.orientation.x = 0.0;
+    //    tmp_marker_.pose.orientation.y = 0.0;
+    //    tmp_marker_.pose.orientation.z = 0.0;
+    //    tmp_marker_.pose.orientation.w = 1.0;
+    //    tmp_marker_.scale.x = 2;
+    //    tmp_marker_.scale.y = 2;
+    //    tmp_marker_.scale.z = 2;
+    //    tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
+    //    tmp_marker_.color.r = 0.0;
+    //    tmp_marker_.color.g = 0.0;
+    //    tmp_marker_.color.b = 1.0;
+    //    marker_array_.markers.push_back(tmp_marker_);
+    //  }
+    //   debug_list.clear();
+    //   debug_list .push_back(std::pair<double, double>(445754.99,3944998.32));
+    //   debug_list .push_back(std::pair<double, double>(445727.84,3945023.26));
+    //   debug_list .push_back(std::pair<double, double>(445687.28,3945032.65));
+    //   debug_list .push_back(std::pair<double, double>(445631.75,3945070.05));
+    //   debug_list .push_back(std::pair<double, double>(445604.09, 3945120.99));
+    //   debug_list .push_back(std::pair<double, double>(445604.52,3945159.54));
+    //   debug_list .push_back(std::pair<double, double>(445578.44,3945193.58));
+    //   debug_list .push_back(std::pair<double, double>(445559.73,3945214.14));
+    //   debug_list .push_back(std::pair<double, double>(445551.50, 3945242.09));
+    //   debug_list .push_back(std::pair<double, double>(445598.00, 3945214.29));
+    //   debug_list .push_back(std::pair<double, double>(445634.11,3945152.66));
+    //   debug_list .push_back(std::pair<double, double>(445602.37,3945124.15));
+    //   debug_list .push_back(std::pair<double, double>(445544.76,3945158.25));
+    //   debug_list .push_back(std::pair<double, double>(445523.55,3945216.43));
+    //   debug_list .push_back(std::pair<double, double>(445552.50, 3945206.48));
+    //   debug_list .push_back(std::pair<double, double>(445571.63,3945185.55));
+    //   debug_list .push_back(std::pair<double, double>(445595.35,3945164.42));
+    //   debug_list .push_back(std::pair<double, double>(445636.48, 3945150.87));
+    //   debug_list .push_back(std::pair<double, double>(445686.64,3945116.48));
+    //   debug_list .push_back(std::pair<double, double>(445717.87,3945060.23));
+    //   debug_list .push_back(std::pair<double, double>(445721.67,3945024.91));
+    //   debug_list .push_back(std::pair<double, double>(445751.17, 3900927.79));
+    //   for (int i=0; i<debug_list.size(); i++){
+    //    visualization_msgs::Marker tmp_marker_;
+    //    tmp_marker_.header.frame_id = "/map";
+    //    tmp_marker_.header.stamp = ros::Time::now();
+    //    tmp_marker_.id = id_++;
+    //    tmp_marker_.type = visualization_msgs::Marker::SPHERE;
+    //    tmp_marker_.action = visualization_msgs::Marker::ADD;
+    //    tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
+    //    tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
+    //    tmp_marker_.pose.position.z = utm_ori_z;
+    //    tmp_marker_.pose.orientation.x = 0.0;
+    //    tmp_marker_.pose.orientation.y = 0.0;
+    //    tmp_marker_.pose.orientation.z = 0.0;
+    //    tmp_marker_.pose.orientation.w = 1.0;
+    //    tmp_marker_.scale.x = 2;
+    //    tmp_marker_.scale.y = 2;
+    //    tmp_marker_.scale.z = 2;
+    //    tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
+    //    tmp_marker_.color.r = 1.0;
+    //    tmp_marker_.color.g = 0.0;
+    //    tmp_marker_.color.b = 0.0;
+    //    marker_array_.markers.push_back(tmp_marker_);
+    //  }
+    //  for (int i=0; i<debug_list.size(); i++){
+    //    visualization_msgs::Marker tmp_marker_;
+    //    tmp_marker_.header.frame_id = "/map";
+    //    tmp_marker_.header.stamp = ros::Time::now();
+    //    tmp_marker_.id = id_++;
+    //    tmp_marker_.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+    //    tmp_marker_.text = std::to_string(i);
+    //    tmp_marker_.action = visualization_msgs::Marker::ADD;
+    //    tmp_marker_.pose.position.x = debug_list[i].first - utm_ori_x;;
+    //    tmp_marker_.pose.position.y = debug_list[i].second -utm_ori_y;;
+    //    tmp_marker_.pose.position.z = utm_ori_z;
+    //    tmp_marker_.pose.orientation.x = 0.0;
+    //    tmp_marker_.pose.orientation.y = 0.0;
+    //    tmp_marker_.pose.orientation.z = 0.0;
+    //    tmp_marker_.pose.orientation.w = 1.0;
+    //    tmp_marker_.scale.x = 2;
+    //    tmp_marker_.scale.y = 2;
+    //    tmp_marker_.scale.z = 2;
+    //    tmp_marker_.color.a = 1.0; // Don't forget to set the alpha!
+    //    tmp_marker_.color.r = 0.0;
+    //    tmp_marker_.color.g = 0.0;
+    //    tmp_marker_.color.b = 1.0;
+    //    marker_array_.markers.push_back(tmp_marker_);
+    //  }
      test_pub.publish(marker_array_);
   }
   
@@ -514,7 +554,7 @@ namespace localization_core
 
   void StateEstimator::GpsHelper()
   {
-    ros::Rate loop_rate(20); // rate of GPS 
+    ros::Rate loop_rate(5); // rate of GPS 
     bool gotFirstFix = false;
     double startTime;
     int odomKey = 1;
@@ -713,7 +753,7 @@ namespace localization_core
               point.pose.covariance[14] = fix->position_covariance[8];
               gpsPosPub_.publish(point);
 
-              SharedDiagonal gpsNoise = noiseModel::Diagonal::Sigmas(Vector3(gpsSigma_, gpsSigma_, gpsSigma_));
+              SharedDiagonal gpsNoise = noiseModel::Diagonal::Sigmas(Vector3(gpsSigma_, gpsSigma_, 0.1*gpsSigma_));
               GPSFactor gpsFactor(G(key), Point3(E, N, U), gpsNoise);
               newFactors.add(gpsFactor);
               BetweenFactor<Pose3> imuPgpsFactor(X(key), G(key), imuPgps_,
@@ -754,7 +794,7 @@ namespace localization_core
             if (dist_ < maxLocalPoseError_ || key_ < imuKey-2)
             {
               SharedDiagonal LocalPoseNoise = noiseModel::Diagonal::Sigmas(
-                      (Vector(6) << localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_).finished());
+                      (Vector(6) << 0.01*localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_,localPoseSigma_).finished());
 
               PriorFactor<Pose3> localPosePrior_(X(key_), local_pose3_, LocalPoseNoise);
               newFactors.add(localPosePrior_);
@@ -785,7 +825,8 @@ namespace localization_core
 
             if(relPoseInit){
               newFactors.add(OdomToFactor(prevTime, prevTime+0.1, odomKey));
-              odomKey++;
+              if (TIME(odomOptQ_.back()) > prevTime)
+                odomKey++;
             }
             else {
               SetLastPose(prevTime, prevTime+0.1, odomKey++);

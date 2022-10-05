@@ -2,7 +2,15 @@
 
 <launch>
 
-    <node name="behavior_planner" pkg="behavior_planner" type="behavior_planner" output="screen">         
-        
+    <node name="behavior_planner" pkg="behavior_planner" type="behavior_planner" output="screen">
+        <param name = "wLane" value ="3.5"/>
+        <param name = "lenEgo" value ="4.180"/>
+        <param name = "frontlenEgo" value ="2.090"/>
+        <param name = "minFront" value ="100"/>
+        <param name = "nStoreFront" value ="10"/>
+        <param name = "thresLC" value ="0.5"/>
+        <param name = "thresStop" value ="0.1"/>
+        <param name = "thresCW" value ="15"/>
+        <param name = "thresDistSG" value ="20"/>
     </node>
 </launch>

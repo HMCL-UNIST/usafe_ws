@@ -19,14 +19,15 @@
 #include <std_msgs/Int16.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/LaneArray.h>
+#include <hmcl_msgs/MissionWaypoint.h>
 #include <hmcl_msgs/BehaviorFactor.h>
 #include <hmcl_msgs/TransitionCondition.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
+#include <geometry_msgs/Point.h>
 #include <hmcl_msgs/VehicleStatus.h>
-#include <v2x_msgs/Mission1.h>
 #include <v2x_msgs/SPAT.h>
 
 #define PI 3.14159265358979323846264338
@@ -41,25 +42,28 @@ class BehaviorPlanner
 {
     private:
         ros::NodeHandle nh_;
-        ros::Subscriber pose_sub, vel_sub, objs_sub, v2x_mission_sub, v2x_spat_sub, route_sub, mission_sub;
+        ros::Subscriber pose_sub, vel_sub, objs_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub;
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
         ros::Publisher behavior_pub;
         // ros::Timer behavior_timer;
-        float minBrake, maxBrake, maxAccel, rho, wLane, lenEgo, frontlenEgo, minFront, thresLC, thresStop;
+        float wLane, lenEgo, frontlenEgo, minFront, thresLC, thresStop, thresCW, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
         autoware_msgs::DetectedObjectArray detectedObjects;
+        double startX, startY, goalX, goalY;
         //startpos info 
         //goalpos
         //traffic_signal
         hmcl_msgs::LaneArray globalLaneArray;
         MissionState currentMission;
-        bool missionStart, approachToStartPos, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
+        bool missionStart, approachToStartPos, startArrivalCheck, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
         bool pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone;
         bool esssentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos;
         short front_id;
+        int nStoreFront, countFront;
         bool stop_line_stop;
-        bool getGlobal, getPose;
+        bool getGlobal, getPose, getSpeed, getObject, getSGpos, getSPAT, getMission;
+        bool inCW, inCWprev, frontPrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
 
     public:
@@ -75,7 +79,7 @@ class BehaviorPlanner
         void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);
         // void twistCallback(const geometry_msgs::TwistStampedConstPtr& msg);
         void objsCallback(const autoware_msgs::DetectedObjectArray& msg);
-        void v2xMissionCallback(const v2x_msgs::Mission1& msg);
+        void v2xStartGoalCallback(const hmcl_msgs::MissionWaypoint& msg);
         void v2xSPATCallback(const v2x_msgs::SPAT& msg);
         void routeCallback(const hmcl_msgs::LaneArray &msg);
         void missionCallback(const std_msgs::Int16::ConstPtr& msg);

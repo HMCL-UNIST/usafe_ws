@@ -41,9 +41,9 @@ include_directories(
 #target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 #SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-# add_executable(local_planner src/local_planner.cpp)
-# target_link_libraries(local_planner ${catkin_LIBRARIES})
-# add_dependencies(local_planner ${catkin_EXPORTED_TARGETS})
+add_executable(local_planner src/local_planner.cpp)
+target_link_libraries(local_planner ${catkin_LIBRARIES})
+add_dependencies(local_planner ${catkin_EXPORTED_TARGETS})
 
 add_executable(publisher src/publisher.cpp)
 target_link_libraries(publisher ${catkin_LIBRARIES})
@@ -53,6 +53,7 @@ add_dependencies(publisher ${catkin_EXPORTED_TARGETS})
 install(
   TARGETS    
   publisher
+  local_planner
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

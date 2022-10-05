@@ -65,6 +65,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   lir_pub= nh_.advertise<hmcl_msgs::LaneArray>("/lane_in_range",2,true);
   
+  mission_pub= nh_.advertise<hmcl_msgs::MissionWaypoint>("/start_goal_pose",2,true);
+
   max_dist=100;
   
   // cur_pose.position.x=-127.8411;
@@ -644,6 +646,7 @@ void MapLoader::viz_pub(const ros::TimerEvent& time){
     g_traj_lanelet_viz_pub.publish(traj_lanelet_marker_array);
     g_traj_viz_pub.publish(traj_marker_array);
     lir_viz_pub.publish(lir_marker_array);
+    mission_pub.publish(mission_pt);
     
 }
 
@@ -708,11 +711,22 @@ void MapLoader::v2x_goal_nodes(){
 
   GeographicLib::UTMUPS::Forward(origin_lat, origin_lon, zone, north, origin_x, origin_y, setzone, mgrs);
   
+
+
   for(int i=0; i<lla.size(); i++){
     double x, y;
     GeographicLib::UTMUPS::Forward(lla[i].second, lla[i].first, zone, north, x, y, setzone, mgrs);
     std::pair<double,double> xy = {x-origin_x, y-origin_y};
     xyz.push_back(xy);
+
+    if (i ==7){
+      mission_pt.start.x = x-origin_x;
+      mission_pt.start.y = y-origin_y;
+    }
+    else if (i == lla.size()-1){
+      mission_pt.end.x = x-origin_x;
+      mission_pt.end.y = y-origin_y;
+    }
   }
 
   // for(int i=0; i<xyz.size(); i++){

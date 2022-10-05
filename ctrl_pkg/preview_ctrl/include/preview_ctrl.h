@@ -81,7 +81,7 @@ VehicleStatus vehicle_status_; //< @brief vehicle status
 bool my_steering_ok_,my_position_ok_, my_odom_ok_;
 double angle_rate_limit, prev_delta_cmd;   
 std::mutex mtx_;
-ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub;
+ros::Subscriber setpointSub, poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub;
 ros::Publisher  velPub, ackmanPub, steerPub, pub_debug_filtered_traj_, debugPub, AcanPub;
 
 Trajectory traj_;
@@ -94,6 +94,7 @@ VehicleModel VehicleModel_;
 std::vector<double> delta_buffer;
 int path_filter_moving_ave_num_, curvature_smoothing_num_, path_smoothing_times_;
 
+int setpoint;
 
 int delay_step, preview_step;
 double delay_in_sec, lag_tau;
@@ -143,7 +144,7 @@ void convertTrajToMarker(const Trajectory &traj, visualization_msgs::Marker &mar
                                       std::string ns, double r, double g, double b, double z);
 
 void dyn_callback(preview_ctrl::testConfig& config, uint32_t level);
-
+void setpointCallback(const std_msgs::Float64& msg);
 
 };
 

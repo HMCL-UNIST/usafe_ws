@@ -23,16 +23,17 @@
 
 BehaviorPlanner::BehaviorPlanner(){
 
-    nh_.param<float>("minBrake", minBrake, 2);
-    nh_.param<float>("maxBrake", maxBrake, 5);
-    nh_.param<float>("maxAccel", maxAccel, 3);
-    nh_.param<float>("rho", rho, 1);
     nh_.param<float>("wLane", wLane, 3.5);
     nh_.param<float>("lenEgo", lenEgo, 4.180);
     nh_.param<float>("frontlenEgo", frontlenEgo, 4.180/2);// need to check lidar position in real vehicle
     nh_.param<float>("minFront", minFront, 100);
+    nh_.param<int>("nStoreFront", nStoreFront, 10); //need to check
     nh_.param<float>("thresLC", thresLC, 0.5); // need to check if 0.5 is sufficient
-    nh_.param<float>("thresStop", thresStop, 0.01); // need to check if 0.01 is sufficient
+    nh_.param<float>("thresStop", thresStop, 0.1); // need to check if 0.01 is sufficient
+    nh_.param<float>("thresCW", thresCW, 15);
+    nh_.param<float>("thresDistSG", thresDistSG, 20);
+    nh_.param<float>("successDistSG", successDistSG, 3);
+
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
     pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::odometryCallback, this);
@@ -40,7 +41,7 @@ BehaviorPlanner::BehaviorPlanner(){
     vel_sub = nh_.subscribe("/vehicle_status", 1, &BehaviorPlanner::vehicleStatusCallback, this);
     objs_sub = nh_.subscribe("/detection/lidar_tracker/objects",1, &BehaviorPlanner::objsCallback,this);
     //goal_sub = nh_.subscribe("move_base_simple/goal", 1, &BehaviorPlanner::callbackGetGoalPose, this);
-    v2x_mission_sub = nh_.subscribe("/Mission1", 1, &BehaviorPlanner::v2xMissionCallback, this);
+    start_goal_sub = nh_.subscribe("/start_goal_pose", 1, &BehaviorPlanner::v2xStartGoalCallback, this);
     v2x_spat_sub = nh_.subscribe("/SPAT",1, &BehaviorPlanner::v2xSPATCallback, this);
     // route_sub = nh_.subscribe("/global_traj", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
     route_sub = nh_.subscribe("/lane_in_range", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
@@ -51,6 +52,7 @@ BehaviorPlanner::BehaviorPlanner(){
     // behavior factors
     missionStart = false;
     approachToStartPos = false;
+    startArrivalCheck = false;
     startArrivalSuccess = false;
     frontCar = false;
     stationaryFrontCar = false;
@@ -70,16 +72,27 @@ BehaviorPlanner::BehaviorPlanner(){
     speedBumpPass = false;
     approachToGoalPos = false;
 
+    getObject = false;
     getGlobal = false;
     getPose = false;
+    getSpeed = false;
+    getSGpos = false;
+    getSPAT = false;
+    getMission = false;
+
     // to velocity planner
     front_id = -1;
     stop_line_stop = false;
 
+    inCW = false;
+    inCWprev = false;
+    frontPrev = false;
+    countFront = 0;
+
     boost::thread callbackhandler(&BehaviorPlanner::callbackthread,this); 
 }
 void BehaviorPlanner::callbackthread(){   
-    ros::Rate loop_rate(10); // rate  
+    ros::Rate loop_rate(20); // rate  
     while(ros::ok()){
         updateFactors();
         // ROS_INFO("DKJF");
@@ -146,152 +159,223 @@ void BehaviorPlanner::calculateFrenet(int n, float* psarr, float px, float py, f
     psl[3] = dl;
 }
 
-void BehaviorPlanner::calculateSafeDistance(float vFront, float vRear, float &dSafe){
-    dSafe = vRear*rho + (1/2)*maxAccel*pow(rho,2) + pow((vRear + rho*maxAccel),2)/(2*minBrake) - pow(vFront,2)/(2*maxBrake);
-}
 
 void BehaviorPlanner::updateFactors(){
     ROS_INFO("BEHAVIOR_PLANNER");
-    if (!getGlobal){
-        ROS_INFO("Can not receive global trajectory");
-        return;
-    }
-    if(!getPose){
-        ROS_INFO("Can not receive pose");
-        return;
-    }
-    ROS_INFO("globalposex: %f", globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x);
-    float distToGlobal = sqrt(pow(egoPose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,2)+pow(egoPose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y,2));
-    ROS_INFO("kdjjeo");
-    if(distToGlobal > 5){
-        ROS_INFO("ego vehicle is not located on the global lane");
-        return;
-    }
-    // behavior factors
-    // missionStart = true; //for test
-    // missionStart = false;
-    approachToStartPos = false;
-    startArrivalSuccess = false;
-    frontCar = false;
-    stationaryFrontCar = false;
-    approachToCrosswalk = false;
-    crosswalkPass = false;
-    pedestrianOnCrosswalk = false;
-    leftTurn = false;
-    rightTurn = false;
-    turn = false;
-    trafficLightStop = false;
-    stopCheck = false;
-    luggageDrop = false;
-    brokenFrontCar = false;
-    laneChangeDone = false;
-    esssentialLaneChange = false;
-    speedBumpSign = false;
-    speedBumpPass = false;
-    approachToGoalPos = false;
+    while(1){
+        if (!getGlobal){
+            ROS_INFO("Can not receive global trajectory");
+            break;
+        }
+        if(!getPose){
+            ROS_INFO("Can not receive pose");
+            break;
+        }
+        if(!getSpeed){
+            ROS_INFO("Can not receive speed");
+            break;
+        }
+        if(!getObject){
+            ROS_INFO("Can not receive objects");
+        }
+        if(!getSGpos){
+            ROS_INFO("Can not receive start and goal pos");
+            break;
+        }
+        // if(!getSPAT){
+        //     ROS_INFO("Can not receive SPAT data");
+        // }
+        if(!getMission){
+            ROS_INFO("Can not receive mission state");
+            break;
+        }
+        ROS_INFO("global lanes size: %d", globalLaneArray.lanes.size());
+        ROS_INFO("ego lane wpts size: %d", globalLaneArray.lanes[0].waypoints.size());
+        if(globalLaneArray.lanes.size() < 1||globalLaneArray.lanes[0].waypoints.size()<1){
+            ROS_INFO("global array doesn't contain waypoint");
+            break;
+        }
+        float distToGlobal = sqrt(pow(egoPose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,2)+pow(egoPose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y,2));
+        if(distToGlobal > 5){
+            ROS_INFO("ego vehicle is not located on the global lane");
+            break;
+        }
 
-    // to velocity planner
-    front_id = -1;
-    stop_line_stop = false;
+        // behavior factors
+        // missionStart = true; //for test
+        approachToStartPos = false;
+        startArrivalCheck = false;
+        startArrivalSuccess = false;
+        frontCar = false;
+        stationaryFrontCar = false;
+        approachToCrosswalk = false;
+        crosswalkPass = false;
+        pedestrianOnCrosswalk = false;
+        leftTurn = false;
+        rightTurn = false;
+        turn = false;
+        trafficLightStop = false;
+        stopCheck = false;
+        luggageDrop = false;
+        brokenFrontCar = false;
+        laneChangeDone = false;
+        esssentialLaneChange = false;
+        speedBumpSign = false;
+        speedBumpPass = false;
+        approachToGoalPos = false;
 
-    // check mission start
-    if(currentMission == MissionState::DriveToStartPos){
-        missionStart = true;
-    }
-    if(missionStart == false) return;
-    int n0 = globalLaneArray.lanes[0].waypoints.size();
-    float sarr0[n0];
-    float slEgo[4], slObj[4];
-    int on = detectedObjects.objects.size();
-    float sObj[on], lObj[on], dsObj[on], dlObj[on], laneidObj[on];
-    float sEgo, dsEgo, lEgo;
-    float* psarr;
-    float* psl;
-    float gapFront = 100, safeFront = 100;
-    float xObj[on],yObj[on],vxObj[on],vyObj[on];
+        // to velocity planner
+        front_id = -1;
+        stop_line_stop = false;
 
-    float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
-    ROS_INFO("egopose x: %f, y: %f",egoPose.position.x, egoPose.position.y);
-    ROS_INFO("globalpose x: %f, y: %f",globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y);
+        inCW = false;
 
-    for(int i = 0; i < on; i++){
-        xObj[i] = egoPose.position.x + detectedObjects.objects[i].pose.position.x*cos(yaw)-detectedObjects.objects[i].pose.position.y*sin(yaw);
-        yObj[i] = egoPose.position.y + detectedObjects.objects[i].pose.position.x*sin(yaw)+detectedObjects.objects[i].pose.position.y*cos(yaw);
-        vxObj[i] = detectedObjects.objects[i].velocity.linear.x*cos(yaw) - detectedObjects.objects[i].velocity.linear.y*sin(yaw);
-        vyObj[i] = detectedObjects.objects[i].velocity.linear.x*sin(yaw) + detectedObjects.objects[i].velocity.linear.y*cos(yaw);
-        ROS_INFO("i:%d,x: %f,y: %f,vx: %f,vy: %f",i,xObj[i],yObj[i],vxObj[i],vxObj[i]);
-    }
-    // calculate Frenet longitudinal length of egolane            
-    psarr = sarr0;
-    this->calculateLon(n0, psarr, globalLaneArray.lanes[0]);
+        // check mission start
+        if(currentMission == MissionState::DriveToStartPos){
+            missionStart = true;
+        }
 
-    // calculate Frenet coordinate of ego vehicle
-    psl = slEgo;
-    this->calculateFrenet(n0, psarr, egoPose.position.x, egoPose.position.y, 0, 0, psl, globalLaneArray.lanes[0]);
-    sEgo = slEgo[0];
-    lEgo = slEgo[1];
-    dsEgo = egoSpeed;
-    ROS_INFO("egopose s: %f, l: %f, dsEgo: %f",sEgo,lEgo, dsEgo);
+        // return if mission doesn't start
+        if(missionStart == false){
+            ROS_INFO("Mission doesn't start yet");
+            break;
+        }
+        int n0 = globalLaneArray.lanes[0].waypoints.size();
+        float sarr0[n0];
+        float slEgo[4], slObj[4];
+        int on = detectedObjects.objects.size();
+        float sObj[on], lObj[on], dsObj[on], dlObj[on], laneidObj[on];
+        float sEgo, dsEgo, lEgo;
+        float* psarr;
+        float* psl;
+        float xObj[on],yObj[on],vxObj[on],vyObj[on];
+        float distToCW;
 
-    // determine the necessity of lane change
+        float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
+        ROS_INFO("egopose x: %f, y: %f",egoPose.position.x, egoPose.position.y);
+        ROS_INFO("globalpose x: %f, y: %f",globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y);
 
-
-    // calculate Frenet coordinate of objects
-    psl = slObj;
-    for(int i = 0; i < on; i++){
-        laneidObj[i] = 100;
+        for(int i = 0; i < on; i++){
+            xObj[i] = egoPose.position.x + detectedObjects.objects[i].pose.position.x*cos(yaw)-detectedObjects.objects[i].pose.position.y*sin(yaw);
+            yObj[i] = egoPose.position.y + detectedObjects.objects[i].pose.position.x*sin(yaw)+detectedObjects.objects[i].pose.position.y*cos(yaw);
+            vxObj[i] = detectedObjects.objects[i].velocity.linear.x*cos(yaw) - detectedObjects.objects[i].velocity.linear.y*sin(yaw);
+            vyObj[i] = detectedObjects.objects[i].velocity.linear.x*sin(yaw) + detectedObjects.objects[i].velocity.linear.y*cos(yaw);
+            ROS_INFO("i:%d,x: %f,y: %f,vx: %f,vy: %f",i,xObj[i],yObj[i],vxObj[i],vxObj[i]);
+        }
+        // calculate Frenet longitudinal length of egolane            
         psarr = sarr0;
-        this->calculateFrenet(n0, psarr, xObj[i], yObj[i], vxObj[i], vyObj[i], psl, globalLaneArray.lanes[0]);
-        sObj[i] = slObj[0];
-        lObj[i] = slObj[1];
-        dsObj[i] = slObj[2];
-        dlObj[i] = slObj[3];
-        if(abs(lObj[i]) <= wLane/2) laneidObj[i] = 0;
-        if(laneidObj[i] == 0){
-            // behind vehicle
-            if(sObj[i]-sEgo < 0) break;
-            // front vehicle
-            else{
-                if(sObj[i]-sEgo < minFront){
-                    front_id = i;
-                    minFront = sObj[i]-sEgo;
-                    frontCar = true;
+        this->calculateLon(n0, psarr, globalLaneArray.lanes[0]);
+
+        // calculate Frenet coordinate of ego vehicle
+        psl = slEgo;
+        this->calculateFrenet(n0, psarr, egoPose.position.x, egoPose.position.y, 0, 0, psl, globalLaneArray.lanes[0]);
+        sEgo = slEgo[0];
+        lEgo = slEgo[1];
+        dsEgo = egoSpeed;
+        ROS_INFO("egopose s: %f, l: %f, dsEgo: %f",sEgo,lEgo, dsEgo);
+
+        // determine the necessity of lane change
+
+
+        // calculate Frenet coordinate of objects
+        psl = slObj;
+        for(int i = 0; i < on; i++){
+            laneidObj[i] = 100;
+            psarr = sarr0;
+            this->calculateFrenet(n0, psarr, xObj[i], yObj[i], vxObj[i], vyObj[i], psl, globalLaneArray.lanes[0]);
+            sObj[i] = slObj[0];
+            lObj[i] = slObj[1];
+            dsObj[i] = slObj[2];
+            dlObj[i] = slObj[3];
+            if(abs(lObj[i]) <= wLane/2) laneidObj[i] = 0;
+            if(laneidObj[i] == 0){
+                // behind vehicle
+                if(sObj[i]-sEgo < 0) break;
+                // front vehicle
+                else{
+                    if(sObj[i]-sEgo < minFront){
+                        front_id = i;
+                        minFront = sObj[i]-sEgo;
+                        frontCar = true;
+                    }
                 }
             }
         }
-    }
 
-    // float distToFront;
-
-    if(distToGlobal < 10){//need to change dist to front
-        approachToStartPos = true;
-    }
-
-    // check if ego stop
-    if(dsEgo < thresStop) stopCheck = true;
-    // calculate safe distance and check if it is stationary car
-    if(frontCar){
-        this->calculateSafeDistance(dsObj[front_id],dsEgo,safeFront);
-        gapFront = minFront - detectedObjects.objects[front_id].dimensions.x/2 - frontlenEgo;
-        if (abs(dsObj[front_id]) < thresStop){
-            stationaryFrontCar = true;
+        float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
+        if(distToStart < thresDistSG){
+            approachToStartPos = true;
         }
+        if(distToStart < successDistSG){
+            startArrivalCheck = true;
+        }
+        ROS_INFO("dist to START: %f", distToStart);
+
+        float distToGoal = sqrt(pow(egoPose.position.x-goalX,2)+pow(egoPose.position.y-goalY,2));
+        if(distToGoal < thresDistSG){
+            approachToGoalPos = true;
+        }
+        ROS_INFO("dist to STOP: %f", distToGoal);
+
+
+        // check if ego stop
+        if(dsEgo < thresStop) stopCheck = true;
+        
+        // calculate safe distance and check if it is stationary car
+        if(frontCar){
+            frontPrev = true;
+            if (abs(dsObj[front_id]) < thresStop){
+                stationaryFrontCar = true;
+            }
+        }
+        if(frontPrev){
+            if(countFront < nStoreFront){
+                front_id = 1000;
+                countFront++;
+                frontPrev = true;
+            }
+            else{
+                countFront = 0;
+                frontPrev = false;
+            }
+        }
+        
+        // compute dist to crosswalk
+        for(int i = 0; i < n0; i++){
+            if(globalLaneArray.lanes[0].waypoints[i].Crosswalk == true){
+                distToCW = sarr0[i]-sEgo;
+                if(distToCW < thresCW) approachToCrosswalk = true;
+                break;
+            }
+        }
+
+        // decide if ego is in crosswalk
+        if(globalLaneArray.lanes[0].waypoints[0].Crosswalk == true){
+            inCW = true;
+            inCWprev = true;
+        }
+        else if(inCWprev){
+            crosswalkPass = true;
+            inCWprev = false;
+        }
+
+        // get turn flag from global
+
+        turn = leftTurn || rightTurn;
+
+        // determine doneLC
+        // if(esssentialLaneChange == true){
+        //     if(this->needLC == false && abs(lEgo)<thresLC) this->doneLC = true; 
+        // }
+        // ROS_INFO("DKJF");
+        break;
     }
-
-    // get turn flag from global
-    
-    turn = leftTurn || rightTurn;
-
-    // determine doneLC
-    // if(esssentialLaneChange == true){
-    //     if(this->needLC == false && abs(lEgo)<thresLC) this->doneLC = true; 
-    // }
-    // ROS_INFO("DKJF");
     //update behavior factor
     behaviorFactor.front_id = front_id; // done
     behaviorFactor.stop_line_stop = stop_line_stop;
     behaviorFactor.transition_condition.missionStart = missionStart; // done
     behaviorFactor.transition_condition.approachToStartPos = approachToStartPos;
+    //behaviorFactor.transition_condition.startArrivalCheck = startArrivalCheck;
     behaviorFactor.transition_condition.startArrivalSuccess = startArrivalSuccess;
     behaviorFactor.transition_condition.frontCar = frontCar; // need to test
     behaviorFactor.transition_condition.stationaryFrontCar = stationaryFrontCar; //need to test
@@ -323,21 +407,25 @@ void BehaviorPlanner::odometryCallback(const nav_msgs::Odometry& msg){
 }
 
 void BehaviorPlanner::vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg){
+    getSpeed = true;
     egoSpeed = msg->wheelspeed.wheel_speed; 
 }
 
 void BehaviorPlanner::objsCallback(const autoware_msgs::DetectedObjectArray& msg){
+    getObject = true;
     detectedObjects = msg;
 }
 
-void BehaviorPlanner::v2xMissionCallback(const v2x_msgs::Mission1& msg){
-    //startpos info 
-    //goalpos
-    //msg.start_lat;
-    //msg.start_lon;
+void BehaviorPlanner::v2xStartGoalCallback(const hmcl_msgs::MissionWaypoint& msg){
+    getSGpos = true;
+    startX = msg.start.x;
+    startY = msg.start.y;
+    goalX = msg.end.x;
+    goalY = msg.end.y;
 }
 
 void BehaviorPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
+    getSPAT = true;
     //traffic_signal
     // msg.id;
     // msg.states;
@@ -349,6 +437,7 @@ void BehaviorPlanner::routeCallback(const hmcl_msgs::LaneArray &msg){
 }
 
 void BehaviorPlanner::missionCallback(const std_msgs::Int16::ConstPtr& msg){
+    getMission = true;
     currentMission = (MissionState)msg->data;
 }
 
