@@ -91,8 +91,8 @@
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <hmcl_msgs/VehicleStatus.h>
 #include <hmcl_msgs/MissionWaypoint.h>
-
-
+#include <v2x_msgs/Mission1.h>
+#include <v2x_msgs/Mission1state.h>
 
 #include <lanelet2_extension/utility/message_conversion.h>
 #include <polyfit.h>
@@ -151,7 +151,7 @@ ros::Publisher lir_pub;
 ros::Publisher way_pub;
 ros::Publisher mission_pub;
 ros::Subscriber mobileye_sub;
-ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub;
+ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub, v2x_mission_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
 mobileye_msgs::MobileyeInfo mobileye_data;
 ros::Timer viz_timer, g_traj_timer, local_traj_timer, lir_timer;
@@ -159,9 +159,9 @@ visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_
 
 double test_direction;
 bool visualize_path, continuious_global_replan;
-
+bool getV2Xinfo;
 hmcl_msgs::MissionWaypoint mission_pt;
-
+v2x_msgs::Mission1state MissionStates;
 
 autoware_msgs::DetectedObjectArray objects, prev_objects; 
 
@@ -307,6 +307,7 @@ void lane_in_range();
 void wp_inArea();
 void ego_in();
 bool calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist);
+bool calculate_distance_(hmcl_msgs::Waypoint &wp1, hmcl_msgs::Waypoint &wp2, double &dist, double &dist_cum);
 void v2x_goal_nodes();
 
 void LaneChangeStateMachine();
@@ -320,6 +321,7 @@ void viz_lir(hmcl_msgs::LaneArray &lanes);
 void pub_autoware_traj(const hmcl_msgs::Lane& lane);
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
 
+void v2xMissionCallback(const v2x_msgs::Mission1& msg);
 
 };
 

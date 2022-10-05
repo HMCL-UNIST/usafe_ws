@@ -44,15 +44,12 @@
 // P_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
 
 
-
-
 MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path) :  
   nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path),cur_filter(A_curv,B_curv,C_curv,Q_curv,R_curv,P_curv)  
 {
   // using namespace lanelet;
   left_change_signal = false;
   right_change_signal = false;
-  getV2Xinfo = false;
   lane_change_state = LaneChangeState::Follow;
   map_bin_pub = nh_.advertise<autoware_lanelet2_msgs::MapBin>("/lanelet_map_bin", 1, true);
   
@@ -66,17 +63,14 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   lir_pub= nh_.advertise<hmcl_msgs::LaneArray>("/lane_in_range",2,true);
   
-  mission_pub= nh_.advertise<hmcl_msgs::MissionWaypoint>("/start_goal_pose",2,true);
-
-  max_dist=10000;
+  max_dist=200;
   
   // cur_pose.position.x=-127.8411;
   // cur_pose.position.y=52.5457;
 
   pose_init = false; 
-  goal_available = false;
+  goal_available = true;
   pose_sub = nh_.subscribe("/pose_estimate",1,&MapLoader::poseCallback,this);
-  v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MapLoader::v2xMissionCallback, this);
   // odom_sub = nh_.subscribe("/carla/hero/odometry",100, &MapLoader::llaCallback,this);
   // goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
   // vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
@@ -110,8 +104,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
     lir_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lir_viz",1,true);  
     viz_timer = nh_.createTimer(ros::Duration(0.1), &MapLoader::viz_pub,this);    
   }
-
-  global_traj_available = false;    
+  v2x_goal_nodes();
+  global_traj_available = true;    
   load_map();
   bool map_fix;
   nh_p_.param<bool>("map_fix", map_fix, true);
@@ -136,10 +130,6 @@ MapLoader::~MapLoader()
 {}
 
 void MapLoader::global_traj_handler(const ros::TimerEvent& time){
-  if(!goal_available){
-    v2x_goal_nodes();
-  }
-  
   if(goal_available){
     compute_global_path();
   }  
@@ -440,15 +430,10 @@ void MapLoader::lane_in_range(){
   findnearest_lane_and_point_idx(tmp_array, cur_pose, near_lane_idx, near_pt_idx);
 
   double dist_com = sqrt(pow((tmp_array.lanes[near_lane_idx].waypoints[near_pt_idx].pose.pose.position.x-cur_pose.position.x),2) + pow((tmp_array.lanes[near_lane_idx].waypoints[near_pt_idx].pose.pose.position.y-cur_pose.position.y),2));
-  
-  if (near_lane_idx ==0 && near_pt_idx ==0){
+  if (dist_com < 1.0){
     cl_lane_idx = near_lane_idx;
     cl_pt_idx = near_pt_idx;
   }
-  // if (dist_com < 1.0){
-    cl_lane_idx = near_lane_idx;
-    cl_pt_idx = near_pt_idx;
-  // }
   ROS_INFO("%d is closest lane", cl_lane_idx);
   ROS_INFO("%d is cloesest point",cl_pt_idx);
 
@@ -462,9 +447,9 @@ void MapLoader::lane_in_range(){
   hmcl_msgs::Lane ll;
   double dist_cum=0;
   for(int i=0; i<tmp_array.lanes.size(); i++){
-    for(int j=0; j<tmp_array.lanes[i].waypoints.size()-1; j++){
+    for(int j=0; j<tmp_array.lanes[i].waypoints.size(); j++){
       if(!tmp_array.lanes[i].lane_change_flag){
-        if(calculate_distance_(tmp_array.lanes[i+1].waypoints[j],tmp_array.lanes[i].waypoints[j], max_dist, dist_cum)){
+        if(calculate_distance_(cur_pose,tmp_array.lanes[i].waypoints[j], max_dist, dist_cum)){
           ll.waypoints.push_back(tmp_array.lanes[i].waypoints[j]);
         }
         else{
@@ -473,7 +458,7 @@ void MapLoader::lane_in_range(){
         }
       }
       else{
-        if(calculate_distance_(tmp_array.lanes[i+1].waypoints[j],tmp_array.lanes[i].waypoints[j], max_dist, dist_cum)){
+        if(calculate_distance_(cur_pose,tmp_array.lanes[i].waypoints[j], max_dist, dist_cum)){
           ll.waypoints.push_back(tmp_array.lanes[i].waypoints[j]);
         }
         else{
@@ -597,19 +582,8 @@ void MapLoader::ego_in(){
   }
 }
 
-bool MapLoader::calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist){
-  double dist_;
-  dist_= sqrt(pow((wp.pose.pose.position.x-point.position.x),2) + pow((wp.pose.pose.position.y-point.position.y),2));
-  if (dist_< dist){
-    return true;
-  }
-  else{
-    return false;
-  }
-}
-bool MapLoader::calculate_distance_(hmcl_msgs::Waypoint &wp1, hmcl_msgs::Waypoint &wp2, double &dist, double &dist_cum){
-
-  dist_cum = dist_cum + sqrt(pow((wp1.pose.pose.position.x-wp2.pose.pose.position.x),2) + pow((wp1.pose.pose.position.y-wp2.pose.pose.position.y),2));
+bool MapLoader::calculate_distance_(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist, double &dist_cum){
+  dist_cum= dist_cum + sqrt(pow((wp.pose.pose.position.x-point.position.x),2) + pow((wp.pose.pose.position.y-point.position.y),2));
   if (dist_cum< dist){
     return true;
   }
@@ -664,7 +638,6 @@ void MapLoader::viz_pub(const ros::TimerEvent& time){
     g_traj_lanelet_viz_pub.publish(traj_lanelet_marker_array);
     g_traj_viz_pub.publish(traj_marker_array);
     lir_viz_pub.publish(lir_marker_array);
-    mission_pub.publish(mission_pt);
     
 }
 
@@ -691,84 +664,51 @@ double MapLoader::get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::Co
 }
 
 void MapLoader::v2x_goal_nodes(){
-
-  if (!getV2Xinfo){
-    return;
-  }
   double origin_x, origin_y;
   int zone=52, setzone=-1;
   double gamma, k;
   bool north=true, mgrs=false;
-  int start_idx, end_idx;
-
 
   std::vector<std::pair<double,double>> lla;
-  
-  std::pair<double, double> n;
-  for (int i=0; i < MissionStates.States.size(); i++){
-    n = {MissionStates.States[i].route_node_pos_lon, MissionStates.States[i].route_node_pos_lat};
-    lla.push_back(n);
+  std::pair<double, double> n1 = {128.4007912, 35.6473269};
+  std::pair<double, double> n2 = {128.4004897, 35.6475503};
+  std::pair<double, double> n3 = {128.400041, 35.6476327};
+  std::pair<double, double> n4 = {128.3994251, 35.6479669};
+  std::pair<double, double> n5 = {128.3991161, 35.6484246};
+  std::pair<double, double> n6 = {128.3991183, 35.6487722};
+  std::pair<double, double> n7 = {128.3988279, 35.6490777};
+  std::pair<double, double> n8 = {128.3986198, 35.649262};
+  std::pair<double, double> n9 = {128.3985271, 35.6495136};
+  std::pair<double, double> n10 = {128.3990426, 35.6492655};
+  std::pair<double, double> n11 = {128.3994456, 35.6487118};
+  std::pair<double, double> n12 = {128.3990969, 35.648453};
+  std::pair<double, double> n13 = {128.3984583, 35.6487572};
+  std::pair<double, double> n14 = {128.39822, 35.6492807};
+  std::pair<double, double> n15 = {128.3985405, 35.6491925};
+  std::pair<double, double> n16 = {128.3987532, 35.6490049};
+  std::pair<double, double> n17 = {128.3990167, 35.6488157};
+  std::pair<double, double> n18 = {128.3994719, 35.6486958};
+  std::pair<double, double> n19 = {128.4000283, 35.6483885};
+  std::pair<double, double> n20 = {128.400377, 35.6478831};
+  std::pair<double, double> n21 = {128.4004214, 35.6475648};
+  std::pair<double, double> n22 = {128.4007492, 35.6472273};
 
-    if (MissionStates.States[i].route_node_type == 1){
-      start_idx = i;
-    }
-    else if (MissionStates.States[i].route_node_type == 2){
-      end_idx = i;
-    }
-  }
-  // std::pair<double, double> n1 = {128.4007912, 35.6473269};
-  // std::pair<double, double> n2 = {128.4004897, 35.6475503};
-  // std::pair<double, double> n3 = {128.400041, 35.6476327};
-  // std::pair<double, double> n4 = {128.3994251, 35.6479669};
-  // std::pair<double, double> n5 = {128.3991161, 35.6484246};
-  // std::pair<double, double> n6 = {128.3991183, 35.6487722};
-  // std::pair<double, double> n7 = {128.3988279, 35.6490777};
-  // std::pair<double, double> n8 = {128.3986198, 35.649262};
-  // std::pair<double, double> n9 = {128.3985271, 35.6495136};
-  // std::pair<double, double> n10 = {128.3990426, 35.6492655};
-  // std::pair<double, double> n11 = {128.3994456, 35.6487118};
-  // std::pair<double, double> n12 = {128.3990969, 35.648453};
-  // std::pair<double, double> n13 = {128.3984583, 35.6487572};
-  // std::pair<double, double> n14 = {128.39822, 35.6492807};
-  // std::pair<double, double> n15 = {128.3985405, 35.6491925};
-  // std::pair<double, double> n16 = {128.3987532, 35.6490049};
-  // std::pair<double, double> n17 = {128.3990167, 35.6488157};
-  // std::pair<double, double> n18 = {128.3994719, 35.6486958};
-  // std::pair<double, double> n19 = {128.4000283, 35.6483885};
-  // std::pair<double, double> n20 = {128.400377, 35.6478831};
-  // std::pair<double, double> n21 = {128.4004214, 35.6475648};
-  // std::pair<double, double> n22 = {128.4007492, 35.6472273};
-
-  // lla.push_back(n1); lla.push_back(n2); lla.push_back(n3); lla.push_back(n4);
-  // lla.push_back(n5); lla.push_back(n6); lla.push_back(n7); lla.push_back(n8);
-  // lla.push_back(n9); lla.push_back(n10); lla.push_back(n11); lla.push_back(n12);
-  // lla.push_back(n13); lla.push_back(n14); lla.push_back(n15); lla.push_back(n16);
-  // lla.push_back(n17); lla.push_back(n18); lla.push_back(n19); lla.push_back(n20);
-  // lla.push_back(n21); lla.push_back(n22);
+  lla.push_back(n1); lla.push_back(n2); lla.push_back(n3); lla.push_back(n4);
+  lla.push_back(n5); lla.push_back(n6); lla.push_back(n7); lla.push_back(n8);
+  lla.push_back(n9); lla.push_back(n10); lla.push_back(n11); lla.push_back(n12);
+  lla.push_back(n13); lla.push_back(n14); lla.push_back(n15); lla.push_back(n16);
+  lla.push_back(n17); lla.push_back(n18); lla.push_back(n19); lla.push_back(n20);
+  lla.push_back(n21); lla.push_back(n22);
 
   GeographicLib::UTMUPS::Forward(origin_lat, origin_lon, zone, north, origin_x, origin_y, setzone, mgrs);
   
-
-
   for(int i=0; i<lla.size(); i++){
     double x, y;
     GeographicLib::UTMUPS::Forward(lla[i].second, lla[i].first, zone, north, x, y, setzone, mgrs);
     std::pair<double,double> xy = {x-origin_x, y-origin_y};
     xyz.push_back(xy);
-
-    if (i == start_idx){
-      mission_pt.start.x = x-origin_x;
-      mission_pt.start.y = y-origin_y;
-    }
-    else if (i == end_idx){
-      mission_pt.end.x = x-origin_x;
-      mission_pt.end.y = y-origin_y;
-    }
   }
-  goal_available = true;
 
-
-  
   // for(int i=0; i<xyz.size(); i++){
   //   ROS_INFO("%f, %f", xyz[i].first, xyz[i].second);
   // }
@@ -957,11 +897,6 @@ PolyFit<double> MapLoader::polyfit(std::vector<double> x, std::vector<double> y)
      polyfit_error = true;  
     poly_error = 1e10;
   }
-}
-
-void MapLoader::v2xMissionCallback(const v2x_msgs::Mission1& msg){
-  getV2Xinfo = true;
-  MissionStates.States = msg.States;
 }
 
 int main (int argc, char** argv)

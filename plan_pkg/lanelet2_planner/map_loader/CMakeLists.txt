@@ -39,6 +39,7 @@ find_package(catkin REQUIRED COMPONENTS
   lanelet2_extension
   autoware_msgs
   mobileye_msgs
+  v2x_msgs
 )
 
 catkin_package( 
@@ -60,6 +61,7 @@ catkin_package(
   lanelet2_extension
   autoware_msgs
   mobileye_msgs
+  v2x_msgs
   LIBRARIES
 )
 

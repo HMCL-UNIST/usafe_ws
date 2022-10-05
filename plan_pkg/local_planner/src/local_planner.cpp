@@ -255,6 +255,7 @@ hmcl_msgs::Lane localplanner::bezier(hmcl_msgs::Lane lane, geometry_msgs::Pose p
     float x4 = pos4.position.x;
     float y4 = pos4.position.y;
 
+    cout << "curve distance : " << lc_dist << std::endl;
     float dist = lc_dist/nn;
     float xa, ya, xb, yb, xc, yc, xm, ym, xn, yn, x, y;
 
@@ -304,8 +305,10 @@ hmcl_msgs::Lane localplanner::constructCandidatePath(Point LC_Point, hmcl_msgs::
     lc_mid_pose1.position.y = lc_start_pose.position.y * 3/4 + lc_end_pose.position.y * 1/4;
     lc_mid_pose2.position.x = lc_start_pose.position.x * 1/4 + lc_end_pose.position.x * 3/4;
     lc_mid_pose2.position.y= lc_start_pose.position.y * 1/4 + lc_end_pose.position.y * 3/4;
+    cout << "mid pose : " << lc_mid_pose2.position.x << lc_mid_pose2.position.y <<endl;
 
     int nn = max(LC_Point.start.prepare_idx2 -LC_Point.start.prepare_idx1, 10);
+
     hmcl_msgs::Lane lane = bezier(lane_prepare, lc_start_pose, lc_mid_pose1, lc_mid_pose2, lc_end_pose, LC_Point.end.length, nn);
     return lane;
 }
