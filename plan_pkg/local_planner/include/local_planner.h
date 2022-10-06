@@ -2,7 +2,7 @@
 #include <ros/time.h>
 #include <tf/tf.h>
 #include <algorithm>
-
+#include "spline.h"
 #include <nav_msgs/Odometry.h>
 
 #include <geometry_msgs/Pose.h>
@@ -83,6 +83,9 @@ public:
     hmcl_msgs::Lane constructCandidatePath(Point LC_Point, hmcl_msgs::Lane lane_prepare, hmcl_msgs::Lane lane_end);
 
     hmcl_msgs::Lane bezier(hmcl_msgs::Lane lane, geometry_msgs::Pose pos1, geometry_msgs::Pose pos2, geometry_msgs::Pose pos3, geometry_msgs::Pose pos4, double lc_dist, int nn);
+    hmcl_msgs::Lane straight(hmcl_msgs::Lane lane, geometry_msgs::Pose pos1, geometry_msgs::Pose pos2, geometry_msgs::Pose pos3, geometry_msgs::Pose pos4, double lc_dist, int nn);
+    hmcl_msgs::Lane spline(hmcl_msgs::Lane lane, geometry_msgs::Pose pos1, geometry_msgs::Pose pos2, geometry_msgs::Pose pos3, geometry_msgs::Pose pos4, double lc_dist, int nn);
+
     float getPt( float n1 , float n2 , float perc);
 
     void viz_local(const hmcl_msgs::Lane& msg);

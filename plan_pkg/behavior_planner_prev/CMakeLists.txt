@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(behavior_planner)
+project(behavior_planner_prev)
 
 # find_package(PCL REQUIRED)
 

@@ -90,7 +90,8 @@ private:
     double object_x, object_y, object_vel;
 
     geometry_msgs::Point start, end;
-    
+
+    bool misson_stop=false;
     bool getLocalTraj;
     bool LeadVehicle, Pedestrian, PassStopLine;
     bool new_behavior_mode, find_stopline, find_crosswalk, find_judgeline;
@@ -115,6 +116,7 @@ private:
     double acc_cmd, d_safe, d_time;
 
     double ref_speed;
+    
 
     std::vector<double> acc_buffer;
 
@@ -131,7 +133,8 @@ private:
     Eigen::MatrixXd mcP;;
     
     //parameter for velocity smoother
-    double visualize, previous_step;
+    double visualize;
+    bool fail2determine, previous_step;
 
 
 public:

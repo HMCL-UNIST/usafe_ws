@@ -30,8 +30,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<int>("nStoreFront", nStoreFront, 10); //need to check
     nh_.param<float>("thresLC", thresLC, 0.5); // need to check if 0.5 is sufficient
     nh_.param<float>("thresStop", thresStop, 0.1); // need to check if 0.01 is sufficient
-    nh_.param<float>("thresCW", thresCW, 20);
-    nh_.param<float>("thresTurn", thresTurn, 40);
+    nh_.param<float>("thresCW", thresCW, 15);
     nh_.param<float>("thresDistSG", thresDistSG, 20);
     nh_.param<float>("successDistSG", successDistSG, 3);
 
@@ -47,8 +46,7 @@ BehaviorPlanner::BehaviorPlanner(){
     // route_sub = nh_.subscribe("/global_traj", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
     route_sub = nh_.subscribe("/lane_in_range", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
     mission_sub = nh_.subscribe("/mission_state", 1, &BehaviorPlanner::missionCallback, this);
-    b_factor_pub = nh_.advertise<hmcl_msgs::BehaviorFactor>("/behavior_factor",1,true);
-    b_state_pub = nh_.advertise<std_msgs::Int16>("/behavior_state",1,true);
+    behavior_pub = nh_.advertise<hmcl_msgs::BehaviorFactor>("/behavior_factor",1,true);
     // behavior_timer = nh_.createTimer(ros::Duration(0.05), &BehaviorPlanner::behavior_handler,this);
 
     // behavior factors
@@ -69,12 +67,10 @@ BehaviorPlanner::BehaviorPlanner(){
     luggageDrop = false;
     brokenFrontCar = false;
     laneChangeDone = false;
-    essentialLaneChange = false;
+    esssentialLaneChange = false;
     speedBumpSign = false;
     speedBumpPass = false;
     approachToGoalPos = false;
-    startArrivalCheck = false;
-
 
     getObject = false;
     getGlobal = false;
@@ -88,13 +84,6 @@ BehaviorPlanner::BehaviorPlanner(){
     front_id = -1;
     stop_line_stop = false;
 
-    currentBehavior = BehaviorState::Init2;
-    NormalDrive = false;
-    LaneFollowing = false;
-    Turn = false;
-
-    prevLT = false;
-    prevRT = false;
     inCW = false;
     inCWprev = false;
     frontPrev = false;
@@ -106,7 +95,7 @@ BehaviorPlanner::BehaviorPlanner(){
 void BehaviorPlanner::callbackthread(){   
     ros::Rate loop_rate(20); // rate  
     while(ros::ok()){
-        updateBehaviorState();
+        updateFactors();
         // ROS_INFO("DKJF");
         loop_rate.sleep();
     }
@@ -151,11 +140,11 @@ void BehaviorPlanner::calculateFrenet(int n, float* psarr, float px, float py, f
     float sv = sqrt(pow(v[0],2)+pow(v[1],2));
     float theta = acos((x[0]*p[0]+x[1]*p[1])/(dx*dp));
     float theta2 = acos((v[0]*p[0]+v[1]*p[1])/(sv*dp));
-    ROS_INFO("dp %f, dx %f, sv %f, theta %f, theta2 %f",dp, dx, sv, theta, theta2);
+    // ROS_INFO("dp %f, dx %f, sv %f, theta %f, theta2 %f",dp, dx, sv, theta, theta2);
     float s = psarr[idx]+dx*cos(theta);
-    if(dx<0.1) s = psarr[idx];
+    if(dx<0.001) s = psarr[idx];
     float ds = sv*cos(theta2);
-    if(sv<0.1) ds = 0;
+    if(sv<0.001) ds = 0;
     float l;
     float dl;
     // ROS_INFO("idx %d, x %f, p %f, v %f", idx, x[0],p[0],v[0]);
@@ -173,8 +162,12 @@ void BehaviorPlanner::calculateFrenet(int n, float* psarr, float px, float py, f
 
 
 void BehaviorPlanner::updateFactors(){
-    ROS_INFO("---------------BEHAVIOR_PLANNER----------------");
+    ROS_INFO("BEHAVIOR_PLANNER");
     while(1){
+        if (!getGlobal){
+            ROS_INFO("Can not receive global trajectory");
+            break;
+        }
         if(!getPose){
             ROS_INFO("Can not receive pose");
             break;
@@ -183,15 +176,37 @@ void BehaviorPlanner::updateFactors(){
             ROS_INFO("Can not receive speed");
             break;
         }
+        if(!getObject){
+            ROS_INFO("Can not receive objects");
+        }
         if(!getSGpos){
             ROS_INFO("Can not receive start and goal pos");
             break;
         }
-
+        // if(!getSPAT){
+        //     ROS_INFO("Can not receive SPAT data");
+        // }
+        if(!getMission){
+            ROS_INFO("Can not receive mission state");
+            break;
+        }
+        ROS_INFO("global lanes size: %d", globalLaneArray.lanes.size());
+        ROS_INFO("ego lane wpts size: %d", globalLaneArray.lanes[0].waypoints.size());
+        if(globalLaneArray.lanes.size() < 1||globalLaneArray.lanes[0].waypoints.size()<1){
+            ROS_INFO("global array doesn't contain waypoint");
+            break;
+        }
+        float distToGlobal = sqrt(pow(egoPose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,2)+pow(egoPose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y,2));
+        if(distToGlobal > 5){
+            ROS_INFO("ego vehicle is not located on the global lane");
+            break;
+        }
 
         // behavior factors
         // missionStart = true; //for test
         approachToStartPos = false;
+        startArrivalCheck = false;
+        startArrivalSuccess = false;
         frontCar = false;
         stationaryFrontCar = false;
         approachToCrosswalk = false;
@@ -205,11 +220,10 @@ void BehaviorPlanner::updateFactors(){
         luggageDrop = false;
         brokenFrontCar = false;
         laneChangeDone = false;
-        essentialLaneChange = false;
+        // esssentialLaneChange = false;
         speedBumpSign = false;
         speedBumpPass = false;
         approachToGoalPos = false;
-        goalArrivalCheck = false;
 
         // to velocity planner
         front_id = -1;
@@ -217,31 +231,8 @@ void BehaviorPlanner::updateFactors(){
 
         inCW = false;
 
-        // check if ego stop
-        if(egoSpeed < thresStop) stopCheck = true;
-
-        float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
-        if(distToStart < thresDistSG){
-            approachToStartPos = true;
-        }
-        if(distToStart < successDistSG){
-            startArrivalCheck = true;
-        }
-        ROS_INFO("dist to START: %f", distToStart);
-
-        float distToGoal = sqrt(pow(egoPose.position.x-goalX,2)+pow(egoPose.position.y-goalY,2));
-        // if(distToGoal < thresDistSG){
-        //     approachToGoalPos = true;
-        // }
-        ROS_INFO("dist to STOP: %f", distToGoal);
-
-        if(!getMission){
-            ROS_INFO("Can not receive mission state");
-            break;
-        }
-
         // check mission start
-        if((int)currentMission >= 3){
+        if(currentMission == MissionState::DriveToStartPos){
             missionStart = true;
         }
 
@@ -250,32 +241,6 @@ void BehaviorPlanner::updateFactors(){
             ROS_INFO("Mission doesn't start yet");
             break;
         }
-
-        if (!getGlobal){
-            ROS_INFO("Can not receive global trajectory");
-            break;
-        }
-        
-        if(!getObject){
-            ROS_INFO("Can not receive objects");
-        }
-        
-        // if(!getSPAT){
-        //     ROS_INFO("Can not receive SPAT data");
-        // }
-
-        ROS_INFO("global lanes size: %d", globalLaneArray.lanes.size());
-        ROS_INFO("ego lane wpts size: %d", globalLaneArray.lanes[0].waypoints.size());
-        if(globalLaneArray.lanes.size() < 1||globalLaneArray.lanes[0].waypoints.size()<1){
-            ROS_INFO("global array doesn't contain waypoint");
-            break;
-        }
-        float distToGlobal = sqrt(pow(egoPose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,2)+pow(egoPose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y,2));
-        if(distToGlobal > 5){
-            ROS_INFO("ego vehicle is not located on the global lane");
-            break;
-        }
-
         int n0 = globalLaneArray.lanes[0].waypoints.size();
         float sarr0[n0];
         float slEgo[4], slObj[4];
@@ -285,6 +250,7 @@ void BehaviorPlanner::updateFactors(){
         float* psarr;
         float* psl;
         float xObj[on],yObj[on],vxObj[on],vyObj[on];
+        float distToCW;
 
         float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
         ROS_INFO("egopose x: %f, y: %f",egoPose.position.x, egoPose.position.y);
@@ -335,8 +301,26 @@ void BehaviorPlanner::updateFactors(){
                     }
                 }
             }
-        }   
+        }
 
+        float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
+        if(distToStart < thresDistSG){
+            approachToStartPos = true;
+        }
+        if(distToStart < successDistSG){
+            startArrivalCheck = true;
+        }
+        ROS_INFO("dist to START: %f", distToStart);
+
+        float distToGoal = sqrt(pow(egoPose.position.x-goalX,2)+pow(egoPose.position.y-goalY,2));
+        // if(distToGoal < thresDistSG){
+        //     approachToGoalPos = true;
+        // }
+        ROS_INFO("dist to STOP: %f", distToGoal);
+
+
+        // check if ego stop
+        if(dsEgo < thresStop) stopCheck = true;
         
         // calculate safe distance and check if it is stationary car
         if(frontCar){
@@ -356,18 +340,18 @@ void BehaviorPlanner::updateFactors(){
                 frontPrev = false;
             }
         }
-        float distToCW = -1;
+        
         // compute dist to crosswalk
         for(int i = 0; i < n0; i++){
             if(globalLaneArray.lanes[0].waypoints[i].Crosswalk == true){
-                ROS_INFO("crosswalk Checker--------");
-                float cwX, cwY;
-                cwX = globalLaneArray.lanes[0].waypoints[i].pose.pose.position.x-egoPose.position.x;
-                cwY = globalLaneArray.lanes[0].waypoints[i].pose.pose.position.y-egoPose.position.y;
-                distToCW = sqrt(pow(cwX,2)+pow(cwY,2));
-                if(distToCW < thresCW && distToCW > 0){
-                    approachToCrosswalk = true;
-                    break;
+                distToCW = sarr0[i]-sEgo;
+                if(distToCW < thresCW) approachToCrosswalk = true;
+                break;
+            }
+            if(globalLaneArray.lanes[0].lane_change_flag == true){
+                if(esssentialLaneChange==false){
+                    esssentialLaneChange = true;
+                    prevLaneID = globalLaneArray.lanes[0].lane_id;
                 }
             }
         }
@@ -381,90 +365,24 @@ void BehaviorPlanner::updateFactors(){
             crosswalkPass = true;
             inCWprev = false;
         }
-        ROS_INFO("distToCW: %f,inCW: %d, inCWprev: %d, crosswalkPass: %d", distToCW, inCW, inCWprev, crosswalkPass);
-
-        int firstIdJunc = -1;
-        int lastIdJunc = -1;
-        bool isJunc = false;
-        float dJunc = -1, lenJunc = -1;
-        float StrX, StrY, JuncX, JuncY;
-        for(int i = 0; i < n0; i++){    
-            if(globalLaneArray.lanes[0].waypoints[i].Junction == true){
-                if(firstIdJunc == -1){
-                    firstIdJunc = i;
-                    lastIdJunc = i;
-                    isJunc = true;
-                    StrX = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-                    StrY = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
-                    dJunc = sqrt(pow(StrX,2)+pow(StrY,2));
-                }
-                else if(firstIdJunc != -1){
-                    lastIdJunc = i;
-                    
-                }
-            }
-        }
-        if(isJunc && dJunc < thresTurn && dJunc > 0){
-            // if(max(firstIdJunc, lastIdJunc-firstIdJunc) == firstIdJunc){
-            //     StrX = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-            //     StrY = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
-            // }
-            // else{
-            //     StrX = globalLaneArray.lanes[0].waypoints[n0].x-globalLaneArray.lanes[0].waypoints[lastIdJunc].x;
-            //     StrY = globalLaneArray.lanes[0].waypoints[n0].y-globalLaneArray.lanes[0].waypoints[lastIdJunc].y;
-            // }
-            JuncX = globalLaneArray.lanes[0].waypoints[lastIdJunc].pose.pose.position.x-globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.x;
-            JuncY = globalLaneArray.lanes[0].waypoints[lastIdJunc].pose.pose.position.y-globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.y;
-            lenJunc = sqrt(pow(JuncX,2)+pow(JuncY,2));
-            float hGap = 180/PI*acos((StrX*JuncX+StrY+JuncY)/(dJunc*lenJunc));
-            if(hGap < PI/12){
-                rightTurn = true;
-                prevRT = true;
-            }
-            else if(hGap > -PI/12){
-                leftTurn = true;
-                prevLT = true;
-            }
-            if(prevLT == true && globalLaneArray.lanes[0].waypoints[0].Junction == true){
-                leftTurn = true;
-            }
-            if(prevRT == true && globalLaneArray.lanes[0].waypoints[0].Junction == true){
-                rightTurn = true;
-            }
-            ROS_INFO("hGap: %f, lflag: %d, rflag: %d", hGap, leftTurn, rightTurn);
-        }
-        
-        // check if Lane Change is essintial
-        if(globalLaneArray.lanes[0].lane_change_flag == true){
-            if(essentialLaneChange ==false){
-                essentialLaneChange = true;
-                prevLaneID = globalLaneArray.lanes[0].lane_id;
-            }
-        }
 
         // get turn flag from global
 
         turn = leftTurn || rightTurn;
 
         // determine doneLC
-        if(essentialLaneChange == true){
+        if(esssentialLaneChange == true){
             if(prevLaneID != globalLaneArray.lanes[0].lane_id && abs(lEgo)<thresLC) laneChangeDone = true; 
         }
+        // ROS_INFO("DKJF");
         break;
     }
-    // approachToCrosswalk = false; //for test
-    startArrivalSuccess = startArrivalCheck; //for test
-
-    if(startArrivalSuccess){
-        approachToStartPos = false;
-    }
-
     //update behavior factor
     behaviorFactor.front_id = front_id; // done
     behaviorFactor.stop_line_stop = stop_line_stop;
     behaviorFactor.transition_condition.missionStart = missionStart; // done
     behaviorFactor.transition_condition.approachToStartPos = approachToStartPos;
-    behaviorFactor.transition_condition.startArrivalCheck = startArrivalCheck;
+    //behaviorFactor.transition_condition.startArrivalCheck = startArrivalCheck;
     behaviorFactor.transition_condition.startArrivalSuccess = startArrivalSuccess;
     behaviorFactor.transition_condition.frontCar = frontCar; // need to test
     behaviorFactor.transition_condition.stationaryFrontCar = stationaryFrontCar; //need to test
@@ -479,190 +397,11 @@ void BehaviorPlanner::updateFactors(){
     behaviorFactor.transition_condition.luggageDrop = luggageDrop;
     behaviorFactor.transition_condition.brokenFrontCar = brokenFrontCar;
     behaviorFactor.transition_condition.laneChangeDone = laneChangeDone;
-    behaviorFactor.transition_condition.essentialLaneChange = essentialLaneChange;
+    behaviorFactor.transition_condition.esssentialLaneChange = esssentialLaneChange;
     behaviorFactor.transition_condition.speedBumpSign = speedBumpSign;
     behaviorFactor.transition_condition.speedBumpPass = speedBumpPass;
     behaviorFactor.transition_condition.approachToGoalPos = approachToGoalPos;
-    behaviorFactor.transition_condition.goalArrivalCheck = goalArrivalCheck;
-    b_factor_pub.publish(behaviorFactor);
-}
-
-void BehaviorPlanner::updateBehaviorState(){
-    updateFactors();
-    bool goToNormalDrive = false;
-    bool goToLaneFollowing = false;
-    bool goToTurn = false;
-    BehaviorState prevBehavior = currentBehavior;
-    if(NormalDrive){
-        if(luggageDrop){
-            currentBehavior = BehaviorState::FrontLuggage;
-        }
-        else if(stationaryFrontCar && prevBehavior == BehaviorState::TrafficLightStop){
-            currentBehavior = BehaviorState::FrontCarStop;
-        }
-        else if(speedBumpSign){
-            currentBehavior = BehaviorState::SpeedBump;
-        }
-        else if(approachToStartPos){
-            currentBehavior = BehaviorState::StopAtStartPos;
-        }
-        else if(approachToGoalPos){
-            currentBehavior = BehaviorState::StopAtGoalPos;
-        }
-        else if(essentialLaneChange){
-            currentBehavior = BehaviorState::LaneChange;
-        }
-        else{
-            if(LaneFollowing){
-                if(turn){
-                    if(trafficLightStop){
-                        currentBehavior = BehaviorState::TrafficLightStop;
-                    }
-                    else{
-                        goToTurn = true;
-                    }
-                }
-                else if(trafficLightStop){
-                    currentBehavior = BehaviorState::TrafficLightStop;
-                }
-                else if(approachToCrosswalk){
-                    currentBehavior = BehaviorState::Crosswalk;
-                }
-                else{
-                    goToLaneFollowing = true;
-                }
-            }
-            if(Turn){
-                if(pedestrianOnCrosswalk){
-                    currentBehavior = BehaviorState::Pedestrian;
-                }
-                else if(turn == false){
-                    goToLaneFollowing = true;
-                }
-            }
-            if(prevBehavior == BehaviorState::TrafficLightStop){
-                if(leftTurn && (stopCheck||trafficLightStop==false)){
-                    currentBehavior = BehaviorState::LeftTurn;
-                }
-                else if(turn == false && trafficLightStop == false){
-                    goToLaneFollowing = true;
-                }
-            }
-            if(prevBehavior == BehaviorState::Crosswalk){
-                if(pedestrianOnCrosswalk){
-                    currentBehavior = BehaviorState::Pedestrian;
-                }
-                else if(crosswalkPass){
-                    goToLaneFollowing = true;
-                }
-            }
-            if(prevBehavior == BehaviorState::Pedestrian){
-                if(pedestrianOnCrosswalk == false && turn){
-                    if(trafficLightStop == true){
-                        currentBehavior = BehaviorState::TrafficLightStop;
-                    }
-                    else{
-                        goToTurn = true;
-                    }
-                }
-                else if(pedestrianOnCrosswalk == false){
-                    currentBehavior = BehaviorState::Crosswalk;
-                }
-            }
-
-        }
-    }
-    else{
-        if(prevBehavior == BehaviorState::Init2){
-            if(missionStart){
-                goToLaneFollowing = true;
-            }
-        }
-        if(prevBehavior == BehaviorState::StopAtStartPos){
-            if(startArrivalCheck){
-                currentBehavior = BehaviorState::StartArrival;
-            }
-        }
-        if(prevBehavior == BehaviorState::StartArrival){
-            if(startArrivalSuccess){
-                goToNormalDrive = true;
-            }
-        }
-        if(prevBehavior == BehaviorState::StopAtGoalPos){
-            if(goalArrivalCheck){
-                currentBehavior = BehaviorState::GoalArrival;
-            }
-        }
-        if(prevBehavior == BehaviorState::FrontLuggage){
-            if(luggageDrop == false || stationaryFrontCar == false){
-                goToNormalDrive = true;
-            }
-        }
-        if(prevBehavior == BehaviorState::FrontCarStop){
-            if(stationaryFrontCar == false){
-                goToNormalDrive = true;
-            }
-            else if(brokenFrontCar){
-                currentBehavior = BehaviorState::LaneChange;
-            }
-        }
-        if(prevBehavior == BehaviorState::LaneChange){
-            if(laneChangeDone){
-                goToNormalDrive = true;
-            }
-        }
-        if(prevBehavior == BehaviorState::SpeedBump){
-            if(speedBumpPass){
-                goToNormalDrive = true;
-            }
-        }
-    }
-    if(goToNormalDrive){
-        if(turn){
-            goToTurn = true;
-        }
-        else if(approachToCrosswalk){
-            currentBehavior = BehaviorState::Crosswalk;
-        }
-        else{
-            goToLaneFollowing = true;
-        }
-    }
-    if(goToLaneFollowing){
-        if(frontCar){
-            currentBehavior = BehaviorState::Follow;
-        }
-        else{
-            currentBehavior = BehaviorState::Forward;
-        }
-    }
-    if(goToTurn){
-        if(rightTurn){
-            currentBehavior = BehaviorState::RightTurn;
-        }
-        else{
-            currentBehavior = BehaviorState::LeftTurn;
-        }
-    }
-    NormalDrive = false;
-    LaneFollowing = false;
-    Turn = false;
-    if(currentBehavior == BehaviorState::Follow || currentBehavior == BehaviorState::Forward){
-        LaneFollowing = true;
-        NormalDrive = true;
-    }
-    if(currentBehavior == BehaviorState::LeftTurn || currentBehavior == BehaviorState::RightTurn){
-        Turn = true;
-        NormalDrive = true;
-    }
-    if(currentBehavior == BehaviorState::TrafficLightStop || currentBehavior == BehaviorState::Crosswalk || currentBehavior == BehaviorState::Pedestrian){
-        NormalDrive = true;
-    }
-    behavior_msg.data = currentBehavior;
-    b_state_pub.publish(behavior_msg);
-}
-BehaviorState BehaviorPlanner::getCurrentBehavior(){
-    return currentBehavior;
+    behavior_pub.publish(behaviorFactor);
 }
 
 // void BehaviorPlanner::poseCallback(const geometry_msgs::PoseStampedConstPtr& msg){

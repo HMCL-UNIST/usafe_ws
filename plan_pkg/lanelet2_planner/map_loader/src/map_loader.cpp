@@ -36,15 +36,11 @@
 // macro for getting the time stamp of a ros message
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
 
-
 // A_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
 // C_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
 // Q_curv << 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01;
 // R_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
 // P_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
-
-
-
 
 MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, const ros::NodeHandle& nh_local_path) :  
   nh_(nh), nh_p_(nh_p), nh_local_path_(nh_local_path),cur_filter(A_curv,B_curv,C_curv,Q_curv,R_curv,P_curv)  
@@ -68,11 +64,8 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   
   mission_pub= nh_.advertise<hmcl_msgs::MissionWaypoint>("/start_goal_pose",2,true);
 
-  max_dist=10000;
+  max_dist = 10000;
   
-  // cur_pose.position.x=-127.8411;
-  // cur_pose.position.y=52.5457;
-
   pose_init = false; 
   goal_available = false;
   pose_sub = nh_.subscribe("/pose_estimate",1,&MapLoader::poseCallback,this);
@@ -321,7 +314,12 @@ void MapLoader::compute_global_path(){
               global_lane_array.lanes.push_back(ll_);   
              
         }  
-          global_traj_available = true;
+            global_traj_available = true;
+            for (int i =0; i < global_lane_array.lanes.size(); i++){
+                global_index.push_back(global_lane_array.lanes[i].lane_id);
+                }
+
+
           // way_pub.publish(global_lane_array);          
           global_lane_array_for_local = global_lane_array;
 
@@ -431,41 +429,78 @@ void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){
 }
 
 void MapLoader::lane_in_range(){
-  hmcl_msgs::LaneArray tmp_array;
+  hmcl_msgs::LaneArray tmp_array, tmp_array2;
   tmp_array = global_lane_array;
   int near_lane_idx, near_pt_idx;
   bool add_stop = false;
-  
-  lir_array.lanes.clear();
-  findnearest_lane_and_point_idx(tmp_array, cur_pose, near_lane_idx, near_pt_idx);
 
-  double dist_com = sqrt(pow((tmp_array.lanes[near_lane_idx].waypoints[near_pt_idx].pose.pose.position.x-cur_pose.position.x),2) + pow((tmp_array.lanes[near_lane_idx].waypoints[near_pt_idx].pose.pose.position.y-cur_pose.position.y),2));
+
+
+
   
-  if (near_lane_idx ==0 && near_pt_idx ==0){
-    cl_lane_idx = near_lane_idx;
-    cl_pt_idx = near_pt_idx;
-  }
-  // if (dist_com < 1.0){
-    cl_lane_idx = near_lane_idx;
-    cl_pt_idx = near_pt_idx;
+  // if (lir_flag == false){
+    findnearest_lane_and_point_idx(tmp_array, cur_pose, cl_lane_idx, cl_pt_idx);
+    current_id = tmp_array.lanes[cl_lane_idx].lane_id;
+    
+    
+    if (abs(cl_lane_idx - previous_id) > 2){
+      if (previous_id != -1){
+        previous_id = cl_lane_idx;
+        return;
+      } 
+    } 
+
+    lir_array.lanes.clear();
+    tmp_array2.lanes.clear();
   // }
-  ROS_INFO("%d is closest lane", cl_lane_idx);
-  ROS_INFO("%d is cloesest point",cl_pt_idx);
+  // else{  
+    for (int j=0; j<tmp_array.lanes.size(); j++){
+      if (tmp_array.lanes[j].lane_id == current_id){
+        cl_lane_idx = j;
+        break;
+      }
+    }
+    for (int k=0; k<6; k++){
+      if (cl_lane_idx+k < tmp_array.lanes.size()){
+        tmp_array2.lanes.push_back(tmp_array.lanes[cl_lane_idx+k]);    
+        }
+    }
+
+  // }
+
+  previous_id = cl_lane_idx;
+  ROS_INFO("tmp_array length is: %d", tmp_array.lanes.size());
+  ROS_INFO("current lane is: %d", cl_lane_idx);
+  ROS_INFO("tmp_array2 length is: %d", tmp_array2.lanes.size());
+  findnearest_lane_and_point_idx(tmp_array2, cur_pose, cl_lane_idx, cl_pt_idx);
+  // lir_flag = true;
+   
 
   for(int i=0; i<cl_pt_idx; i++){
-    tmp_array.lanes[cl_lane_idx].waypoints.erase(tmp_array.lanes[cl_lane_idx].waypoints.begin());
-  }
-  for(int i=0; i<cl_lane_idx; i++){
-    tmp_array.lanes.erase(tmp_array.lanes.begin());
+    tmp_array2.lanes[cl_lane_idx].waypoints.erase(tmp_array2.lanes[cl_lane_idx].waypoints.begin());
   }
 
+  for(int i=0; i<cl_lane_idx; i++){
+    tmp_array2.lanes.erase(tmp_array2.lanes.begin());
+  }
+  ROS_INFO("tmp_array222 length is: %d", tmp_array2.lanes.size());
+
+  // global 
   hmcl_msgs::Lane ll;
-  double dist_cum=0;
-  for(int i=0; i<tmp_array.lanes.size(); i++){
-    for(int j=0; j<tmp_array.lanes[i].waypoints.size()-1; j++){
-      if(!tmp_array.lanes[i].lane_change_flag){
-        if(calculate_distance_(tmp_array.lanes[i+1].waypoints[j],tmp_array.lanes[i].waypoints[j], max_dist, dist_cum)){
-          ll.waypoints.push_back(tmp_array.lanes[i].waypoints[j]);
+  double dist_cum = 0;
+  int lane_id = current_id;
+  bool lc_flag = false;
+  for(int i=0; i<tmp_array2.lanes.size(); i++){
+    for(int j=0; j<tmp_array2.lanes[i].waypoints.size()-1; j++){
+      if(!tmp_array2.lanes[i].lane_change_flag){
+        if(lc_flag){
+            ll.lane_id = lane_id;
+            lir_array.lanes.push_back(ll);
+            ll.waypoints.clear();
+            lc_flag = false;
+        }
+        if(calculate_distance_(tmp_array2.lanes[i].waypoints[j+1],tmp_array2.lanes[i].waypoints[j], max_dist, dist_cum)){
+          ll.waypoints.push_back(tmp_array2.lanes[i].waypoints[j]);
         }
         else{
           add_stop = true;
@@ -473,10 +508,11 @@ void MapLoader::lane_in_range(){
         }
       }
       else{
-        if(calculate_distance_(tmp_array.lanes[i+1].waypoints[j],tmp_array.lanes[i].waypoints[j], max_dist, dist_cum)){
-          ll.waypoints.push_back(tmp_array.lanes[i].waypoints[j]);
+        if(calculate_distance_(tmp_array2.lanes[i].waypoints[j+1],tmp_array2.lanes[i].waypoints[j], max_dist, dist_cum)){
+          ll.waypoints.push_back(tmp_array2.lanes[i].waypoints[j]);
+          lc_flag = true;
         }
-        else{
+        else{ 
           lir_array.lanes.push_back(ll);
           ll.waypoints.clear();
           add_stop = true;
@@ -493,10 +529,18 @@ void MapLoader::lane_in_range(){
   if(ll.waypoints.size()>0){
     lir_array.lanes.push_back(ll);
   }
+
   if(lir_array.lanes.size()>0){
     lir_available = true;
     viz_lir(lir_array);
   }
+  else{
+    lir_available = false;
+  }
+  for (int k=0; k<lir_array.lanes.size(); k++){
+    ROS_INFO("lir array id %d, %d , wpts : %d", k, lir_array.lanes[k].lane_id, lir_array.lanes[k].waypoints.size());
+  }
+
 }
 
 void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
@@ -608,8 +652,8 @@ bool MapLoader::calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoi
   }
 }
 bool MapLoader::calculate_distance_(hmcl_msgs::Waypoint &wp1, hmcl_msgs::Waypoint &wp2, double &dist, double &dist_cum){
-
   dist_cum = dist_cum + sqrt(pow((wp1.pose.pose.position.x-wp2.pose.pose.position.x),2) + pow((wp1.pose.pose.position.y-wp2.pose.pose.position.y),2));
+  // std::cout << dist_cum << std::endl;
   if (dist_cum< dist){
     return true;
   }
@@ -749,6 +793,10 @@ void MapLoader::v2x_goal_nodes(){
   GeographicLib::UTMUPS::Forward(origin_lat, origin_lon, zone, north, origin_x, origin_y, setzone, mgrs);
   
 
+  // if(mission_status <= 1){
+  //   std::pair<double,double> xy = {odom_x, odom_y};
+  //   xyz.push_back(xy);
+  // }
 
   for(int i=0; i<lla.size(); i++){
     double x, y;
@@ -962,6 +1010,8 @@ PolyFit<double> MapLoader::polyfit(std::vector<double> x, std::vector<double> y)
 void MapLoader::v2xMissionCallback(const v2x_msgs::Mission1& msg){
   getV2Xinfo = true;
   MissionStates.States = msg.States;
+  mission_status = msg.status;
+
 }
 
 int main (int argc, char** argv)

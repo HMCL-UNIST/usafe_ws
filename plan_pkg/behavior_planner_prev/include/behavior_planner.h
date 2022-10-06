@@ -1,3 +1,5 @@
+// #include "planner/planner_common.h"
+
 #include <sstream>
 #include <string>
 #include <list>
@@ -34,15 +36,17 @@ typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArriv
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
             Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival} BehaviorState;
 
+
+
 class BehaviorPlanner
 {
     private:
         ros::NodeHandle nh_;
         ros::Subscriber pose_sub, vel_sub, objs_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub;
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
-        ros::Publisher b_factor_pub, b_state_pub;
+        ros::Publisher behavior_pub;
         // ros::Timer behavior_timer;
-        float wLane, lenEgo, frontlenEgo, minFront, thresLC, thresStop, thresCW, thresTurn, thresDistSG, successDistSG;
+        float wLane, lenEgo, frontlenEgo, minFront, thresLC, thresStop, thresCW, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
         autoware_msgs::DetectedObjectArray detectedObjects;
@@ -52,18 +56,15 @@ class BehaviorPlanner
         //traffic_signal
         hmcl_msgs::LaneArray globalLaneArray;
         MissionState currentMission;
-        BehaviorState currentBehavior;
         bool missionStart, approachToStartPos, startArrivalCheck, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
         bool pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone;
-        bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
+        bool esssentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos;
         short front_id, prevLaneID;
         int nStoreFront, countFront;
         bool stop_line_stop;
         bool getGlobal, getPose, getSpeed, getObject, getSGpos, getSPAT, getMission;
-        bool inCW, inCWprev, frontPrev, prevLT, prevRT;
+        bool inCW, inCWprev, frontPrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
-        std_msgs::Int16 behavior_msg;
-        bool NormalDrive, LaneFollowing, Turn;
 
     public:
         BehaviorPlanner(); 
@@ -73,8 +74,6 @@ class BehaviorPlanner
         void calculateFrenet(int n, float* psarr, float px, float py, float vx, float vy, float* psl, hmcl_msgs::Lane &lane);
         void calculateSafeDistance(float vFront, float vRear, float &dSafe);
         void updateFactors();
-        void updateBehaviorState();
-        BehaviorState getCurrentBehavior();
         // void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
         void odometryCallback(const nav_msgs::Odometry& msg);
         void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);

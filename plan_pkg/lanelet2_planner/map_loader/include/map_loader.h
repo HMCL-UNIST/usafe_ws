@@ -25,8 +25,6 @@
 #include <boost/thread/thread.hpp>
 #include <math.h>
 
-
-
 #include <chrono>
 #include <ros/ros.h>
 #include <ros/time.h>
@@ -184,15 +182,19 @@ double origin_att;
 double max_dist, max_dist_vel;
 bool global_traj_available;
 bool goal_available;
-bool lir_available;
-bool gla_available;
+bool lir_available = false;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
 
 geometry_msgs::Pose pose_a, pose_b;
 
+int mission_status;
+
 int cl_lane_idx = 0; 
 int cl_pt_idx = 0;
-
+std::vector<int> global_index ={};
+int current_id = 0;
+int previous_id = -1;
+bool lir_flag = false;
 
 std::string osm_file_name;
 double map_road_resolution;

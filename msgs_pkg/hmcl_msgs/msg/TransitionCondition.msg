@@ -1,5 +1,6 @@
 bool missionStart
 bool approachToStartPos
+bool startArrivalCheck
 bool startArrivalSuccess
 bool frontCar
 bool stationaryFrontCar
@@ -14,7 +15,8 @@ bool stopCheck
 bool luggageDrop
 bool brokenFrontCar
 bool laneChangeDone
-bool esssentialLaneChange
+bool essentialLaneChange
 bool speedBumpSign
 bool speedBumpPass
 bool approachToGoalPos
+bool goalArrivalCheck

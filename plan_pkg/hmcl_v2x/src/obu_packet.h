@@ -57,7 +57,7 @@ struct MissionData{
     
     uint8_t mission_id;
     uint8_t status;
-    uint16_t event_count;
+    uint8_t event_count;
     uint16_t distance;
     uint8_t route_id;
     int32_t start_lat;

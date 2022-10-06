@@ -244,6 +244,37 @@ float localplanner::getPt(float n1 , float n2 , float perc ){
     float diff = n2 - n1;
     return n1 + ( diff * perc );
 }    
+hmcl_msgs::Lane localplanner::spline(hmcl_msgs::Lane lane, geometry_msgs::Pose pos1, geometry_msgs::Pose pos2, geometry_msgs::Pose pos3, geometry_msgs::Pose pos4, double lc_dist, int nn){
+    std::vector<double> X = {}; // must be increasing
+    std::vector<double> Y = {};
+
+    tk::spline s(X,Y);
+    double x=1.5, y=s(x), deriv=s.deriv(1,x);
+}
+hmcl_msgs::Lane localplanner::straight(hmcl_msgs::Lane lane, geometry_msgs::Pose pos1, geometry_msgs::Pose pos2, geometry_msgs::Pose pos3, geometry_msgs::Pose pos4, double lc_dist, int nn){
+    float x1 = pos1.position.x;
+    float y1 = pos1.position.y;
+    float x4 = pos4.position.x;
+    float y4 = pos4.position.y;
+    
+    float x, y;
+    float dist = lc_dist/nn;
+
+    for(float i = 0 ; i < lc_dist ; i += dist ){
+
+        x = getPt( x1 , x4 , i );
+        y = getPt( y1 , y4 , i );
+
+
+        hmcl_msgs::Waypoint wpt;
+        wpt.pose.pose.position.x = x;
+        wpt.pose.pose.position.y = y;
+        lane.waypoints.push_back(wpt);
+    }
+    return lane;
+
+
+}
 
 hmcl_msgs::Lane localplanner::bezier(hmcl_msgs::Lane lane, geometry_msgs::Pose pos1, geometry_msgs::Pose pos2, geometry_msgs::Pose pos3, geometry_msgs::Pose pos4, double lc_dist, int nn){
     float x1 = pos1.position.x;
@@ -309,7 +340,7 @@ hmcl_msgs::Lane localplanner::constructCandidatePath(Point LC_Point, hmcl_msgs::
 
     int nn = max(LC_Point.start.prepare_idx2 -LC_Point.start.prepare_idx1, 10);
 
-    hmcl_msgs::Lane lane = bezier(lane_prepare, lc_start_pose, lc_mid_pose1, lc_mid_pose2, lc_end_pose, LC_Point.end.length, nn);
+    hmcl_msgs::Lane lane = straight(lane_prepare, lc_start_pose, lc_mid_pose1, lc_mid_pose2, lc_end_pose, LC_Point.end.length, nn);
     return lane;
 }
 

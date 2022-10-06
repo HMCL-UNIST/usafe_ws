@@ -121,7 +121,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
   ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
 
-  AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
+  // AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
 
   
    
@@ -355,8 +355,8 @@ void PreviewCtrl::ControlLoop()
         scc_frame.data[1] = ((setpoint) & 0b11111111);
         scc_frame.data[2] = ((setpoint >> 8)&0b11111111);
         scc_frame.data[3] = (unsigned int)0 & 0b11111111;
-        AcanPub.publish(scc_frame);
-        usleep(100);
+        // AcanPub.publish(scc_frame);
+        // usleep(100);
 
         can_msgs::Frame steering_frame;
         steering_frame.header.stamp = ros::Time::now();
@@ -371,7 +371,7 @@ void PreviewCtrl::ControlLoop()
         steering_frame.data[0] = (steer_value & 0b11111111);
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
-        AcanPub.publish(steering_frame);
+        // AcanPub.publish(steering_frame);
 
         ROS_INFO("~~~~");
           

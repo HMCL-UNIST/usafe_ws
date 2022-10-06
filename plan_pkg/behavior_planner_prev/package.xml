@@ -15,7 +15,7 @@
   limitations under the License.
 -->
 <package>
-  <name>behavior_planner</name>
+  <name>behavior_planner_prev</name>
   <version>0.1.0</version>
   <description>Load Lanelet2 map from osm file</description>
 

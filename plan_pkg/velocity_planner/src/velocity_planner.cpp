@@ -152,7 +152,7 @@ void VelocityPlanner::CheckMotionState()
         targetVel1 = intersection_velocity/3.6;
       }
       else{
-        Dis = std::min(Dis, 15.0);
+        // Dis = std::min(Dis, 15.0);
         MotionMode = MotionState::DECELERATE;
         targetVel1 = ACC();
       }
@@ -250,7 +250,7 @@ void VelocityPlanner::CheckMotionState()
         targetVel1 = 0;
       }
       else{
-        Dis = std::min(Dis, 15.0);
+        // Dis = std::min(Dis, 15.0);
         MotionMode = MotionState::DECELERATE;
         targetVel1 = ACC();
       }
@@ -289,7 +289,7 @@ void VelocityPlanner::CheckMotionState()
     MotionMode = MotionState::ACC;
 
   }
-  else if (CurrentMode ==  BehaviorState::LeftTurn){
+  else if (CurrentMode ==  BehaviorState::RightTurn){
      //1) If PreviousMode is TrafficLightStop, 
      //2) If PreviousMode is Forward, check the possibility to pass 
      //3) Check the lead vehicle existence
@@ -327,7 +327,7 @@ void VelocityPlanner::CheckMotionState()
           targetVel1 = intersection_velocity/3.6;;
         }
         else{
-          Dis = std::min(Dis, 15.0);
+          // Dis = std::min(Dis, 15.0);
           MotionMode = MotionState::DECELERATE;
           targetVel1 = ACC();
         }
@@ -381,7 +381,7 @@ void VelocityPlanner::CheckMotionState()
         targetVel1 = intersection_velocity/3.6;;
       }
       else{
-        Dis = std::min(Dis, 15.0);
+        // Dis = std::min(Dis, 15.0);
         MotionMode = MotionState::DECELERATE;
         targetVel1 = ACC();
       }
@@ -393,7 +393,7 @@ void VelocityPlanner::CheckMotionState()
     }
     targetVel = std::min(targetVel1, targetVel2);
   }
-  else if (CurrentMode ==  BehaviorState::RightTurn){
+  else if (CurrentMode ==  BehaviorState::LeftTurn){
     //1) check the stop line (If there is no stop line, make stop line)  
     //2) Reduce the velocity before reaching the stopline
 
@@ -435,9 +435,10 @@ void VelocityPlanner::CheckMotionState()
   else if(CurrentMode == BehaviorState::StopAtStartPos ){
     Dis = sqrt(pow(current_x-start.x,2) + pow(current_y-start.y,2));
     targetVel = 0;
-    if (Dis <= stop_margin){
+    if (Dis <= stop_margin || misson_stop){
       MotionMode = MotionState::STOP;
       targetVel1 = targetVel;
+      misson_stop = true;
     }
     else{
       Dis = std::min(Dis, 30.0);
@@ -447,13 +448,14 @@ void VelocityPlanner::CheckMotionState()
     if (LeadVehicle){
       MotionMode = MotionState::ACC;
       targetVel2 = CheckLeadVehicle();
+      misson_stop = true;
     }
     targetVel = std::min(targetVel1, targetVel2);
   }
   else if(CurrentMode == BehaviorState::StopAtGoalPos ){
     Dis = sqrt(pow(current_x-end.x,2) + pow(current_y-end.y,2));
     targetVel = 0;
-    if (Dis <= stop_margin){
+    if (Dis <= stop_margin || misson_stop){
       MotionMode = MotionState::STOP;
       targetVel1 = targetVel;
     }
@@ -689,13 +691,16 @@ void VelocityPlanner::VelocitySmoother()
 {
   double v0 = current_vel;
   double a0 = current_acc;
-  double time = 0.5;
+  double time = 1;
   double P[3] = {1.0,1.0,5.0};
   double SF0;
   
   ref_speed = v0;
   if (MotionMode == MotionState::GO){
-    SF0 = 15;
+    SF0 = 5;
+    ref_speed = targetVel;
+    return;
+
   }
   else if (MotionMode == MotionState::STOP){
     ref_speed = 0;
@@ -714,9 +719,13 @@ void VelocityPlanner::VelocitySmoother()
   if (previous_step) {
       // std::cout << "**Previous Status is FAIL**" << std::endl;
       xf[1] = xf[1]*0.5;
+      if (fail2determine){
+        current_vel = current_vel+0.5;
+      }
   }
+  bool fail2solve = false;
+     
   
-  bool fail2solve = false;  
   int k = 0;
   while(1)
   {   
@@ -738,13 +747,13 @@ void VelocityPlanner::VelocitySmoother()
           ref_speed = 0;
         }
 
-        double N = P[2]/0.2;
+        double N = P[2]/0.5;
 
         std::vector<double> profile{};
         double tt = 0.0;
         for (int i = 0; i < N; i++){
             profile.push_back(v0 + a0*tt + P[0]*pow(tt,2) + P[1]*pow(tt,3));
-            tt = tt + 0.2;   
+            tt = tt + 0.5;   
         }
         // std::cout << "Calculate the velocity: c_vel" << current_vel << "r_vel" << ref_speed << std::endl;
         if (visualize)
@@ -752,6 +761,7 @@ void VelocityPlanner::VelocitySmoother()
             viz_vel_prof(profile);
         }
         previous_step = false;
+        fail2determine = false; 
         break;
       }
       else if (k >= 50 || fail2solve) {
@@ -807,9 +817,11 @@ void VelocityPlanner::VelocitySmoother()
 
       float result = a*e*i - a*f*h - b*d*i + b*f*g +c*d*h -c*e*g;
 
-      if (abs(result) <= 0.0001) {
+      if (abs(result) <= 0.0000001) {
         fail2solve = true;
+        fail2determine = true; 
         std::cout << "**Determinant is ZERO**" << std::endl;
+
       }
       else
       {
@@ -840,6 +852,7 @@ void VelocityPlanner::VelocitySmoother()
     }
   
   ref_speed = std::min(ref_speed, MaxVel);
+  ref_speed = std::max(ref_speed, 0.0);
 }
 
 //CALLBACK FUNCTION
@@ -911,24 +924,24 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
   if (msg.waypoints.size() == 0)
     return;
 
-  for (int i = 0; i < msg.waypoints.size(); i++)
-  {   
-    double _x = msg.waypoints[i].pose.pose.position.x;
-    double _y = msg.waypoints[i].pose.pose.position.y;
+  // for (int i = 0; i < msg.waypoints.size(); i++)
+  // {   
+  //   double _x = msg.waypoints[i].pose.pose.position.x;
+  //   double _y = msg.waypoints[i].pose.pose.position.y;
 
 
-    dis = sqrt ( pow(current_x- _x,2) + pow(current_y -_y,2));
-    if (dis < old_dis)
-      current_idx = i;
-    old_dis = dis;
-  }
+  //   dis = sqrt ( pow(current_x- _x,2) + pow(current_y -_y,2));
+  //   if (dis < old_dis)
+  //     current_idx = i;
+  //   old_dis = dis;
+  // }
 
-  for (int i = current_idx; i < msg.waypoints.size(); i++){
-    traj.waypoints.push_back(msg.waypoints[i]);
-  }
+  // for (int i = current_idx; i < msg.waypoints.size(); i++){
+  //   traj.waypoints.push_back(msg.waypoints[i]);
+  // }
   // std::copy(msg.waypoints.begin()+current_idx,msg.waypoints.end(),traj.waypoints.begin());
 
-  
+  traj.waypoints = msg.waypoints;
   std::cout << "Get reference velocity: " << MaxVel << std::endl;
 }
 
@@ -936,21 +949,22 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
   CurrentMode =(BehaviorState)msg.data;
   if (CurrentMode == BehaviorState::Init){
     PreviousMode = CurrentMode;
-    return;
+    
   }
   else if (CurrentMode == BehaviorState::Pedestrian && PreviousMode != CurrentMode)
   { 
     //No initialize Paramter
     new_behavior_mode = true;
     PreviousMode = CurrentMode;
+    misson_stop = false;
     return;
   }
   else if (PreviousMode == BehaviorState::Pedestrian && PreviousMode != CurrentMode){
     new_behavior_mode = true;
     PreviousMode = CurrentMode;
-    return;
+    misson_stop = false;
   }
-  else if (PreviousMode != CurrentMode){
+  else if (PreviousMode == BehaviorState::StopAtStartPos && PreviousMode != CurrentMode){
     new_behavior_mode = true;
     find_stopline = false;
     find_crosswalk = false;
@@ -959,10 +973,29 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
     passjudgeline = false;
     wait_tt = 0;
   }
+  else if (PreviousMode == BehaviorState::StopAtGoalPos && PreviousMode != CurrentMode){
+    new_behavior_mode = true;
+    find_stopline = false;
+    find_crosswalk = false;
+    find_judgeline = false;
+    passcrosswalk = false;
+    passjudgeline = false;
+    wait_tt = 0;
+  } 
+  else if (PreviousMode != CurrentMode){
+    new_behavior_mode = true;
+    find_stopline = false;
+    find_crosswalk = false;
+    find_judgeline = false;
+    passcrosswalk = false;
+    passjudgeline = false;
+    misson_stop = false;
+    wait_tt = 0;
+  }
   else{
     new_behavior_mode = false;
   }
-
+  PreviousMode = CurrentMode;
 }
 
 void VelocityPlanner::BehaviorStateFactorCallback(const hmcl_msgs::BehaviorFactor& msg){
@@ -1013,7 +1046,7 @@ void VelocityPlanner::viz_motionstate()
 
   behaviorstate.pose.position.x = current_x;
   behaviorstate.pose.position.y = current_y;
-  behaviorstate.pose.position.z = 10;
+  behaviorstate.pose.position.z = 8;
 
   behaviorstate.scale.z = 5;
   behaviorstate.text = stateToStringBehavior(CurrentMode);
