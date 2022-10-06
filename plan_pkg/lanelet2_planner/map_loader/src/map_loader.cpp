@@ -447,6 +447,9 @@ void MapLoader::current_lanefollow(){
                   }
                       
 
+
+
+
                 ////////////////////////// Lance change mode end
                       hmcl_msgs::Waypoint waypoint_tmp =  wp_;                
                       local_traj_msg.waypoints.push_back(waypoint_tmp);
