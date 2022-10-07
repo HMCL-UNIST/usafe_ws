@@ -64,6 +64,9 @@
 #include "state_estimator/Diagnostics.h"
 #include "BlockingQueue.h"
 
+#include <lanelet2_io/Io.h>
+#include <lanelet2_projection/UTM.h>
+
 #include <autorally_msgs/wheelSpeeds.h>
 #include <autorally_msgs/imageMask.h>
 #include <autorally_msgs/stateEstimatorStatus.h>
@@ -99,7 +102,7 @@ namespace localization_core
     double accelBiasSigma_, gyroBiasSigma_;
     double gpsSigma_, localPoseSigma_;
     int maxQSize_;
-
+    
     BlockingQueue<sensor_msgs::NavSatFixConstPtr> gpsOptQ_;
     BlockingQueue<sensor_msgs::ImuConstPtr> imuOptQ_;
     BlockingQueue<nav_msgs::OdometryConstPtr> odomOptQ_;
@@ -124,6 +127,7 @@ namespace localization_core
 
     bool fixedOrigin_;
     GeographicLib::LocalCartesian enu_;   /// Object to put lat/lon coordinates into local cartesian
+    lanelet::projection::UtmProjector* projector;    
     bool gotFirstFix_, gotFirstLocalPose_;
     bool invertx_, inverty_, invertz_;
     bool usingOdom_, usingLocalPose_;

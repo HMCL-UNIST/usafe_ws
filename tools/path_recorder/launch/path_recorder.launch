@@ -29,9 +29,9 @@
       
 
       <!-- <param name="osm_file_name" value="$(find path_recorder)/maps/unist_outv1.osm"/>  -->
-      <param name="osm_file_name" value="$(find path_recorder)/maps/new_kiapi_v1_auto.osm"/> 
+      <param name="osm_file_name" value="$(find path_recorder)/maps/race_kiapi_v1_auto.osm"/> 
       <param name="visualize_path" value="True"/> 
-      <param name="line_resolution" value="80.0"/> 
+      <param name="line_resolution" value="200.0"/> 
       <param name="point_resolution" value="1.0"/> 
 
       

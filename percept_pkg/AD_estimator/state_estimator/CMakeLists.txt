@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
 project(state_estimator)
 
+find_package(GeographicLib REQUIRED)
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -12,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   autorally_msgs
   tf  
   imu_3dm_gx4  
+  lanelet2_projection  
 )
 
 find_package(cmake_modules REQUIRED)
@@ -21,7 +24,7 @@ find_package(catkin REQUIRED)
 
 catkin_package(
     DEPENDS
-    CATKIN_DEPENDS roscpp rospy std_msgs geometry_msgs sensor_msgs nav_msgs autorally_msgs
+    CATKIN_DEPENDS roscpp rospy std_msgs lanelet2_projection geometry_msgs sensor_msgs nav_msgs autorally_msgs
     INCLUDE_DIRS include
     LIBRARIES  
 )

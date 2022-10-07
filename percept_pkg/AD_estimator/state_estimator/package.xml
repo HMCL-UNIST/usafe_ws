@@ -39,7 +39,9 @@
   <build_depend>cmake_modules</build_depend> 
   <build_depend>imu_3dm_gx4</build_depend> 
   <build_depend>hmcl_msgs</build_depend> 
-  
+  <build_depend>lanelet2_projection</build_depend> 
+    
+  <run_depend>lanelet2_projection</run_depend>
   <run_depend>hmcl_msgs</run_depend>
   <run_depend>imu_3dm_gx4</run_depend>
   <run_depend>roscpp</run_depend>
@@ -57,3 +59,5 @@
     <nodelet plugin="${prefix}/nodelet_plugins.xml" />
   </export> -->
 </package>
+
+

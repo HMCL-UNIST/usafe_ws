@@ -40,6 +40,7 @@
 
 #include <eigen3/Eigen/Geometry>
 #include <v2x_msgs/Mission2.h>
+#include <hmcl_v2x/HMCL_Mission2.h>
 #include <vector>
 
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -55,6 +56,7 @@
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
 #include <random>
+
 #define INF 0x3f3f3f3f
 #define PI 3.14159265358979323846264338
 using namespace std;
@@ -142,7 +144,10 @@ private:
     double edge_centerline_aling_angle_limit = PI/6;
     double avoidance_wp_add_green_dist = 3.0;
     double distance_cost_weight = 2;
+    double point_projection_ignore_threshold = 3.0;
     int scenario_cout; 
+    int neutral_cost;
+    
     bool start_and_goal_wps_setup;
     bool above_path_complete,below_path_complete;    
     bool random_cost_assign; 
@@ -156,7 +161,9 @@ public:
 RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p); 
 ~RacingLinePlanner();
 
-v2x_msgs::Mission2  v2x_data;
+bool waypoint_received;
+// v2x_msgs::Mission2  v2x_data;
+hmcl_v2x::HMCL_Mission2  v2x_data;
 std::deque<Waypoint> v2x_waypoints;
 planner::VehicleModel* vehicle_model_;
 bool positive_cost_assign_;

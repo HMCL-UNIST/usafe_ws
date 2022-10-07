@@ -142,6 +142,7 @@ if __name__ == '__main__':
     fix_msg = NavSatFix()
     fix_viz_msg = Path()
     init_update = True
+    
     try:        
         MyTcpCommunicator = TcpCommunicator()
         MyTcpCommunicator.start()          

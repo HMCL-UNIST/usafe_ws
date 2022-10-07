@@ -53,6 +53,27 @@ double find_distance(const geometry_msgs::Pose &_from, const geometry_msgs::Pose
 }
 
 
+void standardization_(std::vector<double> &v)
+{
+
+    double max_value = *(std::max_element(v.begin(), v.end()));
+    double min_value = *(std::min_element(v.begin(), v.end()));
+
+ 
+
+    double range = 1.0/(max_value - min_value);
+
+    std::vector<double>::iterator pos = v.begin();
+
+    std::vector<double>::iterator end = v.end();
+    std::vector<double> t;
+    for(; pos != end; pos++){
+
+        *pos = (*pos - min_value)*range;
+        
+    }
+    return;
+}
 
 double find_angle(const geometry_msgs::Point &_from, const geometry_msgs::Point &_to)
 {

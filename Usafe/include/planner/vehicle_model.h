@@ -13,6 +13,7 @@
 //   limitations under the License.
 
 //   Authour : Hojin Lee, hojinlee@unist.ac.kr
+// #pragma once
 #pragma once
 #include <cmath>
 #include <sstream>

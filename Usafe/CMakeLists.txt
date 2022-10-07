@@ -22,6 +22,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   sensor_msgs
   geometry_msgs
+  hmcl_v2x
   v2x_msgs
   std_msgs
   hmcl_msgs
@@ -44,6 +45,7 @@ generate_dynamic_reconfigure_options(
 catkin_package( 
   CATKIN_DEPENDS 
   nav_msgs 
+  hmcl_v2x
   roscpp 
   sensor_msgs 
   geometry_msgs 
@@ -73,21 +75,8 @@ include_directories(
 
 add_executable(dynamic_reconfigure_node src/usafe.cpp
             src/tools/Amathutils.cpp             
-            src/tools/debugger.cpp             
-            src/tools/healthmonitoring.cpp             
-            src/planner/route_planner.cpp
-            src/planner/behaviour_planner.cpp
-            src/planner/mission_state_machine.cpp
-            src/planner/path_planner.cpp
-            src/planner/planner_common.cpp
-            src/planner/velocity_planner.cpp
             src/planner/racing_planner.cpp            
-            src/planner/vehicle_model.cpp            
-            src/controller/lat_ctrl.cpp            
-            src/controller/lon_ctrl.cpp      
-            src/perception/surrounding_environment.cpp                        
-            src/perception/v2x.cpp
-            src/perception/vehicle_state.cpp
+            src/planner/vehicle_model.cpp                                    
             )
 add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
 target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
@@ -100,22 +89,9 @@ SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 #             src/mission_state_machine.cpp)
 
 add_executable(usafe src/usafe.cpp
-            src/tools/Amathutils.cpp             
-            src/tools/debugger.cpp             
-            src/tools/healthmonitoring.cpp             
-            src/planner/route_planner.cpp
-            src/planner/behaviour_planner.cpp
-            src/planner/mission_state_machine.cpp
-            src/planner/path_planner.cpp
-            src/planner/planner_common.cpp
-            src/planner/velocity_planner.cpp
+            src/tools/Amathutils.cpp    
             src/planner/racing_planner.cpp  
-            src/planner/vehicle_model.cpp              
-            src/controller/lat_ctrl.cpp            
-            src/controller/lon_ctrl.cpp      
-            src/perception/surrounding_environment.cpp                        
-            src/perception/v2x.cpp
-            src/perception/vehicle_state.cpp
+            src/planner/vehicle_model.cpp                          
             )
 target_link_libraries(usafe ${catkin_LIBRARIES} ${GeographicLib_LIBRARY_DIRS}/libGeographic.so)
 add_dependencies(usafe ${catkin_EXPORTED_TARGETS})

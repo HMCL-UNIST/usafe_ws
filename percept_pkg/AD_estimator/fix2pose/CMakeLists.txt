@@ -26,10 +26,11 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf  
   microstrain_inertial_msgs
+  lanelet2_projection
 )
 
 catkin_package(
-  CATKIN_DEPENDS nav_msgs roscpp sensor_msgs geometry_msgs std_msgs tf  
+  CATKIN_DEPENDS lanelet2_projection nav_msgs roscpp sensor_msgs geometry_msgs std_msgs tf  
   LIBRARIES
 )
 

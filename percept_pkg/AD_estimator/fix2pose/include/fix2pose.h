@@ -39,7 +39,8 @@
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <GeographicLib/LocalCartesian.hpp>
+// #include <GeographicLib/LocalCartesian.hpp>
+#include <GeographicLib/UTMUPS.hpp>
 
 #include <tf/tf.h>
 #include <tf/transform_broadcaster.h>
@@ -50,6 +51,8 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <microstrain_inertial_msgs/FilterHeading.h>
+#include <lanelet2_projection/UTM.h>
+#include <lanelet2_io/Io.h>
 
 
 #define PI 3.14159265358979323846264338
@@ -67,7 +70,8 @@ tf::TransformBroadcaster gnss_to_map_br;
 double heading_in_rad;
 bool ahrs_heading_switch;
 
-GeographicLib::LocalCartesian enu_gnss_;   /// Object to put lat/lon coordinates into local cartesian
+// GeographicLib::LocalCartesian enu_gnss_;   /// Object to put lat/lon coordinates into local cartesian
+lanelet::projection::UtmProjector* projector;    
 
 double latOrigin, lonOrigin, altOrigin;
 bool gnss_recieved;

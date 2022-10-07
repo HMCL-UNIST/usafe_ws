@@ -145,6 +145,9 @@ namespace localization_core
     if (fixedOrigin_)
       enu_.Reset(latOrigin, lonOrigin, altOrigin);
 
+    lanelet::ErrorMessages errors;  
+    lanelet::GPSPoint originGps{latOrigin, lonOrigin, altOrigin};    
+    projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});    
 
     std::cout << "InitialRotationNoise " << initialRotationNoise << "\n"
     << "InitialVelocityNoise " << initialVelNoise << "\n"
@@ -355,6 +358,7 @@ namespace localization_core
         if (!fixedOrigin_)
         {
           enu_.Reset(fix->latitude, fix->longitude, fix->altitude);
+          
           E = 0; N = 0; U = 0; // we're choosing this as the origin
           // E = ip->pose.position.x;
           // N = ip->pose.position.y;
@@ -363,7 +367,12 @@ namespace localization_core
         else
         {
           // we are given an origin
-          enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+          // enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+          lanelet::GPSPoint gnssPoint{fix->latitude,  fix->longitude, fix->altitude};
+          lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
+          E = converted_point.x();
+          N = converted_point.y();
+          U = converted_point.z();
         }
 
         // Add prior factors on pose, vel and bias
@@ -463,7 +472,12 @@ namespace localization_core
             // this is a gps message for a factor
             latestGPSKey = key;
             double E,N,U;
-            enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+            // enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+            lanelet::GPSPoint gnssPoint{fix->latitude,  fix->longitude, fix->altitude};
+            lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
+            E = converted_point.x();
+            N = converted_point.y();
+            U = converted_point.z();
             
             // check if the GPS message is close to our expected position
             Pose3 expectedState;

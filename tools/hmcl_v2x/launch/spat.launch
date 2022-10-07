@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- true if running the nodes in the gazebo simulator environment. false if running on the real platform-->
+    
+    <!-- Stable version: Use time horizon of 2 second, 10 control nodes and control @ 50 Hz (control_freq_factor=5) -->
+    <!-- <arg name="t_horizon" default="2"/> -->
+    <!-- <include file="$(find HMCL_V2X)/src/launch/v2x.launch"> -->
+
+
+    <node pkg="hmcl_v2x" type="spat_pub" name="v2x_info" output="screen">
+    </node>
+
+
+</launch>

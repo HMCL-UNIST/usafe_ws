@@ -14,7 +14,7 @@
 
 //   Authour : Hojin Lee, hojinlee@unist.ac.kr
 #include <planner/racing_planner.h>
- #include <tools/map_loader_utils.h>
+#include <tools/map_loader_utils.h>
 #include <random>
 
 
@@ -33,6 +33,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     nh_p_.param<double>("map_origin_att", origin_att, 0.0);
     // Graph reset
     g.clearEdges();
+    waypoint_received = false;
     positive_cost_assign_ = false;
     cur_pose_available = false;
     // Set publisher and subscriber 
@@ -59,7 +60,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     waypoints.clear();
     waypoints_pose.clear();
     scenario_cout = 0;
-    insertDefaultWaypoints(scenario_cout);
+    // insertDefaultWaypoints(scenario_cout);
 
     boost::thread local_path_generation(&RacingLinePlanner::localPathGenCallback,this); 
     
@@ -386,8 +387,8 @@ bool RacingLinePlanner::is_EdgeValid(const Waypoint& wp1, const Waypoint& wp2){
             double angle_ = get_angle_between_vec(p3,p1,p2);            
             // check if the points between two points
             if(fabs(angle_) > PI/2.0){
-                double dist_to_line = get_project_ver_dist(p1,p2,p3);                                
-                if(dist_to_line < edge_valid_dist_to_line_thres)
+                // double dist_to_line = get_project_ver_dist(p1,p2,p3);                                
+                // if(dist_to_line < edge_valid_dist_to_line_thres)
                     valid_flag = false;                        
             }            
         }        
@@ -629,14 +630,20 @@ void RacingLinePlanner::viz_pub(const ros::TimerEvent& time){
         marker.scale.y = 2;
         marker.scale.z = 2;
         marker.color.a = 1.0; // Don't forget to set the alpha!        
-        if (waypoints[i].cost < 50){
+        if (waypoints[i].cost < neutral_cost){
             marker.color.r = 0.0;
-            marker.color.g = 1-waypoints[i].cost/100.0;
-        }else{
-            marker.color.r = waypoints[i].cost/100.0;
+            marker.color.g = 1;
+            marker.color.b = 0.0;
+        }else if(waypoints[i].cost == 1){
+            marker.color.r = 0.0;
             marker.color.g = 0.0;
-        }        
-        marker.color.b = 0.0;        
+            marker.color.b = 1.0;
+        }
+        else{
+            marker.color.r = 1.0;
+            marker.color.g = 0.0;
+            marker.color.b = 0.0;
+        }                    
         waypoint_marker_array.markers.push_back(marker);        
     }
     waypoints_pub.publish(waypoint_marker_array);
@@ -676,12 +683,13 @@ void RacingLinePlanner::construct_lanelets_with_viz(){
 }
 
 
+
 void RacingLinePlanner::convert_v2x_data(){
 //   int64 mission_status
 // int64 item_count
 // v2x_msgs/Mission2data[] States
 //   int32 item_id
-//   int32 item_type
+//   int32 item_type 1=> negative score, 2=> positive score, 3-> booster 
 //   int32 item_status
 //   int32 score
 //   int32 speed
@@ -689,26 +697,107 @@ void RacingLinePlanner::convert_v2x_data(){
 //   float64 pos_lat
 //   float64 pos_long
 //   int32 extend
+
+
+// int32 item_id
+// int32 item_type     # 0 : laptime minus, 1 : laptime plus, 2: boost
+// int32 item_status   # 0 : get(true), 1 : get(false)
+// int32 score         # 0 : unavailable(boost), (-) : laptime minus (score up), (+) laptime plus (score down)
+// int32 speed         # 0 : stop, 1~254 : max speed, 255 : unavailable(item)
+// int32 duration      # 0 : finish, 1~253 : left time, 254 : until final, 255 : unavailable(item)
+// float64 pos_lat       
+// float64 pos_long
+// int32 extend        # meter (circle)
+
 if ( v2x_data.States.size()  < 1){
     ROS_WARN("No v2x data available");
 }
-v2x_waypoints.clear();
-for(int i = 0; i < v2x_data.States.size(); i++){
-  double Lat_data =v2x_data.States.pos_lat;
-  double Lon_data = v2x_data.States.pos_long;
-  lanelet::GPSPoint gnssPoint{Lat_data, Lon_data, 0.};
-  lanelet::BasicPoint3d converted_point = utmProjector->forward(gnssPoint);
-    
-    Waypoint tmp_wp;
-    tmp_wp.x_pose = converted_point.x();
-    tmp_wp.y_pose = converted_point.y();
-
-    if(v2x_data.score)
-
+// Cost re-scaling for graph optimization 
+std::vector<double> standarded_score;
+for(int i=0; i< v2x_data.States.size(); i++){
+    standarded_score.push_back(v2x_data.States[i].score);    
 }
- 
+standarded_score.push_back(0.0);
+amathutils::standardization_(standarded_score);
+int multiplier = 100;
+std::transform(standarded_score.begin(), standarded_score.end(), standarded_score.begin(), [&multiplier](auto& c){return c*multiplier+2;});
+neutral_cost = int(standarded_score.back());
+standarded_score.pop_back();
+// Minimum cost of the waypoints = 2 
+// Neutral cost of the waypoints = neutral_cost
+// Minimum cost of the goal = 0 
 
+    v2x_waypoints.clear();
+    for(int i = 0; i < v2x_data.States.size(); i++){
+    double Lat_data =v2x_data.States[i].pos_lat;
+    double Lon_data = v2x_data.States[i].pos_long;
+    lanelet::GPSPoint gnssPoint{Lat_data, Lon_data, 0.};
+    lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
+        
+        geometry_msgs::Pose pose_tmp;
+        pose_tmp.position.x = converted_point.x();
+        pose_tmp.position.y = converted_point.y();
+        planner::Waypoint wp_tmp;
+        wp_tmp.x_pose = converted_point.x(); 
+        wp_tmp.y_pose = converted_point.y();
+        bool project_to_lane = false;
+        if(project_to_lane){
+                    int lane_index = get_closest_lanelet(road_lanelets_const,pose_tmp);  
+                    auto centerline_ = road_lanelets_const[lane_index].centerline();
+                    lanelet::ArcCoordinates to_cord = get_ArcCoordinate(centerline_,pose_tmp);                                
+                    auto near_idx =  getClosestWaypoint(true,centerline_, pose_tmp);
+                    auto near_point = centerline_[near_idx];                                            
+                    if (fabs(to_cord.distance) >point_projection_ignore_threshold){
+                        continue;
+                    }else{
+                    pose_tmp.position.x = near_point.x();
+                    pose_tmp.position.y = near_point.y();
+                    wp_tmp.x_pose = near_point.x(); 
+                    wp_tmp.y_pose = near_point.y(); 
+                    }
+        }
+        // Cost assignment
+        if(v2x_data.States[i].item_type == 3){  
+            // set up for booster 
+            // Minimum cost of waypoint is 2 so boost has 1
+            wp_tmp.cost = 1;
+        }else{
+            wp_tmp.cost = int(standarded_score[i]);    
+        }
+        // Last step of for loop   ==> add tmp position to waypoints and waypoints_pose
+        waypoints.push_back(wp_tmp);
+        waypoints_pose.push_back(pose_tmp);
+    }
+//////////////////////////////////////////////////////////////////////////////////    
+    return;
+//////////////////////////////////////////////////////////////////////////////////    
 
+    // if( v2x_data.States[i].item_type == 1){ // Negative score 
+    //     std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,60);                 
+    //     if(avoidance_wps.size() > 0){
+    //         for(int i=0; i < avoidance_wps.size(); i++){
+    //             waypoints.push_back(avoidance_wps[i]);
+    //             geometry_msgs::Pose tmp_pose; 
+    //             tmp_pose.position.x = avoidance_wps[i].x_pose;
+    //             tmp_pose.position.y = avoidance_wps[i].y_pose;
+    //             waypoints_pose.push_back(tmp_pose);
+    //         }
+    //     }
+        
+    // }else if(v2x_data.States[i].item_type == 2) // Positive score 
+    // {
+    //     std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,40);                
+    //     if(avoidance_wps.size() > 0){
+    //         for(int i=0; i < avoidance_wps.size(); i++){
+    //             waypoints.push_back(avoidance_wps[i]);
+    //             geometry_msgs::Pose tmp_pose; 
+    //             tmp_pose.position.x = avoidance_wps[i].x_pose;
+    //             tmp_pose.position.y = avoidance_wps[i].y_pose;
+    //             waypoints_pose.push_back(tmp_pose);
+    //         }
+    //     }
+    // }
+////////////////////////////////////////////////////////////////////////////////////
 }
 
 void RacingLinePlanner::load_map(){
@@ -716,7 +805,10 @@ void RacingLinePlanner::load_map(){
   ROS_INFO("map loading");
   lanelet::ErrorMessages errors;  
 //   lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
- projector = new lanelet::projection::UtmProjector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
+    lanelet::GPSPoint originGps{origin_lat, origin_lon, 0.};
+    // lanelet::Origin origin{originGps};
+//  projector = new lanelet::projection::UtmProjector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
+ projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});    
  
   map = load(osm_file_name, "osm_handler",*projector,&errors);
   assert(errors.empty()); 
@@ -939,3 +1031,4 @@ std::vector<int> Graph::shortestPath(int src)
 
 
 }
+

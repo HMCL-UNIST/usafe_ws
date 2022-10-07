@@ -48,7 +48,10 @@ Fix2Pose::Fix2Pose() :
   nh_.param<double>("lonOrigin", lonOrigin, 0.0);
   nh_.param<double>("altOrigin", altOrigin, 0.0);
   
-  enu_gnss_.Reset(latOrigin,lonOrigin,altOrigin);
+  // enu_gnss_.Reset(latOrigin,lonOrigin,altOrigin);
+  lanelet::ErrorMessages errors;  
+  lanelet::GPSPoint originGps{latOrigin, lonOrigin, altOrigin};    
+  projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});    
 
 
   ahrs_heading_switch = false;
@@ -68,9 +71,14 @@ Fix2Pose::~Fix2Pose()
 
 void Fix2Pose::fixgnssPoseSubCallback(geometry_msgs::PoseStampedConstPtr pose){
   
-  
+  lanelet::GPSPoint gnssPoint{pose->pose.position.x, pose->pose.position.y, pose->pose.position.z};
+  lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
   double gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z;  
-  enu_gnss_.Forward(pose->pose.position.x, pose->pose.position.y, pose->pose.position.z, gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z);
+  gnss_pose_global_x = converted_point.x();
+  gnss_pose_global_y = converted_point.y();
+  gnss_pose_global_z = converted_point.z();
+
+  // enu_gnss_.Forward(pose->pose.position.x, pose->pose.position.y, pose->pose.position.z, gnss_pose_global_x, gnss_pose_global_y, gnss_pose_global_z);
   geometry_msgs::PoseStamped global_gnss_pose;
   global_gnss_pose = *pose;
   global_gnss_pose.header.frame_id = pose->header.frame_id;

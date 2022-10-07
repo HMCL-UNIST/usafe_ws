@@ -9,6 +9,7 @@ UtmProjector::UtmProjector(Origin origin, const bool useOffset, const bool throw
     : Projector(origin), useOffset_{useOffset}, throwInPaddingArea_{throwInPaddingArea} {
   double x = 0;
   double y = 0;
+  // GeographicLib::UTMUPS::Forward(this->origin().position.lat, this->origin().position.lon, zone_,
   GeographicLib::UTMUPS::Forward(this->origin().position.lat, this->origin().position.lon, zone_,
                                  isInNorthernHemisphere_, x, y);
   if (useOffset_) {

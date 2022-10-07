@@ -15,21 +15,6 @@
 //   Authour : Hojin Lee, hojinlee@unist.ac.kr
 
 
-#include <iostream>
-#include <string>
-#include <sstream>
-#include <vector>
-#include <fstream>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <cmath>
-#include <ros/ros.h>
-#include <chrono>
-
-#include <boost/algorithm/string.hpp>
-#include <boost/thread/thread.hpp>
-#include <vector>
 #include "usafe.h"
 // macro for getting the time stamp of a ros message
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
@@ -80,10 +65,15 @@ Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ro
 Usafe::~Usafe()
 {}
 
-void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
+// void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
+void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){
 
-
-  race_planner_->v2x_data=*msg; 
+  if(!race_planner_->waypoint_received){
+    race_planner_->v2x_data=*msg; 
+    race_planner_->convert_v2x_data();
+    race_planner_->waypoint_received=true; 
+  }
+  
   // ROS_INFO("waypoints size = %d",msg->States.size() );
 }
 

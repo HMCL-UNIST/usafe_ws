@@ -13,12 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+#pragma once
 #ifndef AMATHUTILS_LIB_AMATHUTILS_HPP
 #define AMATHUTILS_LIB_AMATHUTILS_HPP
 
 #include <cmath>
 #include <iostream>
+#include <algorithm>
+
+#include <vector>
 
 // ROS Messages
 #include <geometry_msgs/Point.h>
@@ -71,6 +74,7 @@ bool getIntersect(double x1, double y1, double x2, double y2, double x3,
 bool getIntersect(geometry_msgs::Point p1, geometry_msgs::Point p2, geometry_msgs::Point p3,
   geometry_msgs::Point p4, geometry_msgs::Point* intersect);
 
+void standardization_(std::vector<double> &v);
 
 
 void wrap_yaw_rad(double & _angle);
