@@ -9,7 +9,7 @@
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
-      <param name="osm_file_name" value="$(find map_loader)/maps/racing_track_v2.osm"/> 
+      <param name="osm_file_name" value="$(find map_loader)/maps/race_track_v2_2.osm"/> 
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/ad_road_v3_hj2.osm"/>  -->
       
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/kiapi_highspeed_local_path_v1_lanechange.osm"/>  -->

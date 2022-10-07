@@ -179,24 +179,26 @@ void RacingLinePlanner::localPathGenCallback() {
 
 bool RacingLinePlanner::compute_global_path(){
     global_path_wps.clear();
-    if(!setup_for_belowPath())
+    // if(!setup_for_belowPath())
+    //     return false;
+    // if(!getShortestPath())
+    //     return false;
+    if(!setup_for_abovePath()){
+        ROS_INFO("path setup fail");
         return false;
-    if(!getShortestPath())
+    }
+        
+    if(!getShortestPath()){
+        ROS_INFO("shortest path found fail");
         return false;
-    if(!setup_for_abovePath())
-        return false;
-    if(!getShortestPath())
-        return false;
+    }
+        
     globalPathMarker = getGlobalPathMarker(global_path_wps);  
     return true;
 }
 
 bool RacingLinePlanner::setup_for_abovePath(){
-    if (waypoints.size() >2 ){        
-        waypoints.pop_front();
-        waypoints.pop_front();
-        waypoints_pose.pop_front();
-        waypoints_pose.pop_front();    
+    if (waypoints.size() >2 ){              
         scenario_cout = 0;
         insertDefaultWaypoints(scenario_cout);
         start_and_goal_wps_setup = true;
@@ -210,10 +212,10 @@ bool RacingLinePlanner::setup_for_abovePath(){
 
 bool RacingLinePlanner::setup_for_belowPath(){
     if (waypoints.size() >2 ){
-        waypoints.pop_front();
-        waypoints.pop_front();
-        waypoints_pose.pop_front();
-        waypoints_pose.pop_front();  
+        // waypoints.pop_front();
+        // waypoints.pop_front();
+        // waypoints_pose.pop_front();
+        // waypoints_pose.pop_front();  
         scenario_cout = 1;
         insertDefaultWaypoints(scenario_cout);
         start_and_goal_wps_setup = true;
@@ -223,12 +225,13 @@ bool RacingLinePlanner::setup_for_belowPath(){
     }
 }
 
-void RacingLinePlanner::inserWaypoints(double x, double y, int cost, bool push_front = false){
+void RacingLinePlanner::inserWaypoints(int id, double x, double y, int cost, bool push_front = false){
     geometry_msgs::Pose wp_tmp;
     wp_tmp.position.x = x;
     wp_tmp.position.y = y;
-    planner::Waypoint waypoint_tmp = planner::Waypoint(x, y, cost);    
-    if(push_front){
+    planner::Waypoint waypoint_tmp = planner::Waypoint(x, y, cost);   
+    waypoint_tmp.id = id;         
+    if(push_front){        
         waypoints.push_front(waypoint_tmp);
         waypoints_pose.push_front(wp_tmp);   
     }else{
@@ -241,22 +244,31 @@ void RacingLinePlanner::insertDefaultWaypoints(int scenario_num){
     // waypoints.clear();
     // waypoints_pose.clear();
     // Insert Start and Goal waypoint
-    if(scenario_num == 0){
-        // First goal point --> x = 215, y = -44.1;
-        double goal_x = -921.8;
-        double goal_y = 908.4;  
-        inserWaypoints(goal_x, goal_y, 0, true);    
-        double start_x = 69.5;
-        double start_y = -132.8;
-        inserWaypoints(start_x, start_y, 100, true);    
-    }else{
-        double goal_x = -237.1;
-        double goal_y = 456.4;  
-        inserWaypoints(goal_x, goal_y, 0, true);    
-        double start_x = -729.6;
-        double start_y = 998.5;
-        inserWaypoints(start_x, start_y, 100, true);
-    }
+
+    double goal_x = -205.89;
+    double goal_y = 426.2;  
+    inserWaypoints(waypoint_max_id+1,goal_x, goal_y, 0, true);    
+    double start_x = 76.5;
+    double start_y = -165;
+    inserWaypoints(-1,start_x, start_y, 200, true);
+
+
+    // if(scenario_num == 0){
+    //     // First goal point --> x = 215, y = -44.1;
+    //     double goal_x = -200.6;
+    //     double goal_y = 420.5;  
+    //     inserWaypoints(waypoints.end().id+1, goal_x, goal_y, 0, true);    
+    //     double start_x = -928.8;
+    //     double start_y = 993.2;
+    //     inserWaypoints(-1,start_x, start_y, 200, true);    
+    // }else{
+    //     double goal_x = -929.5;
+    //     double goal_y = 990.9;  
+    //     inserWaypoints(waypoints.end().id+1,goal_x, goal_y, 0, true);    
+    //     double start_x = 76.5;
+    //     double start_y = -165;
+    //     inserWaypoints(-1,start_x, start_y, 200, true);
+    // }
     // Second goal point --> x = 215, y = -44.1;
     
     // Insert current posision (Start posision d)
@@ -275,15 +287,17 @@ void RacingLinePlanner::setupGraph(){
     for(int i = 0; i < waypoints.size() ; i++){
         for(int j = 0; j < waypoints.size() ; j++){
             if(i!=j){
+                if ( waypoints[j].id - waypoints[i].id ==1 )
+                    g.addEdge(i, j,waypoints[j].cost);      
                 // bool is_forward_tmp =is_forward(waypoints_pose[i],waypoints_pose[j]);
-                bool is_forward_tmp =is_forward(waypoints[i],waypoints[j]);
-                if(is_forward_tmp){                    
-                    if(is_EdgeValid(waypoints[i],waypoints[j])){
-                        double dist_tmp = waypoints[i].dist_to(waypoints[j]);
-                        int dist_cost = int(distance_cost_weight*dist_tmp);                        
-                        g.addEdge(i, j,waypoints[j].cost+dist_cost);      
-                        }              
-                } 
+                // bool is_forward_tmp =is_forward(waypoints[i],waypoints[j]);
+                // if(is_forward_tmp){                             
+                //     if(is_EdgeValid(waypoints[i],waypoints[j])){                                                 
+                //         double dist_tmp = waypoints[i].dist_to(waypoints[j]);
+                //         int dist_cost = int(distance_cost_weight*dist_tmp);                        
+                //         g.addEdge(i, j,waypoints[j].cost+dist_cost);      
+                //         }              
+                // } 
             }            
         }
     }
@@ -387,8 +401,8 @@ bool RacingLinePlanner::is_EdgeValid(const Waypoint& wp1, const Waypoint& wp2){
             double angle_ = get_angle_between_vec(p3,p1,p2);            
             // check if the points between two points
             if(fabs(angle_) > PI/2.0){
-                // double dist_to_line = get_project_ver_dist(p1,p2,p3);                                
-                // if(dist_to_line < edge_valid_dist_to_line_thres)
+                double dist_to_line = get_project_ver_dist(p1,p2,p3);                                
+                if(dist_to_line < edge_valid_dist_to_line_thres)
                     valid_flag = false;                        
             }            
         }        
@@ -708,6 +722,8 @@ void RacingLinePlanner::convert_v2x_data(){
 // float64 pos_lat       
 // float64 pos_long
 // int32 extend        # meter (circle)
+    waypoints.clear();
+    waypoints_pose.clear();
 
 if ( v2x_data.States.size()  < 1){
     ROS_WARN("No v2x data available");
@@ -726,28 +742,26 @@ standarded_score.pop_back();
 // Minimum cost of the waypoints = 2 
 // Neutral cost of the waypoints = neutral_cost
 // Minimum cost of the goal = 0 
-
-    v2x_waypoints.clear();
-    for(int i = 0; i < v2x_data.States.size(); i++){
+// v2x_waypoints.clear();
+for(int i = 0; i < v2x_data.States.size(); i++){
     double Lat_data =v2x_data.States[i].pos_lat;
     double Lon_data = v2x_data.States[i].pos_long;
     lanelet::GPSPoint gnssPoint{Lat_data, Lon_data, 0.};
-    lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
-        
+    lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);        
         geometry_msgs::Pose pose_tmp;
         pose_tmp.position.x = converted_point.x();
         pose_tmp.position.y = converted_point.y();
         planner::Waypoint wp_tmp;
         wp_tmp.x_pose = converted_point.x(); 
         wp_tmp.y_pose = converted_point.y();
-        bool project_to_lane = false;
+        bool project_to_lane = true;
         if(project_to_lane){
                     int lane_index = get_closest_lanelet(road_lanelets_const,pose_tmp);  
                     auto centerline_ = road_lanelets_const[lane_index].centerline();
                     lanelet::ArcCoordinates to_cord = get_ArcCoordinate(centerline_,pose_tmp);                                
                     auto near_idx =  getClosestWaypoint(true,centerline_, pose_tmp);
                     auto near_point = centerline_[near_idx];                                            
-                    if (fabs(to_cord.distance) >point_projection_ignore_threshold){
+                    if (fabs(to_cord.distance) >point_projection_ignore_threshold){                        
                         continue;
                     }else{
                     pose_tmp.position.x = near_point.x();
@@ -765,51 +779,106 @@ standarded_score.pop_back();
             wp_tmp.cost = int(standarded_score[i]);    
         }
         // Last step of for loop   ==> add tmp position to waypoints and waypoints_pose
+        wp_tmp.id = i;
+        // ROS_INFO("wp_push id = %d, x = %f, y = %f", wp_tmp.id, wp_tmp.x_pose, wp_tmp.y_pose);        
         waypoints.push_back(wp_tmp);
-        waypoints_pose.push_back(pose_tmp);
-    }
+        waypoints_pose.push_back(pose_tmp);    
 //////////////////////////////////////////////////////////////////////////////////    
-    return;
+    // return;
 //////////////////////////////////////////////////////////////////////////////////    
-
-    // if( v2x_data.States[i].item_type == 1){ // Negative score 
-    //     std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,60);                 
+    // planner::Waypoint waypoint_tmp = planner::Waypoint(wp_tmp.x_pose, wp_tmp.y_pose, neutral_cost);
+    // if( v2x_data.States[i].item_type == 1){ // negative score -> good item
+    //     std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost+1);                 
     //     if(avoidance_wps.size() > 0){
-    //         for(int i=0; i < avoidance_wps.size(); i++){
-    //             waypoints.push_back(avoidance_wps[i]);
+    //         for(int j=0; j < avoidance_wps.size(); j++){
+    //             waypoints.push_back(avoidance_wps[j]);
     //             geometry_msgs::Pose tmp_pose; 
-    //             tmp_pose.position.x = avoidance_wps[i].x_pose;
-    //             tmp_pose.position.y = avoidance_wps[i].y_pose;
+    //             tmp_pose.position.x = avoidance_wps[j].x_pose;
+    //             tmp_pose.position.y = avoidance_wps[j].y_pose;
     //             waypoints_pose.push_back(tmp_pose);
     //         }
     //     }
         
-    // }else if(v2x_data.States[i].item_type == 2) // Positive score 
+    // }else if(v2x_data.States[i].item_type == 2) // Positive score -> bad item
     // {
-    //     std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,40);                
+    //     std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost-1);                
     //     if(avoidance_wps.size() > 0){
-    //         for(int i=0; i < avoidance_wps.size(); i++){
-    //             waypoints.push_back(avoidance_wps[i]);
+    //         for(int j=0; j < avoidance_wps.size(); j++){
+    //             waypoints.push_back(avoidance_wps[j]);
     //             geometry_msgs::Pose tmp_pose; 
-    //             tmp_pose.position.x = avoidance_wps[i].x_pose;
-    //             tmp_pose.position.y = avoidance_wps[i].y_pose;
+    //             tmp_pose.position.x = avoidance_wps[j].x_pose;
+    //             tmp_pose.position.y = avoidance_wps[j].y_pose;
     //             waypoints_pose.push_back(tmp_pose);
     //         }
     //     }
     // }
 ////////////////////////////////////////////////////////////////////////////////////
+  }
+    // sort waypoints with respect to raceline
+    for(int step= 0; step < waypoints.size(); step++){
+        for (int k=0; k < waypoints.size()-step-1; k++){
+            if(!is_forward(waypoints[k],waypoints[k+1])){                
+                planner::Waypoint temp(waypoints[k].x_pose,waypoints[k].y_pose,waypoints[k].cost); 
+                temp.id = waypoints[k].id;                                
+                waypoints[k] = waypoints[k+1];
+                waypoints[k+1] = temp;
+            }
+        }
+    }
+    
+    
+
+    waypoints_pose.clear();
+    // re-idfication waypoints 
+    for(int i=0; i < waypoints.size(); i++){
+        waypoints[i].id = i;
+        ROS_INFO("id = %d, x = %f, y = %f", waypoints[i].id,waypoints[i].x_pose,waypoints[i].y_pose);
+        geometry_msgs::Pose pose_tmp;
+        pose_tmp.position.x = waypoints[i].x_pose;
+        pose_tmp.position.y = waypoints[i].y_pose;
+        waypoints_pose.push_back(pose_tmp);        
+    }
+    waypoint_max_id = waypoints.size()-1;
+
+    ///  add neighboring points
+    for(int i=0; i< waypoints.size(); i++){
+        planner::Waypoint waypoint_tmp = planner::Waypoint(waypoints[i].x_pose, waypoints[i].y_pose, neutral_cost);
+        if(waypoints[i].cost <= neutral_cost){ // negative score -> good item
+            std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost+1);   
+            if(avoidance_wps.size() > 0){
+                for(int j=0; j < avoidance_wps.size(); j++){
+                        avoidance_wps[j].id = waypoints[i].id; 
+                    waypoints.push_back(avoidance_wps[j]);
+                    geometry_msgs::Pose tmp_pose; 
+                    tmp_pose.position.x = avoidance_wps[j].x_pose;
+                    tmp_pose.position.y = avoidance_wps[j].y_pose;
+                    waypoints_pose.push_back(tmp_pose);
+                    }
+            }
+        }else if(waypoints[i].cost > neutral_cost) // Positive score -> bad item
+        {
+            std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost-1);                            
+            if(avoidance_wps.size() > 0){
+                for(int j=0; j < avoidance_wps.size(); j++){
+                        avoidance_wps[j].id = waypoints[i].id; 
+                    waypoints.push_back(avoidance_wps[j]);
+                    geometry_msgs::Pose tmp_pose; 
+                    tmp_pose.position.x = avoidance_wps[j].x_pose;
+                    tmp_pose.position.y = avoidance_wps[j].y_pose;
+                    waypoints_pose.push_back(tmp_pose);
+                }
+            }
+        }
+    }
+
 }
 
 void RacingLinePlanner::load_map(){
   
   ROS_INFO("map loading");
   lanelet::ErrorMessages errors;  
-//   lanelet::projection::UtmProjector projector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
-    lanelet::GPSPoint originGps{origin_lat, origin_lon, 0.};
-    // lanelet::Origin origin{originGps};
-//  projector = new lanelet::projection::UtmProjector(lanelet::Origin({origin_lat, origin_lon ,origin_att}));    
- projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});    
- 
+    lanelet::GPSPoint originGps{origin_lat, origin_lon, 0.};    
+ projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});     
   map = load(osm_file_name, "osm_handler",*projector,&errors);
   assert(errors.empty()); 
   ROS_INFO("map loaded succesfully");

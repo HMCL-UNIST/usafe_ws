@@ -9,7 +9,7 @@
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
-      <param name="osm_file_name" value="$(find usafe)/maps/racing_track_v3_fix.osm"/> 
+      <param name="osm_file_name" value="$(find usafe)/maps/race_track_v3_2_fix.osm"/> 
       
 
       <!-- <param name="map_origin_lat" value="0.002330359333808985"/> 

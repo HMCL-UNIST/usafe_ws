@@ -67,13 +67,15 @@ namespace planner{
 class Waypoint{        
 public:
     double x_pose,y_pose;    
-    int cost;         
+    int cost;   
+    int id;     
     Waypoint(){}
     ~Waypoint(){}
     Waypoint(double x_pose_, double y_pose_, int cost_){
         x_pose = x_pose_;
         y_pose = y_pose_;
         cost = cost_;
+        // id+=1;
     }
     bool operator == (const Waypoint  &obj){
         if(x_pose == obj.x_pose &&
@@ -85,11 +87,22 @@ public:
             }
 
     }
+
+    bool operator = (const Waypoint  &obj){
+        x_pose = obj.x_pose;
+            y_pose = obj.y_pose;
+            cost = obj.cost;
+                id = obj.id;
+
+    }
+
     double dist_to(const Waypoint & wp2){
         return sqrt((x_pose-wp2.x_pose)*(x_pose-wp2.x_pose)+ (y_pose-wp2.y_pose)*(y_pose-wp2.y_pose));
     }
     
  };
+
+
 
 typedef pair<int, int> iPair;
  
@@ -173,6 +186,7 @@ std::vector<int> best_route_idx;
 planner::Graph g;
 planner::Graph g2;
 std::deque<Waypoint> global_path_wps;
+int waypoint_max_id;
 
 void load_map();
 void gen_random_graph();
@@ -200,7 +214,7 @@ std::vector<Waypoint> getclosest2Waypoints(const Waypoint& wp);
 
 // void get_distance_to_stop_line(poseition pose)
 void insertDefaultWaypoints(int scenario_num);
-void inserWaypoints(double x, double y, int cost, bool push_front);
+void inserWaypoints(int id, double x, double y, int cost, bool push_front);
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
 bool getShortestPath();
 bool setup_for_belowPath();
