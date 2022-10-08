@@ -41,6 +41,7 @@
 #include <eigen3/Eigen/Geometry>
 #include <v2x_msgs/Mission2.h>
 #include <hmcl_v2x/HMCL_Mission2.h>
+#include <hmcl_msgs/VehicleStatus.h>
 #include <vector>
 
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -141,7 +142,7 @@ private:
     ros::NodeHandle nh_, nh_p_;
     ros::Publisher  target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
     ros::Subscriber point_sub;
-    ros::Subscriber curpose_sub, curodom_sub;    
+    ros::Subscriber curpose_sub, curodom_sub, vehicle_status_sub;    
     ros::Timer viz_timer;
     std::deque<Waypoint> waypoints;
     std::deque<geometry_msgs::Pose> waypoints_pose;
@@ -158,6 +159,9 @@ private:
     double avoidance_wp_add_green_dist = 3.0;
     double distance_cost_weight = 2;
     double point_projection_ignore_threshold = 3.0;
+    double lane_overwrite_distance = 1.0;
+    
+    double local_path_length, max_local_path_length, min_local_path_length;
     int scenario_cout; 
     int neutral_cost;
     
@@ -197,11 +201,17 @@ void viz_pub(const ros::TimerEvent& time);
 bool compute_best_route(int src_idx);
 
 
+double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
+
+
+std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_);
+visualization_msgs::Marker LaneLetPointsToMarker(std::vector<lanelet::Point3d> &point3d_vector);
 void compute_edge_cost();
 void construct_lanelets_with_viz();
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);
 void odomCallback(const nav_msgs::OdometryConstPtr& msg);
+void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 // bool is_forward(const geometry_msgs::Pose& from_waypoint, const geometry_msgs::Pose& to_waypoint);
 bool is_forward(const Waypoint& from_wp, Waypoint& to_wp);
 void setupGraph();
@@ -217,12 +227,12 @@ void insertDefaultWaypoints(int scenario_num);
 void inserWaypoints(int id, double x, double y, int cost, bool push_front);
 // void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
 bool getShortestPath();
-bool setup_for_belowPath();
-bool setup_for_abovePath();
+bool setup_for_Path();
 bool compute_global_path();
 visualization_msgs::Marker getGlobalPathMarker(std::deque<Waypoint> wps);
 void sortGlobalWaypoints();
 void localPathGenCallback();
+
 
 
 };

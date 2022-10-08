@@ -79,26 +79,10 @@ void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){
 
 void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)
 {
-  Above_compute_shortest_path_ = config.Above_compute_shortest_path;
-  Below_compute_shortest_path_ = config.Below_compute_shortest_path;  
   Sum_compute_shortest_path_ = config.Sum_compute_shortest_path;
   positive_cost_assign_ = config.positive_cost_assign;
-  race_planner_->positive_cost_assign_ = positive_cost_assign_;
-  if(Above_compute_shortest_path_ && !Below_compute_shortest_path_){
-    if(race_planner_->setup_for_abovePath()){
-      race_planner_->getShortestPath();
-    }else{
-      ROS_WARN("Set up fail for above path");
-    }    
-  }
-  if(Below_compute_shortest_path_ && !Above_compute_shortest_path_){
-    if(race_planner_->setup_for_belowPath()){
-      race_planner_->getShortestPath();
-      }else{
-        ROS_WARN("Set up fail for below path");
-      }
-  }
-  if(Sum_compute_shortest_path_ &&  !Above_compute_shortest_path_ && !Below_compute_shortest_path_){
+  race_planner_->positive_cost_assign_ = positive_cost_assign_; 
+  if(Sum_compute_shortest_path_){
     if(race_planner_->compute_global_path()){
         ROS_WARN("Global Path found");
       }else{
