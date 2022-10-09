@@ -58,6 +58,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     shortest_path_pub = nh_.advertise<visualization_msgs::Marker>("/shortest_path", 2, true);          
     global_path_pub = nh_.advertise<visualization_msgs::Marker>("/global_path", 2, true);          
     target_path_pub = nh_.advertise<visualization_msgs::Marker>("/target_path", 2, true);          
+    l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
+    local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);  
     
     point_sub = nh_.subscribe("move_base_simple/goal", 1, &RacingLinePlanner::callbackGetGoalPose, this);
     curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
@@ -290,7 +292,11 @@ void RacingLinePlanner::localPathGenCallback() {
     // Post Processing the computed local lane
     hmcl_msgs::Lane local_lane_msg = LanepointsToLane(local_lane_points,speed_limits);
     
-    curve_fitting(local_lane_msg);
+    curve_fitting(local_lane_msg,speed_limits);
+    local_traj_pub.publish(local_lane_msg);
+    
+    viz_local_path(local_lane_msg);
+    l_traj_viz_pub.publish(local_traj_marker_arrary);
 
     visualization_msgs::Marker local_path_marker = LaneLetPointsToMarker(local_lane_points);
     target_path_pub.publish(local_path_marker);
@@ -306,7 +312,7 @@ void RacingLinePlanner::localPathGenCallback() {
 }
 
 
-void RacingLinePlanner::curve_fitting(hmcl_msgs::Lane& local_traj_msg){
+void RacingLinePlanner::curve_fitting(hmcl_msgs::Lane& local_traj_msg,std::vector<double> speed_lim){
       if(local_traj_msg.waypoints.size() < 6){
         ROS_WARN("polyfit is not done as number of points are not enough");
         return;
@@ -317,47 +323,34 @@ void RacingLinePlanner::curve_fitting(hmcl_msgs::Lane& local_traj_msg){
       double psi = -1*current_yaw;
       double dx = -1*cur_pose.pose.position.x;
       double dy = -1*cur_pose.pose.position.y;  
-
-        std::vector<double> speed_lim;
+        
        // convert to local frame 
       for(int i=0;i< local_traj_msg.waypoints.size();i++){    
-          double local_x = cos(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.x+dx) - sin(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.y+dy);
-          double local_y = sin(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.x+dx) + cos(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.y+dy);
+          double local_x = cos(psi)*(local_traj_msg.waypoints[i].pose.pose.position.x+dx) - sin(psi)*(local_traj_msg.waypoints[i].pose.pose.position.y+dy);
+          double local_y = sin(psi)*(local_traj_msg.waypoints[i].pose.pose.position.x+dx) + cos(psi)*(local_traj_msg.waypoints[i].pose.pose.position.y+dy);
           local_xs.push_back(local_x);
-          local_ys.push_back(local_y);          
-          speed_lim.push_back(local_traj_msg.waypoints[i].twist.twist.linear.x);
+          local_ys.push_back(local_y);                  
       }  
 
-      // fit in local frame 
-      
-      PolyFit<double> f = polyfit(local_xs, local_ys);
-      
+      // fit in local frame       
+      PolyFit<double> f = polyfit(local_xs, local_ys);      
       if(polyfit_error){
         ROS_WARN("No solution found from polyfit"); 
         return; 
       }   
       Eigen::Matrix<double, Eigen::Dynamic, 1> Pcoef_tmp = f.getCoefficients();
       // ROS_INFO("current Pose  x = %f,y  = %f,yaw  = %f ", -1*dx, -1*dy, -1*psi);
-      // ROS_INFO("c3 = %f,c2 = %f,c1 = %f,c0 = %f ", Pcoef_tmp(0,0), Pcoef_tmp(1,0), Pcoef_tmp(2,0), Pcoef_tmp(3,0));
-      
+      // ROS_INFO("c3 = %f,c2 = %f,c1 = %f,c0 = %f ", Pcoef_tmp(0,0), Pcoef_tmp(1,0), Pcoef_tmp(2,0), Pcoef_tmp(3,0));      
       double c3 = Pcoef_tmp(0,0);
       double c2 = Pcoef_tmp(1,0);
       double c1 = Pcoef_tmp(2,0);
       double c0 = Pcoef_tmp(3,0);      
-
       poly_error = f.getMSE();         
-      float init_s = 0.0;
-    //   geometry_msgs::PoseStamped debug_msg;
-    //   debug_msg.header.stamp = ros::Time::now();
-    //   debug_msg.pose.position.x = poly_error;
-    //   debug_pub.publish(debug_msg);      
-
+      float init_s = 0.0;    
       if(poly_error < 1){                    
           std::vector<double> speed_limits = linspaces(speed_lim.front(),speed_lim.back(),int(local_path_length/map_road_resolution));
-          std::vector<double> xeval = linspaces(double(init_s),local_path_length,int(local_path_length/map_road_resolution));
-          
-          std::vector<double> yval = f.evalPoly(xeval);             
-          
+          std::vector<double> xeval = linspaces(double(init_s),local_path_length,int(local_path_length/map_road_resolution));          
+          std::vector<double> yval = f.evalPoly(xeval);
           hmcl_msgs::Lane local_traj_msg_fit;          
           local_traj_msg_fit.header.stamp = ros::Time::now();
           local_traj_msg_fit.header.frame_id = "map";   
@@ -377,8 +370,7 @@ void RacingLinePlanner::curve_fitting(hmcl_msgs::Lane& local_traj_msg){
             waypoint_tmp.twist.twist.linear.x = speed_limits[i];
             local_traj_msg_fit.waypoints.push_back(waypoint_tmp);            
           }
-          local_traj_msg = local_traj_msg_fit;
-          
+          local_traj_msg = local_traj_msg_fit;          
       }else{
         ROS_INFO("poly_error = %f", poly_error);
       }
@@ -809,6 +801,38 @@ bool RacingLinePlanner::getShortestPath(){
     return true;
   
 }
+
+void RacingLinePlanner::viz_local_path(hmcl_msgs::Lane &lane_){
+  
+              // Construct Traj_lanelet_marker 
+               std_msgs::ColorRGBA local_traj_marker_color;
+                setColor(&local_traj_marker_color, 0.0, 1.0, 0.0, 0.35);    
+              local_traj_marker_arrary.markers.clear();  
+              for(int i=0; i< lane_.waypoints.size();i++){
+                      visualization_msgs::Marker marker_tmp;
+                      marker_tmp.header.stamp = ros::Time::now();
+                      marker_tmp.header.frame_id = "map" ; //global_lane_array.header.frame_id;
+                      marker_tmp.id = 10000+i;
+                      marker_tmp.ns = "ltraj";
+                      marker_tmp.type = visualization_msgs::Marker::ARROW;
+                      marker_tmp.action = visualization_msgs::Marker::ADD;                  
+                      marker_tmp.pose.position.x = lane_.waypoints[i].pose.pose.position.x;
+                      marker_tmp.pose.position.y = lane_.waypoints[i].pose.pose.position.y;
+                      marker_tmp.pose.position.z = lane_.waypoints[i].pose.pose.position.z;
+                      marker_tmp.pose.orientation.x = lane_.waypoints[i].pose.pose.orientation.x;
+                      marker_tmp.pose.orientation.y = lane_.waypoints[i].pose.pose.orientation.y;
+                      marker_tmp.pose.orientation.z = lane_.waypoints[i].pose.pose.orientation.z;
+                      marker_tmp.pose.orientation.w = lane_.waypoints[i].pose.pose.orientation.w;
+                      marker_tmp.color = local_traj_marker_color;
+                      marker_tmp.lifetime = ros::Duration(0.1);
+                      marker_tmp.scale.x = 1.2;
+                      marker_tmp.scale.y = 0.6;
+                      marker_tmp.scale.z = 0.1;                  
+                      local_traj_marker_arrary.markers.push_back(marker_tmp);
+                      
+                }                  
+}
+
 
 void RacingLinePlanner::viz_pub(const ros::TimerEvent& time){  
     g_map_pub.publish(map_marker_array);    

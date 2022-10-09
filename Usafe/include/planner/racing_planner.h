@@ -146,13 +146,13 @@ private:
     std::mutex mu_mtx;
     int tmp;
     ros::NodeHandle nh_, nh_p_;
-    ros::Publisher  target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
+    ros::Publisher  local_traj_pub, l_traj_viz_pub, target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
     ros::Subscriber point_sub;
     ros::Subscriber curpose_sub, curodom_sub, vehicle_status_sub;    
     ros::Timer viz_timer;
     std::deque<Waypoint> waypoints;
     std::deque<geometry_msgs::Pose> waypoints_pose;
-    visualization_msgs::MarkerArray edgeMarkerArray, map_marker_array, waypoint_marker_array;
+    visualization_msgs::MarkerArray edgeMarkerArray, map_marker_array, waypoint_marker_array, local_traj_marker_arrary;
     visualization_msgs::Marker shortestPathMarker, globalPathMarker;
     lanelet::LaneletMapPtr map, map_for_driving;
     lanelet::routing::RoutingGraphUPtr routingGraph, routingGraph_for_driving;
@@ -213,12 +213,13 @@ void convert_v2x_data();
 
 void viz_pub(const ros::TimerEvent& time);
 bool compute_best_route(int src_idx);
-void curve_fitting(hmcl_msgs::Lane& local_traj_msg);
+
+void curve_fitting(hmcl_msgs::Lane& local_traj_msg,std::vector<double> speed_lim);
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 
 double get_yaw(const lanelet::Point3d & _from, const lanelet::Point3d &_to );
 hmcl_msgs::Lane LanepointsToLane(std::vector<lanelet::Point3d> target_points, std::vector<double> speed_limits);
-
+void viz_local_path(hmcl_msgs::Lane &lane_);
 // std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_);
 std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_, std::vector<double> &lane_speed_limits);
 visualization_msgs::Marker LaneLetPointsToMarker(std::vector<lanelet::Point3d> &point3d_vector);
