@@ -32,6 +32,8 @@
 #include "planner/vehicle_model.h"
 #include "tools/amathutils.hpp"
 
+#include <tools/polyfit.h>
+
 #include <geometry_msgs/Point.h>
 #include <geometry_msgs/Point32.h>
 #include <geometry_msgs/PoseStamped.h>
@@ -42,6 +44,10 @@
 #include <v2x_msgs/Mission2.h>
 #include <hmcl_v2x/HMCL_Mission2.h>
 #include <hmcl_msgs/VehicleStatus.h>
+#include <hmcl_msgs/Lane.h>
+#include <hmcl_msgs/Waypoint.h>
+
+
 #include <vector>
 
 #include <lanelet2_core/primitives/Lanelet.h>
@@ -160,7 +166,13 @@ private:
     double distance_cost_weight = 2;
     double point_projection_ignore_threshold = 3.0;
     double lane_overwrite_distance;
+    double map_road_resolution;
+
     
+    bool polyfit_error;
+    double poly_error;
+
+
     double shift_speed_ratio, max_shift_speed_ratio, min_shift_speed_ratio;
     double local_path_length, max_local_path_length, min_local_path_length;
     int scenario_cout; 
@@ -201,12 +213,14 @@ void convert_v2x_data();
 
 void viz_pub(const ros::TimerEvent& time);
 bool compute_best_route(int src_idx);
+void curve_fitting(hmcl_msgs::Lane& local_traj_msg);
+PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 
+double get_yaw(const lanelet::Point3d & _from, const lanelet::Point3d &_to );
+hmcl_msgs::Lane LanepointsToLane(std::vector<lanelet::Point3d> target_points, std::vector<double> speed_limits);
 
-double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
-
-
-std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_);
+// std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_);
+std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_, std::vector<double> &lane_speed_limits);
 visualization_msgs::Marker LaneLetPointsToMarker(std::vector<lanelet::Point3d> &point3d_vector);
 void compute_edge_cost();
 void construct_lanelets_with_viz();

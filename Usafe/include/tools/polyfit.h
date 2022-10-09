@@ -13,7 +13,7 @@
  * License for the specific language governing permissions and limitations
  * under the License.
  */
-
+#pragma once
 #ifndef POLYFIT_H
 #define POLYFIT_H
 

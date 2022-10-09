@@ -1,20 +1,21 @@
-// #pragma once
-// #include <vector>
-// #include <ros/ros.h>
-// #include <ros/time.h>
-// #include <lanelet2_core/primitives/Lanelet.h>
-// #include <lanelet2_core/LaneletMap.h>
-// #include <lanelet2_io/Io.h>
-// #include <lanelet2_io/io_handlers/Factory.h>
-// #include <lanelet2_io/io_handlers/Writer.h>
-// #include <lanelet2_projection/UTM.h>
-// #include <lanelet2_routing/Route.h>
-// #include <lanelet2_routing/RoutingCost.h>
-// #include <lanelet2_routing/RoutingGraph.h>
-// #include <lanelet2_routing/RoutingGraphContainer.h>
-// #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
-// #include <lanelet2_core/primitives/BasicRegulatoryElements.h>
-
+#pragma once
+#include <vector>
+#include <ros/ros.h>
+#include <ros/time.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_io/Io.h>
+#include <lanelet2_io/io_handlers/Factory.h>
+#include <lanelet2_io/io_handlers/Writer.h>
+#include <lanelet2_projection/UTM.h>
+#include <lanelet2_routing/Route.h>
+#include <lanelet2_routing/RoutingCost.h>
+#include <lanelet2_routing/RoutingGraph.h>
+#include <lanelet2_routing/RoutingGraphContainer.h>
+#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
+#include <lanelet2_core/primitives/BasicRegulatoryElements.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 
 template<typename T>

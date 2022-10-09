@@ -14,7 +14,7 @@
 
 //   Authour : Hojin Lee, hojinlee@unist.ac.kr
 
-
+#pragma once
 #define PI 3.14159265358979323846264338
 
 namespace planner{

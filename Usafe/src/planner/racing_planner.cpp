@@ -33,6 +33,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     nh_p_.param<double>("map_origin_lon", origin_lon, 0.0);
     nh_p_.param<double>("map_origin_att", origin_att, 0.0);
 
+    nh_p_.param<double>("map_road_resolution", map_road_resolution, 1.0);
+
     nh_p_.param<double>("min_local_path_length", min_local_path_length, 20.0);
     nh_p_.param<double>("max_local_path_length", max_local_path_length, 30.0);
 
@@ -56,6 +58,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     shortest_path_pub = nh_.advertise<visualization_msgs::Marker>("/shortest_path", 2, true);          
     global_path_pub = nh_.advertise<visualization_msgs::Marker>("/global_path", 2, true);          
     target_path_pub = nh_.advertise<visualization_msgs::Marker>("/target_path", 2, true);          
+    
     point_sub = nh_.subscribe("move_base_simple/goal", 1, &RacingLinePlanner::callbackGetGoalPose, this);
     curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
     vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &RacingLinePlanner::callbackVehicleStatus, this);
@@ -87,10 +90,72 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
 RacingLinePlanner::~RacingLinePlanner()
 {}
 
+void RacingLinePlanner::callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg){
+  double local_path_scale = 1.0;
+  double current_speed = msg->wheelspeed.wheel_speed; // in m/s
+  if (current_speed > 0){
+    double tmp_add_path_length = current_speed*local_path_scale;
+    local_path_length = std::min(min_local_path_length + tmp_add_path_length,max_local_path_length);
+    // 60km/h -> 0.95  / 80km/h -> 0.987    
+    double tmp_shift_speed_ratio = 0.00666*current_speed + 0.839;
+    shift_speed_ratio = std::min(tmp_shift_speed_ratio,max_shift_speed_ratio);
+    shift_speed_ratio = std::max(min_shift_speed_ratio,shift_speed_ratio);
+  }else{
+    local_path_length = min_local_path_length;
+  }
 
-std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_){        
+}
 
+
+
+double RacingLinePlanner::get_yaw(const lanelet::Point3d & _from, const lanelet::Point3d &_to ){
+    double _angle = std::atan2(_to.y() - _from.y(), _to.x() - _from.x());    
+    while(_angle > M_PI){
+      _angle = _angle - 2*M_PI;
+    }
+    while(_angle < M_PI){
+      _angle = _angle + 2*M_PI;
+    }
+  return _angle;
+}
+
+
+hmcl_msgs::Lane RacingLinePlanner::LanepointsToLane(std::vector<lanelet::Point3d> target_points, std::vector<double> speed_limits){
+    hmcl_msgs::Lane target_lane;
+    target_lane.header.stamp = ros::Time::now();
+    target_lane.header.frame_id = "map";   
+    for(int i=0; i< target_points.size(); i++){
+        hmcl_msgs::Waypoint wp_;                                    
+        wp_.lane_id = i;
+        wp_.pose.pose.position.x = target_points[i].x();                      
+        wp_.pose.pose.position.y = target_points[i].y();                                          
+        double yaw_tmp;
+        if(i < target_points.size()-1){      
+        yaw_tmp = get_yaw(target_points[i], target_points[i+1]);                                    
+        }else{
+        yaw_tmp = get_yaw(target_points[i-1], target_points[i]);
+        }
+        tf2::Quaternion q;
+        q.setRPY(0, 0, yaw_tmp);
+        q=q.normalize();
+        wp_.pose.pose.orientation.x = q[0];
+        wp_.pose.pose.orientation.y = q[1];
+        wp_.pose.pose.orientation.z = q[2];
+        wp_.pose.pose.orientation.w = q[3];
+        wp_.twist.twist.linear.x = speed_limits[i];
+        target_lane.waypoints.push_back(wp_);
+    }
+    return target_lane;
+}
+
+
+
+std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_length, geometry_msgs::Pose pose_, std::vector<double> &lane_speed_limits){        
+
+    lane_speed_limits.clear();
+    pose_.position.z = 0.0;
     int wp_closest_lane_idx = get_closest_lanelet(road_lanelets_const_for_driving,pose_);      
+    double lane_speed_limit = road_lanelets_const_for_driving.at(wp_closest_lane_idx).attributeOr("speed_limit",0.0);    
     lanelet::ConstLineString3d target_centerline = road_lanelets_const_for_driving.at(wp_closest_lane_idx).centerline();
       // gets the projecion of point on ls
     lanelet::Point3d cur_point(lanelet::utils::getId(), pose_.position.x, pose_.position.y,0.0);        
@@ -108,7 +173,8 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
     for(int i = closest_idx; i < target_centerline.size(); i++){
                 lanelet::Point3d iter_point; 
                 iter_point.x() = target_centerline[i].x();
-                iter_point.y() = target_centerline[i].y();
+                iter_point.y() = target_centerline[i].y();          
+                lane_speed_limits.push_back(lane_speed_limit);      
                 double dist_tmp = lanelet::geometry::distance(iter_point,prev_point);
                 cum_dist += dist_tmp;
                 prev_point = iter_point;
@@ -118,14 +184,15 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
     }
     // path length does not ,meet the requested length 
     if(cum_dist < path_length){
-        auto following_lanes = routingGraph_for_driving->following(road_lanelets_const_for_driving.at(wp_closest_lane_idx),false);
-        ROS_INFO("Number of Following lanes = %d", following_lanes.size());
+        auto following_lanes = routingGraph_for_driving->following(road_lanelets_const_for_driving.at(wp_closest_lane_idx),false);        
         if(following_lanes.size() > 0 ){            
             auto next_target_centerline = following_lanes[0].centerline();
+            lane_speed_limit = following_lanes[0].attributeOr("speed_limit",0.0);
             for(int i = 0; i < next_target_centerline.size(); i++){
                 lanelet::Point3d iter_point; 
                 iter_point.x() = next_target_centerline[i].x();
                 iter_point.y() = next_target_centerline[i].y();
+                lane_speed_limits.push_back(lane_speed_limit);                      
                 double dist_tmp = lanelet::geometry::distance(iter_point,prev_point);
                 cum_dist += dist_tmp;
                 prev_point = iter_point;
@@ -135,56 +202,36 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
               }
         }        
     }
+   
     return target_points;    
-}
-
-double RacingLinePlanner::get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to ){
-    double _angle = std::atan2(_to.y() - _from.y(), _to.x() - _from.x());
-    
-    while(_angle > M_PI){
-      _angle = _angle - 2*M_PI;
-    }
-    while(_angle < M_PI){
-      _angle = _angle + 2*M_PI;
-    }
-  return _angle;
-}
-
-void RacingLinePlanner::callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg){
-  double local_path_scale = 1.0;
-  double current_speed = msg->wheelspeed.wheel_speed; // in m/s
-  if (current_speed > 0){
-    double tmp_add_path_length = current_speed*local_path_scale;
-    local_path_length = std::min(min_local_path_length + tmp_add_path_length,max_local_path_length);
-    // 60km/h -> 0.95  / 80km/h -> 0.987    
-    double tmp_shift_speed_ratio = 0.00666*current_speed + 0.839;
-    shift_speed_ratio = std::min(tmp_shift_speed_ratio,max_shift_speed_ratio);
-    shift_speed_ratio = std::max(min_shift_speed_ratio,shift_speed_ratio);
-  }else{
-    local_path_length = min_local_path_length;
-  }
-
 }
 
 void RacingLinePlanner::localPathGenCallback() {
   double local_path_loop_hz = 10.0;
   ros::Rate loop_rate(local_path_loop_hz); 
-  ROS_INFO_ONCE("Init local path generation thread");  
+  ROS_INFO("Init local path generation thread");  
   while (ros::ok())
   {     
     auto start_time=  std::chrono::high_resolution_clock::now();                    
     std::vector<lanelet::Point3d> local_lane_points;
+    ////////////////////////////////////////////////////////////////
     if(!cur_pose_available){
         ROS_WARN("Current position is not available");
         loop_rate.sleep();        
         continue;
     }
+    ////////////////////////////////////////////////////////////////
+    std::vector<double> speed_limits;
+    ////////////////////////////////////////////////////////////////
     if(global_path_wps.size() > 0){
         sortGlobalWaypoints();
+        ////////////////////////////////////////////////////////////////
         if(global_path_wps.size() < 1){
             loop_rate.sleep();        
             continue;
         }
+        ////////////////////////////////////////////////////////////////
+
         // Find the target lookahead point given the target waypoint         
         double lookahead_dist = 50;
         geometry_msgs::Pose wp_pose;        
@@ -201,20 +248,21 @@ void RacingLinePlanner::localPathGenCallback() {
         cur_projected_pose.position.x = cur_projected_point.x();
         cur_projected_pose.position.y = cur_projected_point.y();        
         ///////////////////////////
+        
         if(cur_pose_cord.length == 0.0){
             ROS_WARN("Target lane is too far >> Lane Follow");      
-            local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose);      
+            local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
         }
         else{
             if(fabs(cur_pose_cord.distance) > 9.0){
                 ROS_WARN("Soemthing wrong with lane projection >> Lane Follow");                
-                local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose);      
+                local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
             }else if(fabs(cur_pose_cord.distance) < lane_overwrite_distance){
                 ROS_WARN("Distance is a small >> Target Lane Follow");                
-                local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose);     
+                local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose, speed_limits);     
             }else{
                 ROS_WARN("Deviated Lane Follow");                
-                local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose);
+                local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose, speed_limits);
                 
                 lanelet::LineString2d target_linstring2d;
                 for(int k=0; k < local_lane_points.size(); k++){
@@ -232,8 +280,18 @@ void RacingLinePlanner::localPathGenCallback() {
     }else{
         // No waypoints available --> just laneFollow
         ROS_WARN("No waypoints available >> Lane Follow");
-        local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose);      
+        local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
     }
+    // If lane with end point--> skip local path computation 
+    if(local_lane_points.size()<2){
+        loop_rate.sleep(); 
+        continue;
+    }
+    // Post Processing the computed local lane
+    hmcl_msgs::Lane local_lane_msg = LanepointsToLane(local_lane_points,speed_limits);
+    
+    curve_fitting(local_lane_msg);
+
     visualization_msgs::Marker local_path_marker = LaneLetPointsToMarker(local_lane_points);
     target_path_pub.publish(local_path_marker);
     auto stop_time=  std::chrono::high_resolution_clock::now();
@@ -246,6 +304,119 @@ void RacingLinePlanner::localPathGenCallback() {
     
   }
 }
+
+
+void RacingLinePlanner::curve_fitting(hmcl_msgs::Lane& local_traj_msg){
+      if(local_traj_msg.waypoints.size() < 6){
+        ROS_WARN("polyfit is not done as number of points are not enough");
+        return;
+      } 
+      std::vector<double> local_xs, local_ys; 
+      double current_yaw = amathutils::getPoseYawAngle(cur_pose.pose);
+      amathutils::wrap_yaw_rad(current_yaw);
+      double psi = -1*current_yaw;
+      double dx = -1*cur_pose.pose.position.x;
+      double dy = -1*cur_pose.pose.position.y;  
+
+        std::vector<double> speed_lim;
+       // convert to local frame 
+      for(int i=0;i< local_traj_msg.waypoints.size();i++){    
+          double local_x = cos(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.x+dx) - sin(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.y+dy);
+          double local_y = sin(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.x+dx) + cos(psi)*(local_traj_msg.waypoints[i].pose.pose.orientation.y+dy);
+          local_xs.push_back(local_x);
+          local_ys.push_back(local_y);          
+          speed_lim.push_back(local_traj_msg.waypoints[i].twist.twist.linear.x);
+      }  
+
+      // fit in local frame 
+      
+      PolyFit<double> f = polyfit(local_xs, local_ys);
+      
+      if(polyfit_error){
+        ROS_WARN("No solution found from polyfit"); 
+        return; 
+      }   
+      Eigen::Matrix<double, Eigen::Dynamic, 1> Pcoef_tmp = f.getCoefficients();
+      // ROS_INFO("current Pose  x = %f,y  = %f,yaw  = %f ", -1*dx, -1*dy, -1*psi);
+      // ROS_INFO("c3 = %f,c2 = %f,c1 = %f,c0 = %f ", Pcoef_tmp(0,0), Pcoef_tmp(1,0), Pcoef_tmp(2,0), Pcoef_tmp(3,0));
+      
+      double c3 = Pcoef_tmp(0,0);
+      double c2 = Pcoef_tmp(1,0);
+      double c1 = Pcoef_tmp(2,0);
+      double c0 = Pcoef_tmp(3,0);      
+
+      poly_error = f.getMSE();         
+      float init_s = 0.0;
+    //   geometry_msgs::PoseStamped debug_msg;
+    //   debug_msg.header.stamp = ros::Time::now();
+    //   debug_msg.pose.position.x = poly_error;
+    //   debug_pub.publish(debug_msg);      
+
+      if(poly_error < 1){                    
+          std::vector<double> speed_limits = linspaces(speed_lim.front(),speed_lim.back(),int(local_path_length/map_road_resolution));
+          std::vector<double> xeval = linspaces(double(init_s),local_path_length,int(local_path_length/map_road_resolution));
+          
+          std::vector<double> yval = f.evalPoly(xeval);             
+          
+          hmcl_msgs::Lane local_traj_msg_fit;          
+          local_traj_msg_fit.header.stamp = ros::Time::now();
+          local_traj_msg_fit.header.frame_id = "map";   
+          for(int i=0; i< xeval.size(); i++){    
+            hmcl_msgs::Waypoint waypoint_tmp;        
+            waypoint_tmp.pose.pose.position.x = (cos(-1*psi)*xeval[i]-sin(-1*psi)*yval[i])-dx;
+            waypoint_tmp.pose.pose.position.y = (sin(-1*psi)*xeval[i]+cos(-1*psi)*yval[i])-dy;          
+            double epsi_tmp = 3*xeval[i]*xeval[i]*c3 + 2*xeval[i]*c2 + c1;     
+            epsi_tmp = atan(epsi_tmp)- psi;       
+            tf2::Quaternion q_tmp;
+            q_tmp.setRPY(0, 0, epsi_tmp);
+            q_tmp=q_tmp.normalize();
+            waypoint_tmp.pose.pose.orientation.x = q_tmp[0];
+            waypoint_tmp.pose.pose.orientation.y = q_tmp[1];
+            waypoint_tmp.pose.pose.orientation.z = q_tmp[2];
+            waypoint_tmp.pose.pose.orientation.w = q_tmp[3];
+            waypoint_tmp.twist.twist.linear.x = speed_limits[i];
+            local_traj_msg_fit.waypoints.push_back(waypoint_tmp);            
+          }
+          local_traj_msg = local_traj_msg_fit;
+          
+      }else{
+        ROS_INFO("poly_error = %f", poly_error);
+      }
+
+}
+
+PolyFit<double> RacingLinePlanner::polyfit(std::vector<double> x, std::vector<double> y){
+  try 
+  {
+    
+    // Create options for fitting
+    PolyFit<double>::Options options;
+    options.polyDeg = 3; 
+    options.solver = PolyFit<double>::EIGEN_JACOBI_SVD; // SVD solver
+    int mxpts = x.size()-2;
+    // if(mxpts > 10){ 
+    //   mxpts = 10;
+    // }
+    options.maxMPts = mxpts; // x.size(); // #Pts to use for fitting
+    options.maxTrial = 500; // Max. nr. of trials
+    options.tolerance = 0.01; // Distance tolerance for inlier    
+    // Create fitting object
+    PolyFit<double>f(x,y,options);    
+    // Solve using RANSAC 
+    f.solveRLS(); 
+     
+    // Output result    
+    polyfit_error = false;
+    return f;
+  }
+  catch (std::exception &e)
+  {
+     ROS_WARN("PolyFit Error");  
+     polyfit_error = true;  
+    poly_error = 1e10;
+  }
+}
+
 
 visualization_msgs::Marker RacingLinePlanner::LaneLetPointsToMarker(std::vector<lanelet::Point3d> &point3d_vector){
         visualization_msgs::Marker PathMarker;         
@@ -363,6 +534,7 @@ planner::Waypoint RacingLinePlanner::gen_Wp(lanelet::ConstLanelet lanelet_,geome
         avoidance_sp.cost = cost_;
         return avoidance_sp;
 }
+
 
 std::vector<Waypoint> RacingLinePlanner::AddWaypoint(const Waypoint& bad_wp,int cost_){
     std::vector<Waypoint> good_waypoints;
@@ -507,6 +679,8 @@ void RacingLinePlanner::currentposeCallback(const nav_msgs::OdometryConstPtr &ms
     mu_mtx.unlock();  
     globalPathMarker = getGlobalPathMarker(global_path_wps);    
 }
+
+
 
 
 void RacingLinePlanner::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg){
