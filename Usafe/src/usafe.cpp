@@ -23,7 +23,9 @@
 Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ros::NodeHandle& nh_p) :  
   nh_(nh), nh_local_(nh_local), nh_p_(nh_p),mission_state(MissionState::InitialSetup)
 {
-  v2xSub = nh_local_.subscribe("/Mission2", 2, &Usafe::callbackV2X, this);  
+  v2xSub = nh_local_.subscribe("/Mission2", 2, &Usafe::callbackV2X, this); 
+   
+  missionStatePub = nh_local_.advertise<std_msgs::Float64>("/MissionFSMState", 2, true);      
   v2x_received = false;
   
   
@@ -51,8 +53,12 @@ void Usafe::missionFSM(){
   ros::Rate loop_rate(fsm_loop_hz); 
   ROS_INFO("Init FSM thread");  
     while (ros::ok())
-    {     
+    {    
+      std_msgs::Float64 missionFSMState_; 
+      missionFSMState_.data = static_cast<double>(mission_state);
+      missionStatePub.publish(missionFSMState_);
       // InitialSetup = 0, WaitforCue = 1, Driving = 2, Boostup = 3, MissionComplete = 4
+      int tmp_val;
       switch(mission_state){
         case MissionState::InitialSetup:
             if(race_planner_->waypoint_received && v2x_received){
@@ -80,7 +86,7 @@ void Usafe::missionFSM(){
         break;
 
         case MissionState::Driving:            
-            ROS_INFO("Driving");
+            tmp_val = 1;
         break;
 
         default:

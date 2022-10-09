@@ -141,7 +141,7 @@ private:
 ros::NodeHandle nh_, nh_local_, nh_p_;
 std::mutex mtx;
 ros::Subscriber v2xSub;
-ros::Publisher velPub;
+ros::Publisher velPub, missionStatePub;
 MissionState mission_state;
 bool v2x_received;
 

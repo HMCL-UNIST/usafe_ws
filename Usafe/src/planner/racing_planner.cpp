@@ -66,6 +66,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
     local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);  
     velPub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);      
+    local_lane_statePub = nh_.advertise<std_msgs::Float64>("/local_lane_state", 2, true);      
+    
 
     point_sub = nh_.subscribe("move_base_simple/goal", 1, &RacingLinePlanner::callbackGetGoalPose, this);
     curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
@@ -222,6 +224,7 @@ void RacingLinePlanner::localPathGenCallback() {
   {     
     auto start_time=  std::chrono::high_resolution_clock::now();                    
     std::vector<lanelet::Point3d> local_lane_points;
+    
     ////////////////////////////////////////////////////////////////
     if(!cur_pose_available){
         ROS_WARN("Current position is not available");
@@ -249,7 +252,7 @@ void RacingLinePlanner::localPathGenCallback() {
         lanelet::ConstLineString3d target_centerline = road_lanelets_const_for_driving.at(wp_closest_lane_idx).centerline();
         ///////////////////////////
         lanelet::ArcCoordinates cur_pose_cord = get_ArcCoordinate(target_centerline,cur_pose.pose);        
-        ROS_INFO(" cur_pose_cord.length  =%f, distance = %f ", cur_pose_cord.length, cur_pose_cord.distance);
+        // ROS_INFO(" cur_pose_cord.length  =%f, distance = %f ", cur_pose_cord.length, cur_pose_cord.distance);
         lanelet::Point3d cur_point(lanelet::utils::getId(), cur_pose.pose.position.x, cur_pose.pose.position.y,0.0);        
         auto cur_projected_point = lanelet::geometry::project(target_centerline, cur_point);
         geometry_msgs::Pose cur_projected_pose;
@@ -257,21 +260,20 @@ void RacingLinePlanner::localPathGenCallback() {
         cur_projected_pose.position.y = cur_projected_point.y();        
         ///////////////////////////
         
-        if(cur_pose_cord.length == 0.0){
-            ROS_WARN("Target lane is too far >> Lane Follow");      
+        if(cur_pose_cord.length == 0.0){            
             local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
+            local_lane_state.data = 0.0;
         }
         else{
-            if(fabs(cur_pose_cord.distance) > 9.0){
-                ROS_WARN("Soemthing wrong with lane projection >> Lane Follow");                
+            if(fabs(cur_pose_cord.distance) > 9.0){                
                 local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
-            }else if(fabs(cur_pose_cord.distance) < lane_overwrite_distance){
-                ROS_WARN("Distance is a small >> Target Lane Follow");                
+                local_lane_state.data = 1.0;
+            }else if(fabs(cur_pose_cord.distance) < lane_overwrite_distance){                           
                 local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose, speed_limits);     
-            }else{
-                ROS_WARN("Deviated Lane Follow");                
+                local_lane_state.data = 2.0;
+            }else{                            
                 local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose, speed_limits);
-                
+                local_lane_state.data = 3.0;
                 lanelet::LineString2d target_linstring2d;
                 for(int k=0; k < local_lane_points.size(); k++){
                     target_linstring2d.push_back(lanelet::utils::to2D(local_lane_points[k]));                    
@@ -286,10 +288,11 @@ void RacingLinePlanner::localPathGenCallback() {
 
         }                 
     }else{
-        // No waypoints available --> just laneFollow
-        ROS_WARN("No waypoints available >> Lane Follow");
+        // No waypoints available --> just laneFollow        
+        local_lane_state.data = 4.0;
         local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
     }
+    local_lane_statePub.publish(local_lane_state);
     // If lane with end point--> skip local path computation 
     if(local_lane_points.size()<2){
         loop_rate.sleep(); 
@@ -1028,7 +1031,7 @@ for(int i = 0; i < v2x_data.States.size(); i++){
     // re-idfication waypoints 
     for(int i=0; i < waypoints.size(); i++){
         waypoints[i].id = i;
-        ROS_INFO("id = %d, x = %f, y = %f", waypoints[i].id,waypoints[i].x_pose,waypoints[i].y_pose);
+        // ROS_INFO("id = %d, x = %f, y = %f", waypoints[i].id,waypoints[i].x_pose,waypoints[i].y_pose);
         geometry_msgs::Pose pose_tmp;
         pose_tmp.position.x = waypoints[i].x_pose;
         pose_tmp.position.y = waypoints[i].y_pose;

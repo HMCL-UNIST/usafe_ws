@@ -148,7 +148,7 @@ private:
     int tmp;
     ros::NodeHandle nh_, nh_p_;
     ros::Publisher  local_traj_pub, l_traj_viz_pub, target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
-    ros::Publisher velPub;    
+    ros::Publisher velPub, local_lane_statePub;    
     ros::Subscriber point_sub;
     ros::Subscriber curpose_sub, curodom_sub, vehicle_status_sub;    
     ros::Timer viz_timer;
@@ -160,6 +160,7 @@ private:
     lanelet::routing::RoutingGraphUPtr routingGraph, routingGraph_for_driving;
     lanelet::Lanelets road_lanelets;
     lanelet::ConstLanelets road_lanelets_const, road_lanelets_const_for_driving;
+    std_msgs::Float64 local_lane_state;
     std::string osm_file_name, osm_file_name_for_driving;
     double Goal_line_pose_lat, Goal_line_pose_lon;
     lanelet::BasicPoint3d Goal_line_point;
