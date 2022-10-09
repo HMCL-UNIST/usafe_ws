@@ -23,7 +23,7 @@
 Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ros::NodeHandle& nh_p) :  
   nh_(nh), nh_local_(nh_local), nh_p_(nh_p)
 {
-  v2xSub = nh_.subscribe("/Mission2", 1, &Usafe::callbackV2X, this);
+  v2xSub = nh_local_.subscribe("/Mission2", 2, &Usafe::callbackV2X, this);
   // tools initialize
   // debugger_ = new tools::Debugger();
   // system_monitor_ = new tools::HeatlMonitoring();                         
@@ -69,6 +69,7 @@ Usafe::~Usafe()
 void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){
 
   if(!race_planner_->waypoint_received){
+    ROS_INFO("Encode waypoints coming from V2X");
     race_planner_->v2x_data=*msg; 
     race_planner_->convert_v2x_data();
     race_planner_->waypoint_received=true; 

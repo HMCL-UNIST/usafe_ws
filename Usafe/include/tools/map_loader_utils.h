@@ -420,7 +420,7 @@ void lineString2Marker(const lanelet::ConstLineString3d ls, visualization_msgs::
 }
 
 
-visualization_msgs::MarkerArray laneletsBoundaryAsMarkerArray(lanelet::Lanelets& lanelets,
+visualization_msgs::MarkerArray laneletsBoundaryAsMarkerArray(lanelet::ConstLanelets& lanelets,
                                                                              const std_msgs::ColorRGBA c)
 {
   double lss = 0.2;  // line string size
@@ -429,10 +429,10 @@ visualization_msgs::MarkerArray laneletsBoundaryAsMarkerArray(lanelet::Lanelets&
   setColor(&center_road_c, 1.0, 0.7, 0.7, 0.3);
   for (auto li = lanelets.begin(); li != lanelets.end(); li++)
   {
-    lanelet::Lanelet lll = *li;
+    lanelet::ConstLanelet lll = *li;
 
-    lanelet::LineString3d left_ls = lll.leftBound();
-    lanelet::LineString3d right_ls = lll.rightBound();    
+    lanelet::ConstLineString3d left_ls = lll.leftBound();
+    lanelet::ConstLineString3d right_ls = lll.rightBound();    
     lanelet::ConstLineString3d center_ls = lll.centerline();
     
       
