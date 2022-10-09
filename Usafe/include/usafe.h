@@ -144,7 +144,7 @@ ros::Subscriber v2xSub;
 ros::Publisher velPub, missionStatePub;
 MissionState mission_state;
 bool v2x_received;
-
+std::vector<double> boost_enable_idx;
 planner::RacingLinePlanner*           race_planner_;
 planner::VehicleModel*                 vehicle_model_;
 v2x_msgs::Mission2  v2x_waypoints;

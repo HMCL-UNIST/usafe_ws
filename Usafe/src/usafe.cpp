@@ -104,11 +104,29 @@ void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){
   v2x_received = true;
   mtx.lock();
   v2x_msg = *msg;
+
   if(mission_state == MissionState::InitialSetup){
     race_planner_->v2x_data=v2x_msg; 
     race_planner_->convert_v2x_data(); 
-  }  
+  }    
   mtx.unlock();
+
+
+
+  for(int i=0; i< msg->States.size(); i++){    
+    if(msg->States[i].item_type ==3 && msg->States[i].item_status == 0){      
+      if(boost_enable_idx.size() > 0){
+        if(std::find(boost_enable_idx.begin(), boost_enable_idx.end(), msg->States[i].item_id) != boost_enable_idx.end()){
+            continue; // Found element in the history 
+        }
+      }
+        boost_enable_idx.push_back(msg->States[i].item_id);
+        ros::Time boost_time = ros::Time::now();  
+        mtx.lock();    
+        race_planner_->setup_boostup(boost_time, msg->States[i].speed, msg->States[i].duration);
+        mtx.unlock();
+    }
+  }
 }
 
 void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)

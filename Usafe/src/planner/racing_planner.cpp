@@ -66,6 +66,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
     local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);  
     velPub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);      
+    boost_duration_pub = nh_.advertise<std_msgs::Float64>("/boost_duration", 2, true);      
     local_lane_statePub = nh_.advertise<std_msgs::Float64>("/local_lane_state", 2, true);      
     
 
@@ -216,6 +217,9 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
     return target_points;    
 }
 
+
+
+
 void RacingLinePlanner::localPathGenCallback() {
   double local_path_loop_hz = 10.0;
   ros::Rate loop_rate(local_path_loop_hz); 
@@ -325,14 +329,43 @@ void RacingLinePlanner::localPathGenCallback() {
   }
 }
 
+
+
+
+void RacingLinePlanner::setup_boostup(ros::Time boost_time, double boost_speed_, double boost_duration_){
+    mu_mtx.lock();
+    boost_init_time = boost_time;
+    boost_speed =     boost_speed_;
+    boost_duration =  boost_duration_;
+    mu_mtx.unlock();
+} 
+
+
 void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limits){       
     std_msgs::Float64 vel_msg;
     double dist_to_goalline = sqrt(pow((Goal_line_point.x() - cur_pose.pose.position.x),2) + pow((Goal_line_point.y() - cur_pose.pose.position.y),2));
-    if(dist_to_goalline < 6.5 || speed_limits.size() < 1){
-        vel_msg.data = 0.0;
-    }else{                
-        vel_msg.data = speed_limits.back();        
-    }   
+    double target_speed = 0.0;
+    if(speed_limits.size() > 1)
+        target_speed = speed_limits.back();
+
+    // Check if boost enable
+    if(boost_duration > 0){
+        std_msgs::Float64 boost_duration_left;
+        ros::Time cur_time = ros::Time::now();
+        ros::Duration diff_time = cur_time - boost_init_time;
+        if( diff_time.toSec() < boost_duration){
+            target_speed = 100.0;            
+        }
+        double boost_left_time = boost_duration - diff_time.toSec();
+        boost_left_time = std::max(boost_left_time,0.0);
+        boost_duration_left.data = boost_left_time;
+        boost_duration_pub.publish(boost_duration_left);
+     }
+
+    if(dist_to_goalline < 6.5)
+            target_speed = 0.0;
+            
+    vel_msg.data = target_speed;
 
     if(Mission_start)
         velPub.publish(vel_msg);

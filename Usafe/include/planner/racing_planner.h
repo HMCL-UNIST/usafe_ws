@@ -149,6 +149,7 @@ private:
     ros::NodeHandle nh_, nh_p_;
     ros::Publisher  local_traj_pub, l_traj_viz_pub, target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
     ros::Publisher velPub, local_lane_statePub;    
+    ros::Publisher boost_duration_pub;
     ros::Subscriber point_sub;
     ros::Subscriber curpose_sub, curodom_sub, vehicle_status_sub;    
     ros::Timer viz_timer;
@@ -174,6 +175,10 @@ private:
     
     double map_road_resolution;
     hmcl_msgs::Lane local_lane_msg;
+
+    ros::Time boost_init_time;
+    double boost_speed;
+    double boost_duration;
 
     
     bool polyfit_error;
@@ -227,6 +232,7 @@ bool compute_best_route(int src_idx);
 void curve_fitting(hmcl_msgs::Lane& local_traj_msg,std::vector<double> speed_lim);
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 
+void setup_boostup(ros::Time boost_time, double boost_speed_, double boost_duration_);
 
 void Compute_and_pub_Velocity(std::vector<double> &speed_limits);
 double get_yaw(const lanelet::Point3d & _from, const lanelet::Point3d &_to );
