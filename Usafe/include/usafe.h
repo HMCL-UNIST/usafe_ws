@@ -120,18 +120,36 @@
 #include <usafe/testConfig.h>
 #define PI 3.14159265358979323846264338
 
+enum struct MissionState {InitialSetup = 0, WaitforCue = 1, Driving = 2}; 
+
+inline const char* stateToString(MissionState v)
+{
+    switch (v)
+    {
+        case MissionState::InitialSetup:   return "InitialSetup";
+        case MissionState::WaitforCue:   return "WaitforCue";
+        case MissionState::Driving:   return "Driving";        
+        default:      return "[Unknown MissionState]";
+    }
+}
+
+
 class Usafe 
 {
   
 private:
 ros::NodeHandle nh_, nh_local_, nh_p_;
-
+std::mutex mtx;
 ros::Subscriber v2xSub;
-
+ros::Publisher velPub;
+MissionState mission_state;
+bool v2x_received;
 
 planner::RacingLinePlanner*           race_planner_;
 planner::VehicleModel*                 vehicle_model_;
 v2x_msgs::Mission2  v2x_waypoints;
+
+hmcl_v2x::HMCL_Mission2 v2x_msg;
 
 dynamic_reconfigure::Server<usafe::testConfig> srv;
 dynamic_reconfigure::Server<usafe::testConfig>::CallbackType f;
@@ -146,6 +164,7 @@ Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local, const ros::Nod
 // void perception_loop();
 // void controller_loop();
 // void tools_loop();
+void missionFSM();
 void dyn_callback(usafe::testConfig& config, uint32_t level);
 // void callbackV2X(const v2x_msgs::Mission2ConstPtr &msg);
 void callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg);

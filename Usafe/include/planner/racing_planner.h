@@ -29,6 +29,7 @@
 #include <ros/time.h>
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
+#include <std_msgs/Float64.h>
 #include "planner/vehicle_model.h"
 #include "tools/amathutils.hpp"
 
@@ -147,6 +148,7 @@ private:
     int tmp;
     ros::NodeHandle nh_, nh_p_;
     ros::Publisher  local_traj_pub, l_traj_viz_pub, target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
+    ros::Publisher velPub;    
     ros::Subscriber point_sub;
     ros::Subscriber curpose_sub, curodom_sub, vehicle_status_sub;    
     ros::Timer viz_timer;
@@ -159,6 +161,8 @@ private:
     lanelet::Lanelets road_lanelets;
     lanelet::ConstLanelets road_lanelets_const, road_lanelets_const_for_driving;
     std::string osm_file_name, osm_file_name_for_driving;
+    double Goal_line_pose_lat, Goal_line_pose_lon;
+    lanelet::BasicPoint3d Goal_line_point;
     double origin_lat, origin_lon, origin_att;
     double edge_valid_dist_to_line_thres = 3.0;
     double edge_centerline_aling_angle_limit = PI/6;
@@ -166,7 +170,9 @@ private:
     double distance_cost_weight = 2;
     double point_projection_ignore_threshold = 3.0;
     double lane_overwrite_distance;
+    
     double map_road_resolution;
+    hmcl_msgs::Lane local_lane_msg;
 
     
     bool polyfit_error;
@@ -191,6 +197,9 @@ public:
 RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p); 
 ~RacingLinePlanner();
 
+
+
+bool Mission_start;
 bool waypoint_received;
 // v2x_msgs::Mission2  v2x_data;
 hmcl_v2x::HMCL_Mission2  v2x_data;
@@ -217,6 +226,8 @@ bool compute_best_route(int src_idx);
 void curve_fitting(hmcl_msgs::Lane& local_traj_msg,std::vector<double> speed_lim);
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 
+
+void Compute_and_pub_Velocity(std::vector<double> &speed_limits);
 double get_yaw(const lanelet::Point3d & _from, const lanelet::Point3d &_to );
 hmcl_msgs::Lane LanepointsToLane(std::vector<lanelet::Point3d> target_points, std::vector<double> speed_limits);
 void viz_local_path(hmcl_msgs::Lane &lane_);

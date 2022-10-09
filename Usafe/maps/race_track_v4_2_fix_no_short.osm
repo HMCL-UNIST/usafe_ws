@@ -72880,7 +72880,7 @@
     <member type="way" role="right" ref="36431"/>
     <tag k="type" v="lanelet"/>
     <tag k="subtype" v="road"/>
-    <tag k="speed_limit" v="10"/>
+    <tag k="speed_limit" v="80"/>
     <tag k="location" v="urban"/>
     <tag k="one_way" v="yes"/>
   </relation>
@@ -72889,7 +72889,7 @@
     <member type="way" role="right" ref="36444"/>
     <tag k="type" v="lanelet"/>
     <tag k="subtype" v="road"/>
-    <tag k="speed_limit" v="10"/>
+    <tag k="speed_limit" v="80"/>
     <tag k="location" v="urban"/>
     <tag k="one_way" v="yes"/>
   </relation>
@@ -72898,7 +72898,7 @@
     <member type="way" role="right" ref="36452"/>
     <tag k="type" v="lanelet"/>
     <tag k="subtype" v="road"/>
-    <tag k="speed_limit" v="10"/>
+    <tag k="speed_limit" v="80"/>
     <tag k="location" v="urban"/>
     <tag k="one_way" v="yes"/>
   </relation>
@@ -72907,7 +72907,7 @@
     <member type="way" role="right" ref="36453"/>
     <tag k="type" v="lanelet"/>
     <tag k="subtype" v="road"/>
-    <tag k="speed_limit" v="10"/>
+    <tag k="speed_limit" v="80"/>
     <tag k="location" v="urban"/>
     <tag k="one_way" v="yes"/>
   </relation>
@@ -72916,7 +72916,7 @@
     <member type="way" role="right" ref="36454"/>
     <tag k="type" v="lanelet"/>
     <tag k="subtype" v="road"/>
-    <tag k="speed_limit" v="10"/>
+    <tag k="speed_limit" v="80"/>
     <tag k="location" v="urban"/>
     <tag k="one_way" v="yes"/>
   </relation>

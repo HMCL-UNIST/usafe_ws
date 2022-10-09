@@ -21,6 +21,10 @@
       <param name="map_origin_lon" value="129.188112768"/>  
       <param name="map_origin_att" value="55.494"/>  -->
       
+    
+    <param name="Goal_line_pose_lat" value="35.65084331202714"/> 
+    <param name="Goal_line_pose_lon" value="128.3997533490543"/> 
+
       <!-- KIAPI -->
       <param name="map_origin_lat" value="35.6470671983"/> 
       <param name="map_origin_lon" value="128.401913578"/>  

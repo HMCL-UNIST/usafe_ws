@@ -21,25 +21,12 @@
 
 
 Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ros::NodeHandle& nh_p) :  
-  nh_(nh), nh_local_(nh_local), nh_p_(nh_p)
+  nh_(nh), nh_local_(nh_local), nh_p_(nh_p),mission_state(MissionState::InitialSetup)
 {
-  v2xSub = nh_local_.subscribe("/Mission2", 2, &Usafe::callbackV2X, this);
-  // tools initialize
-  // debugger_ = new tools::Debugger();
-  // system_monitor_ = new tools::HeatlMonitoring();                         
+  v2xSub = nh_local_.subscribe("/Mission2", 2, &Usafe::callbackV2X, this);  
+  v2x_received = false;
   
-  // perception modules initialize  
-  // v2x_receiver_ = new perception::V2X();
-  // sensors_ = new perception::VehicleStates();
-  // environmet_ = new perception::SurroundingEnvironment();
-
-  //planner initialize 
-  // ms_planner_ = new planner::MissionStateMachine();
-  // rt_planner_ = new planner::RoutePlanner();
-  // bh_planner_ = new planner::BehaviorStatMachine();
-  // pp_planner_ = new planner::PathPlanner();
-  // vel_planner_ = new planner::VelocityPlanner();
-  // planner_common_ = new planner::PlannerCommon();
+  
   race_planner_ = new planner::RacingLinePlanner(nh_,nh_p_);
   vehicle_model_ = new planner::VehicleModel(nh_local_,nh_p_);
   race_planner_->vehicle_model_ = vehicle_model_;
@@ -50,32 +37,72 @@ Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ro
   positive_cost_assign_ = false;
   f = boost::bind(&Usafe::dyn_callback,this, _1, _2);
 	srv.setCallback(f);
-  // race_planner_->number_of_node = 4;
-  // race_planner_->gen_random_graph();
-  // race_planner_->compute_best_route(1);
   
-
-  // controller initiazlie 
-  // long_ctrl_ = new controller::LongitudinalCtrl();
-  // lat_ctrl_ = new controller::LateralCtrl();
-
+  boost::thread mission_state_machine_thread(&Usafe::missionFSM,this); 
+  
 }
 
 
 Usafe::~Usafe()
 {}
 
-// void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
-void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){
+void Usafe::missionFSM(){
+  double fsm_loop_hz = 2.0;
+  ros::Rate loop_rate(fsm_loop_hz); 
+  ROS_INFO("Init FSM thread");  
+    while (ros::ok())
+    {     
+      // InitialSetup = 0, WaitforCue = 1, Driving = 2, Boostup = 3, MissionComplete = 4
+      switch(mission_state){
+        case MissionState::InitialSetup:
+            if(race_planner_->waypoint_received && v2x_received){
+              ROS_INFO("Initial Setup Completed");              
+              mission_state = MissionState::WaitforCue;                            
+            }else{
+                ROS_INFO("Initial Setting up");                                   
+            }            
+        break;
 
-  if(!race_planner_->waypoint_received){
-    ROS_INFO("Encode waypoints coming from V2X");
-    race_planner_->v2x_data=*msg; 
-    race_planner_->convert_v2x_data();
-    race_planner_->waypoint_received=true; 
+        case MissionState::WaitforCue:
+            if (v2x_msg.mission_status > 0){
+              mtx.lock();
+               if(race_planner_->global_path_wps.size() > 0){                
+                race_planner_->Mission_start = true;                
+                mission_state = MissionState::Driving;                
+               }else{
+                ROS_INFO("Computing Global path waypoints........");  
+                race_planner_->compute_global_path();
+               }
+               mtx.unlock();               
+            }else{
+              ROS_INFO("Waiting for Mission Start");
+            }
+        break;
+
+        case MissionState::Driving:            
+            ROS_INFO("Driving");
+        break;
+
+        default:
+            ROS_INFO("NA MissionState");
+        break;
+
+        
+    }
+    loop_rate.sleep(); 
   }
-  
-  // ROS_INFO("waypoints size = %d",msg->States.size() );
+}
+
+// void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
+void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){  
+  v2x_received = true;
+  mtx.lock();
+  v2x_msg = *msg;
+  if(mission_state == MissionState::InitialSetup){
+    race_planner_->v2x_data=v2x_msg; 
+    race_planner_->convert_v2x_data(); 
+  }  
+  mtx.unlock();
 }
 
 void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)

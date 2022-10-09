@@ -41,6 +41,10 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     nh_p_.param<double>("max_shift_speed_ratio", max_shift_speed_ratio, 0.95);
     nh_p_.param<double>("min_shift_speed_ratio", min_shift_speed_ratio, 0.987);
     nh_p_.param<double>("lane_overwrite_distance", lane_overwrite_distance, 0.8);
+
+    nh_p_.param<double>("Goal_line_pose_lat", Goal_line_pose_lat, 35.65084331202714);
+    nh_p_.param<double>("Goal_line_pose_lon", Goal_line_pose_lon, 128.3997533490543);
+    
     
     shift_speed_ratio = min_shift_speed_ratio;
     
@@ -51,6 +55,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     waypoint_received = false;
     positive_cost_assign_ = false;
     cur_pose_available = false;
+    Mission_start = false;
     // Set publisher and subscriber 
     g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);      
     waypoints_pub = nh_.advertise<visualization_msgs::MarkerArray>("/waypoints", 2, true);          
@@ -60,7 +65,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     target_path_pub = nh_.advertise<visualization_msgs::Marker>("/target_path", 2, true);          
     l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
     local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);  
-    
+    velPub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);      
+
     point_sub = nh_.subscribe("move_base_simple/goal", 1, &RacingLinePlanner::callbackGetGoalPose, this);
     curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
     vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &RacingLinePlanner::callbackVehicleStatus, this);
@@ -204,7 +210,7 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
               }
         }        
     }
-   
+    
     return target_points;    
 }
 
@@ -289,14 +295,19 @@ void RacingLinePlanner::localPathGenCallback() {
         loop_rate.sleep(); 
         continue;
     }
+
     // Post Processing the computed local lane
-    hmcl_msgs::Lane local_lane_msg = LanepointsToLane(local_lane_points,speed_limits);
+    local_lane_msg = LanepointsToLane(local_lane_points,speed_limits);
     
     curve_fitting(local_lane_msg,speed_limits);
     local_traj_pub.publish(local_lane_msg);
-    
     viz_local_path(local_lane_msg);
     l_traj_viz_pub.publish(local_traj_marker_arrary);
+    ////////////////////////////// Publish Velocity //////////////////////////////
+    Compute_and_pub_Velocity(speed_limits);    
+    //////////////////////////////////////////////////////////////////////////////
+    
+
 
     visualization_msgs::Marker local_path_marker = LaneLetPointsToMarker(local_lane_points);
     target_path_pub.publish(local_path_marker);
@@ -311,6 +322,18 @@ void RacingLinePlanner::localPathGenCallback() {
   }
 }
 
+void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limits){       
+    std_msgs::Float64 vel_msg;
+    double dist_to_goalline = sqrt(pow((Goal_line_point.x() - cur_pose.pose.position.x),2) + pow((Goal_line_point.y() - cur_pose.pose.position.y),2));
+    if(dist_to_goalline < 6.5 || speed_limits.size() < 1){
+        vel_msg.data = 0.0;
+    }else{                
+        vel_msg.data = speed_limits.back();        
+    }   
+
+    if(Mission_start)
+        velPub.publish(vel_msg);
+}
 
 void RacingLinePlanner::curve_fitting(hmcl_msgs::Lane& local_traj_msg,std::vector<double> speed_lim){
       if(local_traj_msg.waypoints.size() < 6){
@@ -1044,6 +1067,7 @@ for(int i = 0; i < v2x_data.States.size(); i++){
         }
     }
     ROS_INFO("Completing V2X mission Encoding");
+    waypoint_received=true;
 }
 
 void RacingLinePlanner::load_map_for_driving(){  
@@ -1052,6 +1076,10 @@ void RacingLinePlanner::load_map_for_driving(){
     lanelet::GPSPoint originGps{origin_lat, origin_lon, 0.};    
  projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});     
   map_for_driving = load(osm_file_name_for_driving, "osm_handler",*projector,&errors);
+
+   lanelet::GPSPoint Goal_line_gnssPoint{Goal_line_pose_lat, Goal_line_pose_lon, 0.};
+    Goal_line_point = projector->forward(Goal_line_gnssPoint);        
+
   assert(errors.empty()); 
   ROS_INFO("Driving map loaded succesfully");
 }
