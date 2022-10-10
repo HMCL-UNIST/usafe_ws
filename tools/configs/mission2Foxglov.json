@@ -1,0 +1,246 @@
+{
+  "configById": {
+    "3D!18i6zy7": {
+      "layers": {
+        "845139cb-26bc-40b3-8161-8ab60af4baf5": {
+          "visible": false,
+          "frameLocked": true,
+          "label": "Grid",
+          "instanceId": "845139cb-26bc-40b3-8161-8ab60af4baf5",
+          "layerId": "foxglove.Grid",
+          "size": 10,
+          "divisions": 10,
+          "lineWidth": 1,
+          "color": "#248eff",
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "order": 1
+        }
+      },
+      "cameraState": {
+        "perspective": false,
+        "distance": 181.51602325616426,
+        "phi": 73.67570514148167,
+        "thetaOffset": 21.660012224849037,
+        "targetOffset": [
+          50.13741998498247,
+          -6.992509768360378,
+          -2.7573368581854008e-14
+        ],
+        "target": [
+          0,
+          0,
+          0
+        ],
+        "targetOrientation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "fovy": 45,
+        "near": 0.01,
+        "far": 5000
+      },
+      "followMode": "follow-pose",
+      "scene": {
+        "enableStats": false,
+        "labelScaleFactor": 2.2600000000000002,
+        "backgroundColor": "#000000",
+        "ignoreColladaUpAxis": false,
+        "transforms": {
+          "editable": false,
+          "showLabel": true,
+          "enablePreloading": false
+        }
+      },
+      "transforms": {
+        "frame:base_link": {
+          "visible": false
+        }
+      },
+      "topics": {
+        "/lanelet2_map_viz": {
+          "visible": true,
+          "color": "#ff9b0045",
+          "namespaces": {
+            "center_lane_line": {
+              "visible": true
+            },
+            "left_lane_bound": {
+              "visible": true
+            }
+          }
+        },
+        "/local_traj_viz": {
+          "visible": true,
+          "color": "#dcef0a45",
+          "namespaces": {
+            "ltraj": {
+              "visible": true
+            }
+          }
+        },
+        "/target_path": {
+          "visible": true
+        },
+        "/Waypoint_edges": {
+          "visible": false
+        },
+        "/waypoints": {
+          "visible": true
+        },
+        "/global_path": {
+          "visible": true,
+          "color": "#00fd2a45"
+        },
+        "/state_estimator/gps_pos": {
+          "visible": false,
+          "covarianceColor": "#9903f740",
+          "axisScale": 2.2,
+          "type": "axis"
+        },
+        "/geo_pose_estimate": {
+          "visible": true,
+          "type": "arrow",
+          "arrowScale": [
+            1.8064928712265744,
+            -1.6241855848319717,
+            0.3456465792013163
+          ],
+          "color": "#00beff"
+        }
+      },
+      "publish": {
+        "type": "point",
+        "poseTopic": "/move_base_simple/goal",
+        "pointTopic": "/clicked_point",
+        "poseEstimateTopic": "/initialpose",
+        "poseEstimateXDeviation": 0.5,
+        "poseEstimateYDeviation": 0.5,
+        "poseEstimateThetaDeviation": 0.26179939
+      }
+    },
+    "Indicator!1xmgij6": {
+      "path": "/local_lane_state.data",
+      "style": "bulb",
+      "fallbackColor": "#a0a0a0",
+      "fallbackLabel": "NA",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "0",
+          "color": "#00fcfc",
+          "label": "Lane Follow, Target lane is too far"
+        },
+        {
+          "operator": "=",
+          "rawValue": "1.0",
+          "color": "#ff0000",
+          "label": "Lane Follow, Error"
+        },
+        {
+          "operator": "=",
+          "rawValue": "2.0",
+          "color": "#00b7ff",
+          "label": "Lane Follow, Close to Centerline"
+        },
+        {
+          "operator": "=",
+          "rawValue": "3.0",
+          "color": "#f2ff00",
+          "label": "Lane Change"
+        },
+        {
+          "operator": "=",
+          "rawValue": "4.0",
+          "color": "#f200ff",
+          "label": "Lane Follow, No Waypoints"
+        }
+      ]
+    },
+    "Gauge!4i5vdza": {
+      "path": "/setpoint.data",
+      "minValue": 0,
+      "maxValue": 100,
+      "colorMap": "turbo",
+      "colorMode": "colormap",
+      "gradient": [
+        "#0000ff",
+        "#ff00ff"
+      ],
+      "reverse": false
+    },
+    "Indicator!37hzzpt": {
+      "path": "/MissionFSMState.data",
+      "style": "bulb",
+      "fallbackColor": "#a0a0a0",
+      "fallbackLabel": "NA",
+      "rules": [
+        {
+          "operator": "=",
+          "rawValue": "0",
+          "color": "#68e24a",
+          "label": "Initial Setup "
+        },
+        {
+          "operator": "=",
+          "rawValue": "1",
+          "color": "#ffcc00",
+          "label": "WaitforCue"
+        },
+        {
+          "operator": "=",
+          "rawValue": "2",
+          "color": "#15ff00",
+          "label": "Driving"
+        }
+      ]
+    },
+    "Gauge!3pr4j7h": {
+      "path": "/boost_duration.data",
+      "minValue": 0,
+      "maxValue": 255,
+      "colorMap": "red-yellow-green",
+      "colorMode": "gradient",
+      "gradient": [
+        "#fff400",
+        "#ff0000"
+      ],
+      "reverse": false
+    }
+  },
+  "globalVariables": {},
+  "userNodes": {},
+  "linkedGlobalVariables": [],
+  "playbackConfig": {
+    "speed": 1
+  },
+  "layout": {
+    "first": "3D!18i6zy7",
+    "second": {
+      "first": "Indicator!1xmgij6",
+      "second": {
+        "first": {
+          "first": "Gauge!4i5vdza",
+          "second": "Gauge!3pr4j7h",
+          "direction": "row"
+        },
+        "second": "Indicator!37hzzpt",
+        "direction": "row"
+      },
+      "direction": "row",
+      "splitPercentage": 54.19402216206144
+    },
+    "direction": "column",
+    "splitPercentage": 81.65853658536585
+  }
+}
