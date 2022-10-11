@@ -144,7 +144,7 @@ class MapLoader
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
 
-ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub;
+ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub, ped_cw_pub;
 ros::Publisher lir_pub;
 ros::Publisher way_pub;
 ros::Publisher mission_pub;
@@ -152,7 +152,7 @@ ros::Subscriber mobileye_sub;
 ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub, v2x_mission_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
 mobileye_msgs::MobileyeInfo mobileye_data;
-ros::Timer viz_timer, g_traj_timer, local_traj_timer, lir_timer;
+ros::Timer viz_timer, g_traj_timer, local_traj_timer, lir_timer, ped_cw_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary, lir_marker_array;
 
 double test_direction;
@@ -174,6 +174,7 @@ std::vector<lanelet::ConstLanelet> lanes;
 std::vector<lanelet::ConstLanelet> lir;
 std::vector<hmcl_msgs::Lane> traj_ll;
 std::vector<std::pair<double,double>> xyz;
+std_msgs::Bool ped_cw;
 bool map_loaded;
 float local_path_length;
 double origin_lat;
@@ -183,6 +184,7 @@ double max_dist, max_dist_vel;
 bool global_traj_available;
 bool goal_available;
 bool lir_available = false;
+bool ped_available, ped_in;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
 
 geometry_msgs::Pose pose_a, pose_b;
@@ -195,6 +197,7 @@ std::vector<int> global_index ={};
 int current_id = 0;
 int previous_id = -1;
 bool lir_flag = false;
+int ped_count;
 
 std::string osm_file_name;
 double map_road_resolution;
@@ -278,8 +281,10 @@ void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
 void lir_handler(const ros::TimerEvent& time);
+void ped_inCw_handler(const ros::TimerEvent& time);
 void poseCallback(const nav_msgs::OdometryConstPtr& msg);
 void llaCallback(const nav_msgs::OdometryConstPtr& msg);
+void PedCallback(const autoware_msgs::DetectedObjectArray& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
@@ -307,6 +312,7 @@ void compute_local_path();
 void current_lanefollow();
 void lane_in_range();
 void wp_inArea();
+void ped_inCw();
 void ego_in();
 bool calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist);
 bool calculate_distance_(hmcl_msgs::Waypoint &wp1, hmcl_msgs::Waypoint &wp2, double &dist, double &dist_cum);

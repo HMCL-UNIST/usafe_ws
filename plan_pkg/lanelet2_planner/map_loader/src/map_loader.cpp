@@ -61,6 +61,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   debug_pub = nh_.advertise<geometry_msgs::PoseStamped>("/maploader_debug", 2, true);
 
   lir_pub= nh_.advertise<hmcl_msgs::LaneArray>("/lane_in_range",2,true);
+  ped_cw_pub = nh_.advertise<std_msgs::Bool>("Ped_in_Crosswalk",2,true);
   
   mission_pub= nh_.advertise<hmcl_msgs::MissionWaypoint>("/start_goal_pose",2,true);
 
@@ -120,6 +121,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
 
   g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);
   lir_timer = nh_.createTimer(ros::Duration(0.1),&MapLoader::lir_handler,this);
+  ped_cw_timer = nh_.createTimer(ros::Duration(0.05),&MapLoader::ped_inCw_handler,this);
 
   rp_.setMap(map);   
 }
@@ -221,19 +223,19 @@ void MapLoader::compute_global_path(){
               
               if(i==_lane_idx){
                 waypoint_idx_init = getClosestWaypoint(true,lstring,pose_a);                                                 
-                if(i==0){
-                    hmcl_msgs::Waypoint wp_;  
-                    wp_.lane_id = _lane_idx;
-                    wp_.pose.pose.position.x = pose_a.position.x;
-                    wp_.pose.pose.position.y = pose_a.position.y;
-                    wp_.pose.pose.position.z = pose_a.position.z;
-                    wp_.pose.pose.orientation.x = pose_a.orientation.x;
-                    wp_.pose.pose.orientation.y = pose_a.orientation.y;
-                    wp_.pose.pose.orientation.z = pose_a.orientation.z;
-                    wp_.pose.pose.orientation.w = pose_a.orientation.w;
-                    wp_.twist.twist.linear.x = ll_.speed_limit;
-                    ll_.waypoints.push_back(wp_);
-                }                
+                // if(i==0){
+                //     hmcl_msgs::Waypoint wp_;  
+                //     wp_.lane_id = _lane_idx;
+                //     wp_.pose.pose.position.x = pose_a.position.x;
+                //     wp_.pose.pose.position.y = pose_a.position.y;
+                //     wp_.pose.pose.position.z = pose_a.position.z;
+                //     wp_.pose.pose.orientation.x = pose_a.orientation.x;
+                //     wp_.pose.pose.orientation.y = pose_a.orientation.y;
+                //     wp_.pose.pose.orientation.z = pose_a.orientation.z;
+                //     wp_.pose.pose.orientation.w = pose_a.orientation.w;
+                //     wp_.twist.twist.linear.x = ll_.speed_limit;
+                //     ll_.waypoints.push_back(wp_);
+                // }                
                 if(ll_.lane_change_flag){_lane_idx++;}               
               }
               // terminal lanelet , add terminal position as the waypoint
@@ -268,19 +270,19 @@ void MapLoader::compute_global_path(){
                 ll_.waypoints.push_back(wp_);
               }
                // terminal lanelet , add terminal position as the waypoint
-              if(i == local_path.size()-1){                
-                hmcl_msgs::Waypoint wp_;  
-                wp_.lane_id = _lane_idx;
-                wp_.pose.pose.position.x = pose_b.position.x;
-                wp_.pose.pose.position.y = pose_b.position.y;
-                wp_.pose.pose.position.z = pose_b.position.z;
-                wp_.pose.pose.orientation.x = pose_b.orientation.x;
-                wp_.pose.pose.orientation.y = pose_b.orientation.y;
-                wp_.pose.pose.orientation.z = pose_b.orientation.z;
-                wp_.pose.pose.orientation.w = pose_b.orientation.w;
-                wp_.twist.twist.linear.x = ll_.speed_limit;
-                ll_.waypoints.push_back(wp_);
-              }
+              // if(i == local_path.size()-1){                
+              //   hmcl_msgs::Waypoint wp_;  
+              //   wp_.lane_id = _lane_idx;
+              //   wp_.pose.pose.position.x = pose_b.position.x;
+              //   wp_.pose.pose.position.y = pose_b.position.y;
+              //   wp_.pose.pose.position.z = pose_b.position.z;
+              //   wp_.pose.pose.orientation.x = pose_b.orientation.x;
+              //   wp_.pose.pose.orientation.y = pose_b.orientation.y;
+              //   wp_.pose.pose.orientation.z = pose_b.orientation.z;
+              //   wp_.pose.pose.orientation.w = pose_b.orientation.w;
+              //   wp_.twist.twist.linear.x = ll_.speed_limit;
+              //   ll_.waypoints.push_back(wp_);
+              // }
               
 
 
@@ -426,6 +428,19 @@ void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){
   odom_x = msg->pose.pose.position.x;
   odom_y = msg->pose.pose.position.y;
   odom_z = msg->pose.pose.position.z;
+}
+
+void MapLoader::PedCallback(const autoware_msgs::DetectedObjectArray &msg){
+  ped_array.objects.clear();
+  ped_available = false;
+  for(int i=0; i<msg.objects.size(); i++){
+    if(msg.objects[i].label == "Pedestrian"){
+      ped_array.objects.push_back(msg.objects[i]);
+    }
+  }
+  if(ped_array.objects.size() > 0){
+    ped_available = true;
+  }
 }
 
 void MapLoader::lane_in_range(){
@@ -627,6 +642,59 @@ void MapLoader::wp_inArea(){
       }
     }
   }  
+}
+
+void MapLoader::ped_inCw(){
+  if(ped_available && pose_init){
+    for(int i=0; i < ped_array.objects.size(); i++){
+      float x,y;
+      double ped_x = ped_array.objects[i].pose.position.x;
+      double ped_y = ped_array.objects[i].pose.position.y;
+      geometry_msgs::Pose egoPose = cur_pose;
+      float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
+      x=egoPose.position.x + ped_x*cos(yaw) - ped_y*sin(yaw);
+      y=egoPose.position.y + ped_y*sin(yaw) + ped_y*cos(yaw);
+      for(int j=0; crosswalk.size(); j++){
+        lanelet::Area cross_tmp = crosswalk[i];
+        if(lanelet::geometry::inside(cross_tmp,lanelet::BasicPoint2d(x,y))){
+          ped_in = true;
+          break;
+        }
+        else{
+          ped_in = false;
+        }
+      }
+      if(ped_in){
+        break;
+      }
+    }
+  }
+  else{
+    ped_in = false;
+  }
+}
+
+void MapLoader::ped_inCw_handler(const ros::TimerEvent& time){
+  bool ped_tmp = false;
+  ped_inCw();
+  if(ped_in){
+    ped_tmp = ped_in;
+    ped_count = 0;
+    ped_cw.data = true;
+  }
+  if(!ped_in && ped_tmp){
+    ped_count++;
+    if(ped_count > 30){
+      ped_cw.data=false;
+    }
+    else{
+      ped_cw.data=true;
+    }
+  }
+  if(!ped_in && !ped_tmp){
+    ped_cw.data = false;
+  }
+  ped_cw_pub.publish(ped_cw);
 }
 
 void MapLoader::ego_in(){
