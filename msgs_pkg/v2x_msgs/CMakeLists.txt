@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0.2)
+cmake_minimum_required(VERSION 2.8.3)
 project(v2x_msgs)
 
 find_package(catkin REQUIRED COMPONENTS roscpp std_msgs hmcl_msgs genmsg message_generation)
@@ -9,6 +9,7 @@ add_message_files(
   Item.msg
   Mission1.msg
   Mission1data.msg
+  Mission1state.msg
   Mission2.msg
   Mission2data.msg
   PVD.msg

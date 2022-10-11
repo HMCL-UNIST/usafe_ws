@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<launch>
+  
+  <node name="v2x_simulation" pkg="v2x_simulation" type="v2x_simulation" output="screen">              
+        <!-- <remap from="AA" to="BB"/> -->
+             <param name="map_origin_lat" value="35.6470671983"/> 
+      <param name="map_origin_lon" value="128.401913578"/>  
+      
+  </node>
+  
+</launch>

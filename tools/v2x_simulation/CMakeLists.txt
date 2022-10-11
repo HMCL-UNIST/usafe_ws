@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(vehicle_bridge)
+project(v2x_simulation)
 
 find_package(Eigen3 REQUIRED)
 
@@ -21,9 +21,9 @@ find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
   std_msgs
   tf  
-  hmcl_msgs
+  hmcl_msgs  
+  v2x_msgs
   lanelet2_projection
-  can_msgs
   dynamic_reconfigure
 )
 
@@ -32,7 +32,7 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
-  CATKIN_DEPENDS lanelet2_projection nav_msgs roscpp sensor_msgs geometry_msgs std_msgs hmcl_msgs tf dynamic_reconfigure
+  CATKIN_DEPENDS lanelet2_projection v2x_msgs nav_msgs roscpp sensor_msgs geometry_msgs std_msgs hmcl_msgs tf dynamic_reconfigure
   LIBRARIES
 )
 
@@ -42,19 +42,19 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${EIGEN3_INCLUDE_DIRS}
 )
-add_executable(dynamic_reconfigure_node src/vehicle_bridge.cpp)
+add_executable(dynamic_reconfigure_node src/v2x_simulation.cpp)
 add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
 target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(vehicle_bridge src/vehicle_bridge.cpp)
-target_link_libraries(vehicle_bridge ${catkin_LIBRARIES})
-add_dependencies(vehicle_bridge ${catkin_EXPORTED_TARGETS})
+add_executable(v2x_simulation src/v2x_simulation.cpp)
+target_link_libraries(v2x_simulation ${catkin_LIBRARIES})
+add_dependencies(v2x_simulation ${catkin_EXPORTED_TARGETS})
 
 
 install(
   TARGETS
-  vehicle_bridge    
+  v2x_simulation    
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
