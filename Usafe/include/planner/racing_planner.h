@@ -43,7 +43,7 @@
 
 #include <eigen3/Eigen/Geometry>
 #include <v2x_msgs/Mission2.h>
-#include <hmcl_v2x/HMCL_Mission2.h>
+
 #include <hmcl_msgs/VehicleStatus.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/Waypoint.h>
@@ -150,7 +150,7 @@ private:
     ros::Publisher  local_traj_pub, l_traj_viz_pub, target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
     ros::Publisher velPub, local_lane_statePub;    
     ros::Publisher boost_duration_pub;
-    ros::Subscriber point_sub;
+    // ros::Subscriber point_sub;
     ros::Subscriber curpose_sub, curodom_sub, vehicle_status_sub;    
     ros::Timer viz_timer;
     std::deque<Waypoint> waypoints;
@@ -207,8 +207,8 @@ RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p);
 
 bool Mission_start;
 bool waypoint_received;
-// v2x_msgs::Mission2  v2x_data;
-hmcl_v2x::HMCL_Mission2  v2x_data;
+v2x_msgs::Mission2  v2x_data;
+
 std::deque<Waypoint> v2x_waypoints;
 planner::VehicleModel* vehicle_model_;
 bool positive_cost_assign_;
@@ -243,8 +243,7 @@ std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msg
 visualization_msgs::Marker LaneLetPointsToMarker(std::vector<lanelet::Point3d> &point3d_vector);
 void compute_edge_cost();
 void construct_lanelets_with_viz();
-void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
-// void currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);
+
 void currentposeCallback(const nav_msgs::OdometryConstPtr &msg);
 void odomCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);

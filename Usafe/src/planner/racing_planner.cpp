@@ -69,8 +69,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     boost_duration_pub = nh_.advertise<std_msgs::Float64>("/boost_duration", 2, true);      
     local_lane_statePub = nh_.advertise<std_msgs::Float64>("/local_lane_state", 2, true);      
     
-
-    point_sub = nh_.subscribe("move_base_simple/goal", 1, &RacingLinePlanner::callbackGetGoalPose, this);
+    
     curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
     vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &RacingLinePlanner::callbackVehicleStatus, this);
     
@@ -84,13 +83,19 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     lanelet::traffic_rules::TrafficRulesPtr trafficRules =  lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
     routingGraph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);      
     routingGraph_for_driving = lanelet::routing::RoutingGraph::build(*map_for_driving, *trafficRules);      
+    
+    auto start_time=  std::chrono::high_resolution_clock::now();                    
     construct_lanelets_with_viz();
+    auto stop_time=  std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop_time - start_time);
+    ROS_INFO("Time Takes to build maps = %d msec", duration);
+
     start_and_goal_wps_setup = false;
     // 
     waypoints.clear();
     waypoints_pose.clear();
     scenario_cout = 0;
-    // insertDefaultWaypoints(scenario_cout);
+    
 
     boost::thread local_path_generation(&RacingLinePlanner::localPathGenCallback,this); 
     
@@ -367,8 +372,11 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
             
     vel_msg.data = target_speed;
 
-    if(Mission_start)
-        velPub.publish(vel_msg);
+    if(!Mission_start){
+        vel_msg.data = 0.0;
+    }    
+    velPub.publish(vel_msg);
+    
 }
 
 void RacingLinePlanner::curve_fitting(hmcl_msgs::Lane& local_traj_msg,std::vector<double> speed_lim){
@@ -734,56 +742,6 @@ void RacingLinePlanner::currentposeCallback(const nav_msgs::OdometryConstPtr &ms
 
 
 
-void RacingLinePlanner::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg){
-    return;    
-    int cost;
-    if(positive_cost_assign_){
-        cost = 0;    
-    }else{
-        cost = 99;
-    }
-    geometry_msgs::Pose prior_wp;
-    prior_wp = msg->pose;
-    int lane_index = get_closest_lanelet(road_lanelets_const,prior_wp);  
-    auto centerline_ = road_lanelets_const[lane_index].centerline();
-    auto near_idx =  getClosestWaypoint(true,centerline_, prior_wp);
-    auto near_point = centerline_[near_idx];
-    
-    geometry_msgs::Pose wp_tmp;
-    wp_tmp.position.x = near_point.x();
-    wp_tmp.position.y = near_point.y();
-    planner::Waypoint waypoint_tmp = planner::Waypoint(wp_tmp.position.x, wp_tmp.position.y, cost);
-    
-    waypoints.push_back(waypoint_tmp);
-    waypoints_pose.push_back(wp_tmp);
-    
-    if( cost > 50){        
-        std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,60);                
-        if(avoidance_wps.size() > 0){
-            for(int i=0; i < avoidance_wps.size(); i++){
-                waypoints.push_back(avoidance_wps[i]);
-                geometry_msgs::Pose tmp_pose; 
-                tmp_pose.position.x = avoidance_wps[i].x_pose;
-                tmp_pose.position.y = avoidance_wps[i].y_pose;
-                waypoints_pose.push_back(tmp_pose);
-            }
-        }
-        
-    }else{
-        std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,40);                
-        if(avoidance_wps.size() > 0){
-            for(int i=0; i < avoidance_wps.size(); i++){
-                waypoints.push_back(avoidance_wps[i]);
-                geometry_msgs::Pose tmp_pose; 
-                tmp_pose.position.x = avoidance_wps[i].x_pose;
-                tmp_pose.position.y = avoidance_wps[i].y_pose;
-                waypoints_pose.push_back(tmp_pose);
-            }
-        }
-    }
-      
-}
-
 visualization_msgs::Marker RacingLinePlanner::getGlobalPathMarker(std::deque<Waypoint> wps){
      visualization_msgs::Marker PathMarker;
      if(waypoints_pose.size() > 1 ){          
@@ -845,7 +803,9 @@ bool RacingLinePlanner::getShortestPath(){
         shortestPathMarker.color.b = 1.0;
         // 1 is the start point,  and 0 is the goal point
         std::vector<int> shortest_path_wp_idx = g.shortestPath(1);
-        
+        if(shortest_path_wp_idx.size() < 1){
+            ROS_WARN("best path is empty");
+        }
         for(int i =0; i< shortest_path_wp_idx.size(); i++){                                              
                 global_path_wps.push_front(waypoints.at(shortest_path_wp_idx[i]));
                 geometry_msgs::Point point_;                            
@@ -989,6 +949,7 @@ waypoints.clear();
 waypoints_pose.clear();
 if ( v2x_data.States.size()  < 1){
     ROS_WARN("No v2x data available");
+    return;
 }
 // Cost re-scaling for graph optimization 
 std::vector<double> standarded_score;
@@ -1004,6 +965,7 @@ standarded_score.pop_back();
 // Minimum cost of the waypoints = 2 
 // Neutral cost of the waypoints = neutral_cost
 // Minimum cost of the goal = 0 
+
 for(int i = 0; i < v2x_data.States.size(); i++){
     double Lat_data =v2x_data.States[i].pos_lat;
     double Lon_data = v2x_data.States[i].pos_long;
@@ -1046,6 +1008,7 @@ for(int i = 0; i < v2x_data.States.size(); i++){
         waypoints_pose.push_back(pose_tmp);    
 
   }
+  
     // sort waypoints with respect to raceline
     for(int step= 0; step < waypoints.size(); step++){
         for (int k=0; k < waypoints.size()-step-1; k++){
@@ -1058,7 +1021,6 @@ for(int i = 0; i < v2x_data.States.size(); i++){
         }
     }
     
-    
 
     waypoints_pose.clear();
     // re-idfication waypoints 
@@ -1070,13 +1032,17 @@ for(int i = 0; i < v2x_data.States.size(); i++){
         pose_tmp.position.y = waypoints[i].y_pose;
         waypoints_pose.push_back(pose_tmp);        
     }
-    waypoint_max_id = waypoints.size()-1;
-
+    
+    int before_avoidance_wp_size = waypoints.size();
+    waypoint_max_id = before_avoidance_wp_size-1;
+    ////////////////////////////////////////////////
+    /////////////////////////// Below Waypoints are dummy avoidance waypoints with the same id corresponds to the given waypoints    
     ///  add neighboring points
-    for(int i=0; i< waypoints.size(); i++){
+    for(int i=0; i< before_avoidance_wp_size; i++){
+        
         planner::Waypoint waypoint_tmp = planner::Waypoint(waypoints[i].x_pose, waypoints[i].y_pose, neutral_cost);
         if(waypoints[i].cost <= neutral_cost){ // negative score -> good item
-            std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost+1);   
+            std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost+1);               
             if(avoidance_wps.size() > 0){
                 for(int j=0; j < avoidance_wps.size(); j++){
                         avoidance_wps[j].id = waypoints[i].id; 
@@ -1089,7 +1055,7 @@ for(int i = 0; i < v2x_data.States.size(); i++){
             }
         }else if(waypoints[i].cost > neutral_cost) // Positive score -> bad item
         {
-            std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost-1);                            
+            std::vector<Waypoint> avoidance_wps = AddWaypoint(waypoint_tmp,neutral_cost-1);                                        
             if(avoidance_wps.size() > 0){
                 for(int j=0; j < avoidance_wps.size(); j++){
                         avoidance_wps[j].id = waypoints[i].id; 
@@ -1103,6 +1069,7 @@ for(int i = 0; i < v2x_data.States.size(); i++){
         }
     }
     ROS_INFO("Completing V2X mission Encoding");
+    
     waypoint_received=true;
 }
 

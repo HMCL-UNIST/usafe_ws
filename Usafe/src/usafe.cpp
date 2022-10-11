@@ -49,7 +49,7 @@ Usafe::~Usafe()
 {}
 
 void Usafe::missionFSM(){
-  double fsm_loop_hz = 2.0;
+  double fsm_loop_hz = 1.0;
   ros::Rate loop_rate(fsm_loop_hz); 
   ROS_INFO("Init FSM thread");  
     while (ros::ok())
@@ -57,7 +57,7 @@ void Usafe::missionFSM(){
       std_msgs::Float64 missionFSMState_; 
       missionFSMState_.data = static_cast<double>(mission_state);
       missionStatePub.publish(missionFSMState_);
-      // InitialSetup = 0, WaitforCue = 1, Driving = 2, Boostup = 3, MissionComplete = 4
+      // InitialSetup = 0, WaitforCue = 1, Driving = 2
       int tmp_val;
       switch(mission_state){
         case MissionState::InitialSetup:
@@ -70,23 +70,39 @@ void Usafe::missionFSM(){
         break;
 
         case MissionState::WaitforCue:
-            if (v2x_msg.mission_status > 0){
-              mtx.lock();
+            mtx.lock();
+            if (v2x_msg.mission_status == 1){              
                if(race_planner_->global_path_wps.size() > 0){                
                 race_planner_->Mission_start = true;                
                 mission_state = MissionState::Driving;                
-               }else{
-                ROS_INFO("Computing Global path waypoints........");  
-                race_planner_->compute_global_path();
                }
-               mtx.unlock();               
-            }else{
-              ROS_INFO("Waiting for Mission Start");
+               ROS_INFO("Mission Init!!");
+            }else if(v2x_msg.mission_status == 0){
+              race_planner_->Mission_start = false;                
+              ROS_INFO("Waiting for Mission Start");              
+            }else if(v2x_msg.mission_status == 2)
+              { 
+              race_planner_->Mission_start = false;                
+              ROS_INFO("Mission Stop");
+            }else if(v2x_msg.mission_status == 3){
+              ROS_INFO("Mission Completed");
             }
+            mtx.unlock();               
         break;
 
-        case MissionState::Driving:            
-            tmp_val = 1;
+        case MissionState::Driving:     
+            mtx.lock();
+            if(v2x_msg.mission_status == 2)
+            { 
+              race_planner_->Mission_start = false;    
+              mission_state = MissionState::WaitforCue;                  
+              ROS_INFO("Mission Stop");
+            }else if(v2x_msg.mission_status == 3){
+              race_planner_->Mission_start = false; 
+              mission_state = MissionState::WaitforCue;                                 
+              ROS_INFO("Mission Completed");
+            }
+            mtx.unlock();
         break;
 
         default:
@@ -99,22 +115,68 @@ void Usafe::missionFSM(){
   }
 }
 
-// void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
-void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){  
-  v2x_received = true;
-  mtx.lock();
-  v2x_msg = *msg;
+bool Usafe::areV2xMsgtheSame(const v2x_msgs::Mission2 &msg1, const v2x_msgs::Mission2 &msg2){
+  if(msg1.States.size() == 0 || msg2.States.size() == 0 )
+    return false;
 
-  if(mission_state == MissionState::InitialSetup){
+  for(int i=0; i<msg1.States.size(); i++){
+    if(msg1.States[i].pos_lat != msg2.States[i].pos_lat)
+      return false;
+    if(msg1.States[i].pos_long != msg2.States[i].pos_long)
+      return false;
+    if(msg1.States[i].item_type != msg2.States[i].item_type)
+      return false;
+    if(msg1.States[i].score != msg2.States[i].score)
+      return false;    
+  }
+  return true;
+
+}
+
+
+void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
+// void Usafe::callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg){  
+  if( msg->States.size() < 1){
+    return;
+  }
+  if(!v2x_received){
+    mtx.lock();
+    prev_v2x_msg = *msg;
+    v2x_msg = *msg;
+    v2x_received = true;    
+    ROS_INFO("Init Converting V2x Data!");
     race_planner_->v2x_data=v2x_msg; 
-    race_planner_->convert_v2x_data(); 
+    race_planner_->convert_v2x_data();
+     ROS_INFO("Init Computing Global Path");
+     race_planner_->compute_global_path();
+     mtx.unlock(); 
+    return;
+  }
+  
+  
+  // mtx.lock();
+  v2x_msg = *msg;
+  mtx.lock(); 
+  race_planner_->v2x_data=v2x_msg; 
+  mtx.unlock(); 
+ ////////////// Update waypoints if so
+  if(mission_state == MissionState::InitialSetup || mission_state == MissionState::WaitforCue){
+    mtx.lock(); 
+    if(!areV2xMsgtheSame(v2x_msg,prev_v2x_msg)){    
+    ROS_INFO("Converting V2x Data !!!!!");
+     race_planner_->convert_v2x_data();
+     ROS_INFO("Computing Global Path ~~~~~");
+     race_planner_->compute_global_path();
+    }  
+    mission_state = MissionState::WaitforCue;    
+    mtx.unlock(); 
   }    
-  mtx.unlock();
+  // mtx.unlock();
+  prev_v2x_msg = v2x_msg;
 
-
-
+  /////////////////////////
   for(int i=0; i< msg->States.size(); i++){    
-    if(msg->States[i].item_type ==3 && msg->States[i].item_status == 0){      
+    if(msg->States[i].item_type ==3 && msg->States[i].item_status == 1){      
       if(boost_enable_idx.size() > 0){
         if(std::find(boost_enable_idx.begin(), boost_enable_idx.end(), msg->States[i].item_id) != boost_enable_idx.end()){
             continue; // Found element in the history 

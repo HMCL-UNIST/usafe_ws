@@ -21,8 +21,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs  
   roscpp
   sensor_msgs
-  geometry_msgs
-  hmcl_v2x
+  geometry_msgs  
   v2x_msgs
   std_msgs
   hmcl_msgs
@@ -44,8 +43,7 @@ generate_dynamic_reconfigure_options(
 )
 catkin_package( 
   CATKIN_DEPENDS 
-  nav_msgs 
-  hmcl_v2x
+  nav_msgs   
   roscpp 
   sensor_msgs 
   geometry_msgs 

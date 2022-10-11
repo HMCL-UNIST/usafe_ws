@@ -44,7 +44,8 @@
 #include <hmcl_msgs/LaneArray.h>
 #include <hmcl_msgs/Waypoint.h>
 #include <hmcl_msgs/Trafficlight.h>
-#include <hmcl_v2x/HMCL_Mission2.h>
+#include <v2x_msgs/Mission2.h>
+#include <v2x_msgs/Mission2data.h>
 
 #include <mobileye_msgs/MobileyeInfo.h>
 
@@ -147,9 +148,10 @@ bool v2x_received;
 std::vector<double> boost_enable_idx;
 planner::RacingLinePlanner*           race_planner_;
 planner::VehicleModel*                 vehicle_model_;
-v2x_msgs::Mission2  v2x_waypoints;
+v2x_msgs::Mission2  v2x_msg, prev_v2x_msg;
 
-hmcl_v2x::HMCL_Mission2 v2x_msg;
+
+// hmcl_v2x::HMCL_Mission2 v2x_msg;
 
 dynamic_reconfigure::Server<usafe::testConfig> srv;
 dynamic_reconfigure::Server<usafe::testConfig>::CallbackType f;
@@ -166,8 +168,9 @@ Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local, const ros::Nod
 // void tools_loop();
 void missionFSM();
 void dyn_callback(usafe::testConfig& config, uint32_t level);
-// void callbackV2X(const v2x_msgs::Mission2ConstPtr &msg);
-void callbackV2X(const hmcl_v2x::HMCL_Mission2ConstPtr &msg);
+bool areV2xMsgtheSame(const v2x_msgs::Mission2 &msg1, const v2x_msgs::Mission2 &msg2);
+void callbackV2X(const v2x_msgs::Mission2ConstPtr &msg);
+
 
 };
 

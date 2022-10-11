@@ -114,9 +114,7 @@ Visualization Manager:
           Marker Topic: /lanelet2_map_viz
           Name: lanelet2
           Namespaces:
-            center_lane_line: true
-            left_lane_bound: true
-            right_lane_bound: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -132,7 +130,7 @@ Visualization Manager:
           Marker Topic: /waypoints
           Name: waypoints
           Namespaces:
-            waypoint: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -156,7 +154,7 @@ Visualization Manager:
           Marker Topic: /global_path
           Name: global_path_wps
           Namespaces:
-            globalPath: true
+            {}
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -164,7 +162,7 @@ Visualization Manager:
           Marker Topic: /target_path
           Name: LocalPath
           Namespaces:
-            predictedPath: true
+            {}
           Queue Size: 100
           Value: true
       Enabled: true
@@ -301,6 +299,14 @@ Visualization Manager:
           Enabled: true
           Marker Topic: npc_global_traj_viz
           Name: NPC_Paths
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
+        - Class: rviz/MarkerArray
+          Enabled: true
+          Marker Topic: /Mission2_Viz
+          Name: Mission2Viz
           Namespaces:
             {}
           Queue Size: 100
