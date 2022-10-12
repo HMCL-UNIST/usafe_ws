@@ -36,7 +36,6 @@ find_package(catkin REQUIRED COMPONENTS
   lanelet2_traffic_rules
   lanelet2_validation
   autoware_lanelet2_msgs
-  lanelet2_extension
   autoware_msgs
   mobileye_msgs
   v2x_msgs
@@ -58,7 +57,6 @@ catkin_package(
   lanelet2_routing
   lanelet2_traffic_rules
   lanelet2_validation
-  lanelet2_extension
   autoware_msgs
   mobileye_msgs
   v2x_msgs

@@ -16,7 +16,9 @@
 
 
 #include "vehicle_model_dynamics.h"
+#include <iostream>
 
+using namespace std;
 
 void VehicleModel::initModel(double& dt, double&  wheelbase, double& lf, double& lr, double& mass){
         
@@ -148,6 +150,7 @@ void VehicleModel::computeMatrices(double vel){
 
 bool VehicleModel::solveRiccati(){
     mcP = Eigen::MatrixXd::Zero(delay_step+5, delay_step+5);
+    
     bool mcp_found = solveRiccatiIterationD(mcAd, mcBd, mcQ, mcR, mcP);
     return mcp_found;
 }
@@ -183,7 +186,7 @@ double VehicleModel::computeGain(){
         
     }        
     
-    delta = delta + delay_state_feedback(0,0) + preview_feedback(0,0);
+    delta = delta + delay_state_feedback(0,0) + preview_feedback(0,0) / 2;
     debug_state_feedback   = delay_state_feedback(0,0)*180/M_PI;
     debug_preview_feedback = preview_feedback(0,0)*180/M_PI;
     // ROS_INFO("delta = %f, stataFeedback = %f, previewFeedback = %f",delta, delay_state_feedback(0,0) , preview_feedback(0,0));

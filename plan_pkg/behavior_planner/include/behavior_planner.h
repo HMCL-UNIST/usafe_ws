@@ -15,6 +15,7 @@
 #include <ros/package.h>
 
 #include <std_msgs/Int16.h>
+#include <std_msgs/Bool.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/LaneArray.h>
 #include <hmcl_msgs/MissionWaypoint.h>
@@ -38,29 +39,31 @@ class BehaviorPlanner
 {
     private:
         ros::NodeHandle nh_;
-        ros::Subscriber pose_sub, vel_sub, objs_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub;
+        ros::Subscriber pose_sub, vel_sub, objs_sub, sb_sub, lug_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub, ped_sub;
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
         ros::Publisher b_factor_pub, b_state_pub;
         // ros::Timer behavior_timer;
-        float wLane, lenEgo, frontlenEgo, minFront, thresLC, thresStop, thresCW, thresTurn, thresDistSG, successDistSG;
+        double runRate;
+        float wLane, lenEgo, frontlenEgo, minFront, unknownFront, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
-        autoware_msgs::DetectedObjectArray detectedObjects;
+        autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage;
         double startX, startY, goalX, goalY;
         //startpos info 
         //goalpos
         //traffic_signal
         hmcl_msgs::LaneArray globalLaneArray;
+        v2x_msgs::SPAT junc1Signal, junc2Signal, junc3Signal;
         MissionState currentMission;
         BehaviorState currentBehavior;
         bool missionStart, approachToStartPos, startArrivalCheck, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
-        bool pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone;
+        bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone;
         bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
-        short front_id, prevLaneID;
-        int nStoreFront, countFront;
+        short front_id, prevLaneID, unknown_id;
+        int nStore, countFront, countStationary, countSB;
         bool stop_line_stop;
-        bool getGlobal, getPose, getSpeed, getObject, getSGpos, getSPAT, getMission;
-        bool inCW, inCWprev, frontPrev, prevLT, prevRT;
+        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getSPAT, getMission;
+        bool inCW, frontPrev, stationaryPrev, sbPrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
         bool NormalDrive, LaneFollowing, Turn;
@@ -80,8 +83,12 @@ class BehaviorPlanner
         void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);
         // void twistCallback(const geometry_msgs::TwistStampedConstPtr& msg);
         void objsCallback(const autoware_msgs::DetectedObjectArray& msg);
+        void sbCallback(const autoware_msgs::DetectedObjectArray& msg);
+        void luggageCallback(const autoware_msgs::DetectedObjectArray& msg);
         void v2xStartGoalCallback(const hmcl_msgs::MissionWaypoint& msg);
         void v2xSPATCallback(const v2x_msgs::SPAT& msg);
         void routeCallback(const hmcl_msgs::LaneArray &msg);
         void missionCallback(const std_msgs::Int16::ConstPtr& msg);
+        void pedestrianCallback(const std_msgs::Bool::ConstPtr& msg);
+
 };

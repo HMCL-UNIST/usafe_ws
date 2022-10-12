@@ -78,6 +78,7 @@ void LowlevelCtrl::DrivingStateMachine() {
       
       case DrivingState::Driving:
         scc_overwrite = false;
+        cout << "drive" << endl;
         setToDrive(); 
       break;  
 
@@ -110,7 +111,7 @@ void LowlevelCtrl::Test(){
   int lc = 0;
   while(ros::ok())
   {
-    //ROS_INFO("test time = %d",lc);
+    ROS_INFO("test time = %d",lc);
     
     if(lc == 0) {      
       drivingState = DrivingState::Parking;      
@@ -124,15 +125,15 @@ void LowlevelCtrl::Test(){
       drivingState = DrivingState::Driving;      
     }
 
-     if(lc  > 100 && lc < 150) {
+    if(lc  > 100 && lc < 150) {
       drivingState = DrivingState::DrivingStop;      
     }
 
-     if(lc  > 150 && lc < 200) {
+    if(lc  > 150 && lc < 200) {
       drivingState = DrivingState::Parking;      
     }
 
-   if(lc  > 200 && lc < 250) {
+    if(lc  > 200 && lc < 250) {
       drivingState = DrivingState::Driving;      
     }
 
@@ -142,8 +143,6 @@ void LowlevelCtrl::Test(){
     
     lc++; 
     test_loop_rate.sleep();
-  }
-  
-  
+  } 
 }
 

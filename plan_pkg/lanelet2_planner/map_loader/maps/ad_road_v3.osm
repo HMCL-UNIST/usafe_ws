@@ -22219,36 +22219,6 @@
     <tag k="local_y" v="44991.8415"/>
     <tag k="ele" v="0"/>
   </node>
-  <node id="71" lat="35.64761921600948" lon="128.40038432757427">
-    <tag k="mgrs_code" v="52SDE457450"/>
-    <tag k="local_x" v="45718.3509"/>
-    <tag k="local_y" v="45030.9618"/>
-    <tag k="ele" v="0"/>
-  </node>
-  <node id="72" lat="35.6476844760537" lon="128.40041565202972">
-    <tag k="mgrs_code" v="52SDE457450"/>
-    <tag k="local_x" v="45721.2308"/>
-    <tag k="local_y" v="45038.1825"/>
-    <tag k="ele" v="0"/>
-  </node>
-  <node id="74" lat="35.64771809188108" lon="128.40037840470376">
-    <tag k="mgrs_code" v="52SDE457450"/>
-    <tag k="local_x" v="45717.8816"/>
-    <tag k="local_y" v="45041.9314"/>
-    <tag k="ele" v="0"/>
-  </node>
-  <node id="75" lat="35.64767662155961" lon="128.4003210409884">
-    <tag k="mgrs_code" v="52SDE457450"/>
-    <tag k="local_x" v="45712.6605"/>
-    <tag k="local_y" v="45037.3636"/>
-    <tag k="ele" v="0"/>
-  </node>
-  <node id="76" lat="35.647642730702245" lon="128.4003584593817">
-    <tag k="mgrs_code" v="52SDE457450"/>
-    <tag k="local_x" v="45716.025"/>
-    <tag k="local_y" v="45033.5841"/>
-    <tag k="ele" v="0"/>
-  </node>
   <way id="-103527">
     <nd ref="-144066"/>
     <nd ref="-143311"/>
@@ -26754,16 +26724,6 @@
     <tag k="subtype" v="dashed"/>
     <tag k="lane_change" v="yes"/>
   </way>
-  <way id="73">
-    <nd ref="-145580"/>
-    <nd ref="72"/>
-    <nd ref="74"/>
-    <nd ref="75"/>
-    <nd ref="76"/>
-    <nd ref="-145580"/>
-    <tag k="type" v="line_thin"/>
-    <tag k="subtype" v="solid"/>
-  </way>
   <relation id="23">
     <member type="way" role="left" ref="-103618"/>
     <member type="way" role="right" ref="-103617"/>
@@ -27114,9 +27074,5 @@
     <tag k="speed_limit" v="10"/>
     <tag k="location" v="urban"/>
     <tag k="one_way" v="yes"/>
-  </relation>
-  <relation id="77">
-    <member type="way" role="outer" ref="73"/>
-    <tag k="type" v="multipolygon"/>
   </relation>
 </osm>

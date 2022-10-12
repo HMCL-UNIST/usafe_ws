@@ -67,10 +67,13 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <vector>
-#include <lanelet2_core/LaneletMap.h>
+// #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/geometry/LaneletMap.h>
 #include <lanelet2_core/geometry/impl/Area.h>
+#include "lanelet2_core/geometry/Area.h"
+#include "lanelet2_core/geometry/BoundingBox.h"
+#include "lanelet2_core/geometry/LaneletMap.h"
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
 #include <lanelet2_io/io_handlers/Writer.h>
@@ -81,6 +84,7 @@
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_routing/RoutingGraphContainer.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
+
 #include <map_loader_utils.h>
 #include <amathutils.hpp>
 #include <route_planner.h>
@@ -92,7 +96,7 @@
 #include <v2x_msgs/Mission1.h>
 #include <v2x_msgs/Mission1state.h>
 
-#include <lanelet2_extension/utility/message_conversion.h>
+// #include <lanelet2_extension/utility/message_conversion.h>
 #include <polyfit.h>
 
 // #include <lanelet2_extension/utility/query.h>
@@ -144,24 +148,27 @@ class MapLoader
 private:
 ros::NodeHandle nh_, nh_p_, nh_local_path_;
 
-ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub;
+ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub, ped_cw_pub;
 ros::Publisher lir_pub;
 ros::Publisher way_pub;
-ros::Publisher mission_pub;
+ros::Publisher mission_pub, mission_pt_pub, mission_pts_pub;
 ros::Subscriber mobileye_sub;
 ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub, v2x_mission_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
 mobileye_msgs::MobileyeInfo mobileye_data;
-ros::Timer viz_timer, g_traj_timer, local_traj_timer, lir_timer;
+ros::Timer viz_timer, g_traj_timer, local_traj_timer, lir_timer, ped_cw_timer;
 visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_arrary, lir_marker_array;
+visualization_msgs::Marker mission_pt_mark;
 
 double test_direction;
 bool visualize_path, continuious_global_replan;
 bool getV2Xinfo;
 hmcl_msgs::MissionWaypoint mission_pt;
 v2x_msgs::Mission1state MissionStates;
+v2x_msgs::Mission1 Mission_msg;
+visualization_msgs::MarkerArray mission1_marker_array;
 
-autoware_msgs::DetectedObjectArray objects, prev_objects; 
+autoware_msgs::DetectedObjectArray objects, prev_objects, ped_array; 
 
 std::mutex mu_mtx;
 RoutePlanner rp_;
@@ -174,6 +181,7 @@ std::vector<lanelet::ConstLanelet> lanes;
 std::vector<lanelet::ConstLanelet> lir;
 std::vector<hmcl_msgs::Lane> traj_ll;
 std::vector<std::pair<double,double>> xyz;
+std_msgs::Bool ped_cw;
 bool map_loaded;
 float local_path_length;
 double origin_lat;
@@ -183,6 +191,7 @@ double max_dist, max_dist_vel;
 bool global_traj_available;
 bool goal_available;
 bool lir_available = false;
+bool ped_available, ped_in;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
 
 geometry_msgs::Pose pose_a, pose_b;
@@ -195,6 +204,7 @@ std::vector<int> global_index ={};
 int current_id = 0;
 int previous_id = -1;
 bool lir_flag = false;
+int ped_count;
 
 std::string osm_file_name;
 double map_road_resolution;
@@ -216,6 +226,9 @@ lanelet::Areas areas;
 lanelet::Areas junction;
 lanelet::Areas crosswalk;
 lanelet::Areas stopline;
+
+lanelet::Optional<lanelet::routing::Route> route;
+
 
 bool left_change_signal, right_change_signal;
 LaneChangeState lane_change_state, prev_lane_change_state;
@@ -278,8 +291,10 @@ void viz_pub(const ros::TimerEvent& time);
 void global_traj_handler(const ros::TimerEvent& time);
 void local_traj_handler(const ros::TimerEvent& time);
 void lir_handler(const ros::TimerEvent& time);
+void ped_inCw_handler(const ros::TimerEvent& time);
 void poseCallback(const nav_msgs::OdometryConstPtr& msg);
 void llaCallback(const nav_msgs::OdometryConstPtr& msg);
+void PedCallback(const autoware_msgs::DetectedObjectArray& msg);
 void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 
@@ -295,6 +310,8 @@ double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d 
 unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_);
 void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx);
 void fix_and_save_osm();
+void mission_state(const std::vector<std::pair<double,double>>  mission_positions);
+void mission1Callback(const v2x_msgs::Mission1& msg, const std::vector<std::pair<double,double>>  mission_positions);
 
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg);
@@ -306,7 +323,9 @@ void compute_global_path();
 void compute_local_path();
 void current_lanefollow();
 void lane_in_range();
+int check_traffic_light(const int& id);
 void wp_inArea();
+void ped_inCw();
 void ego_in();
 bool calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist);
 bool calculate_distance_(hmcl_msgs::Waypoint &wp1, hmcl_msgs::Waypoint &wp2, double &dist, double &dist_cum);

@@ -48,7 +48,6 @@
   <build_depend>lanelet2_traffic_rules</build_depend>
   <build_depend>lanelet2_validation</build_depend>
   <build_depend>autoware_lanelet2_msgs</build_depend>
-  <build_depend>lanelet2_extension</build_depend>
   <build_depend>v2x_msgs</build_depend>
 
   
@@ -56,7 +55,6 @@
    <run_depend>mobileye_msgs</run_depend>
   
   
-  <run_depend>lanelet2_extension</run_depend>
   <run_depend>autoware_lanelet2_msgs</run_depend>
   <build_depend>autoware_msgs</build_depend>
 

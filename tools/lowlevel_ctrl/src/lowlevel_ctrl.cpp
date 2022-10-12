@@ -43,7 +43,7 @@ LowlevelCtrl::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros:
   Ccan_recv_status(false), 
   emergency_count(0),
   emergency_stop_activate(false),
-  drivingState(DrivingState::Parking),    
+  drivingState(DrivingState::Driving),    
   scc_overwrite(false)
 {  
   
@@ -51,7 +51,7 @@ LowlevelCtrl::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros:
   
   AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &LowlevelCtrl::AcanCallback, this);
   CcanSub = nh_light_.subscribe("/c_can_l2h", 100, &LowlevelCtrl::CcanCallback, this);
-  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 10);  
+  AcanPub = nh_can.advertise<can_msgs::Frame>("/a_can_h2l", 100);  
   statusPub = nh_light_.advertise<hmcl_msgs::VehicleStatus>("/vehicle_status", 5);    
   sccPub    = nh_light_.advertise<hmcl_msgs::VehicleSCC>("/scc_info", 5);    
   steerPub  = nh_light_.advertise<hmcl_msgs::VehicleSteering>("/steering_info", 5);    
@@ -69,10 +69,10 @@ LowlevelCtrl::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros:
   boost::thread AcanHandler(&LowlevelCtrl::AcanSender,this);   
   ROS_INFO("Init Driving State Machine");
   boost::thread statemachine(&LowlevelCtrl::DrivingStateMachine,this); 
-  boost::thread test(&LowlevelCtrl::Test,this); 
+  // boost::thread test(&LowlevelCtrl::Test,this); 
 
   
-  // f = boost::bind(&VehicleBridge::dyn_callback,this, _1, _2);
+  // f = boost::bind(&LowlevelCtrl::dyn_callback,this, _1, _2);
 	// srv.setCallback(f);
 }
 
@@ -104,21 +104,22 @@ void LowlevelCtrl::AcanSender()
   {   
     if(!Acan_recv_status){  ROS_WARN("ACAN is not available"); continue;}
     if(!Ccan_recv_status){ ROS_WARN("CCAN is not available"); continue;}
+    ROS_INFO_ONCE("Communication Success");
 
-      usleep(1000);
-      AcanPub.publish(scc_frame);
-      usleep(1000);
-      AcanPub.publish(gear_frame);
-      usleep(1000);
-      AcanPub.publish(steering_frame);
-      usleep(1000);     
-      AcanPub.publish(light_frame);  
-      usleep(1000);     
-            // publish vehicle info 
-      steerPub.publish(steering_info_);
-      statusPub.publish(vehicle_status_);
-      sccPub.publish(scc_info_);  
-      wheelPub.publish(wheel_info_);      
+    usleep(1000);
+    AcanPub.publish(scc_frame);
+    usleep(1000);
+    AcanPub.publish(gear_frame);
+    usleep(1000);
+    AcanPub.publish(steering_frame);
+    usleep(1000);     
+    AcanPub.publish(light_frame);  
+    usleep(1000);     
+    // publish vehicle info 
+    steerPub.publish(steering_info_);
+    statusPub.publish(vehicle_status_);
+    sccPub.publish(scc_info_);  
+    wheelPub.publish(wheel_info_);      
     loop_rate.sleep();
   }
 }
@@ -141,40 +142,41 @@ void LowlevelCtrl::setSteering(short steer_value){
 
 // e.g. acc_vel = 100 - > 1m/s^2
 void LowlevelCtrl::setScc(short acc_vel){
-          int SCC_mode_auto = 2;
-          scc_frame.header.stamp = ros::Time::now();
-          scc_frame.id = 0x303;
-          scc_frame.dlc = 4;
-          scc_frame.is_error = false;
-          scc_frame.is_extended = false;
-          scc_frame.is_rtr = false;                          
-          scc_frame.data[0] = (unsigned int)SCC_mode_auto & 0b11111111;
-          scc_frame.data[1] = (acc_vel & 0b11111111);
-          scc_frame.data[2] = ((acc_vel >> 8)&0b11111111);
-          scc_frame.data[3] = (unsigned int)0 & 0b11111111;
+  int SCC_mode_auto = 2;
+  scc_frame.header.stamp = ros::Time::now();
+  scc_frame.id = 0x303;
+  scc_frame.dlc = 4;
+  scc_frame.is_error = false;
+  scc_frame.is_extended = false;
+  scc_frame.is_rtr = false;                          
+  scc_frame.data[0] = (unsigned int)SCC_mode_auto & 0b11111111;
+  scc_frame.data[1] = (acc_vel & 0b11111111);
+  scc_frame.data[2] = ((acc_vel >> 8)&0b11111111);
+  scc_frame.data[3] = (unsigned int)0 & 0b11111111;
 }
 
 void LowlevelCtrl::setToParking(){
-          AD_GEAR_POS_CMD = 0;
-          gear_frame.header.stamp = ros::Time::now();
-          gear_frame.id = 0x304;
-          gear_frame.dlc = 1;
-          gear_frame.is_error = false;
-          gear_frame.is_extended = false;
-          gear_frame.is_rtr = false;
-          gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
+  AD_GEAR_POS_CMD = 0;
+  gear_frame.header.stamp = ros::Time::now();
+  gear_frame.id = 0x304;
+  gear_frame.dlc = 1;
+  gear_frame.is_error = false;
+  gear_frame.is_extended = false;
+  gear_frame.is_rtr = false;
+  gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
 }
 
 
 void LowlevelCtrl::setToDrive(){
-          AD_GEAR_POS_CMD = 1;
-          gear_frame.header.stamp = ros::Time::now();
-          gear_frame.id = 0x304;
-          gear_frame.dlc = 1;
-          gear_frame.is_error = false;
-          gear_frame.is_extended = false;
-          gear_frame.is_rtr = false;
-          gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
+  AD_GEAR_POS_CMD = 1;
+  // cout << "drive fn" << endl; 
+  gear_frame.header.stamp = ros::Time::now();
+  gear_frame.id = 0x304;
+  gear_frame.dlc = 1;
+  gear_frame.is_error = false;
+  gear_frame.is_extended = false;
+  gear_frame.is_rtr = false;
+  gear_frame.data[0] = (unsigned int)AD_GEAR_POS_CMD & 0b11111111;
 }
 
 int main (int argc, char** argv)

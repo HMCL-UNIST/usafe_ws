@@ -57,7 +57,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<std::string>("odom_topic", odom_topic, "pose_estimate");
 
   nh_traj.param<std::string>("steer_cmd_topic", steer_cmd_topic, "/usafe_steer_cmd");
-  nh_traj.param<std::string>("vel_cmd_topic", vel_cmd_topic, "/control_effort");
+  nh_traj.param<std::string>("vel_cmd_topic", vel_cmd_topic, "/setpoint");
   
   
   
@@ -75,9 +75,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<int>("preview_step", preview_step, 50); 
 
   nh_traj.param<double>("Q_ey", Q_ey, 3.0); 
-  nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
+  nh_traj.param<double>("Q_eydot", Q_eydot, 3.0); 
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
-  nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
+  nh_traj.param<double>("Q_epsidot", Q_epsidot, 7.0); 
   nh_traj.param<double>("R_weight", R_weight, 3000); 
   
   
@@ -97,7 +97,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
-  steer_filter.initialize(dt, 3.0);
+  steer_filter.initialize(dt, 10.0);
 
 
   std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
@@ -111,9 +111,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   simStatusSub = nh_traj.subscribe(simstatus_topic, 2, &PreviewCtrl::simstatusCallback, this);
   StatusSub = nh_traj.subscribe(status_topic, 2, &PreviewCtrl::statusCallback, this);
   
+  
   odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
-  setpointSub = nh_traj.subscribe("/setpoint", 2, &PreviewCtrl::setpointCallback, this);
-
+  
   debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);   
   velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
@@ -121,7 +121,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
   ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
 
-  // AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
+  AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
 
   
    
@@ -155,10 +155,6 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
     my_odom_ok_ = true;
 }
 
-void PreviewCtrl::setpointCallback(const std_msgs::Float64& msg){
-    
-  setpoint = (int) msg.data*100;
-}
 
 void PreviewCtrl::reschedule_weight(double speed){
 
@@ -221,8 +217,8 @@ void PreviewCtrl::steering_rate_reset(double speed){
     // }
 
     // angle_rate_limit = -0.01*speed*3.6 +0.6;
-    angle_rate_limit = -0.0131*speed*3.6 +0.647;
-    angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
+    // angle_rate_limit = -0.0131*speed*3.6 +0.647;
+    angle_rate_limit = 1.0;
 
 }
 // void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
@@ -272,7 +268,7 @@ void PreviewCtrl::ControlLoop()
           continue;
         }
         VehicleModel_.setState(Xk,Cr);
-        double current_speed = max(vehicle_status_.twist.linear.x ,1.0); // less than 1m/s takes too much time for riccati solver
+        double current_speed = max(vehicle_status_.twist.linear.x ,3.0); // less than 1m/s takes too much time for riccati solver
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
          
         // Computes control gains 
@@ -335,29 +331,13 @@ void PreviewCtrl::ControlLoop()
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
         ackermann_msgs::AckermannDrive ctrl_msg;
         ctrl_msg.acceleration = 1.0;        
-        ctrl_msg.acceleration = setpoint;    
+       
         
         ctrl_msg.steering_angle = delta_cmd;
         
         ackmanPub.publish(ctrl_msg);
         
         //////////////////
-        int SCC_mode_auto = 2;
-        can_msgs::Frame scc_frame;
-        scc_frame.header.stamp = ros::Time::now();
-        scc_frame.id = 0x303;
-        scc_frame.dlc = 4;
-        scc_frame.is_error = false;
-        scc_frame.is_extended = false;
-        scc_frame.is_rtr = false;
-        scc_frame.data[0] = (unsigned int)SCC_mode_auto & 0b11111111;
-        
-        scc_frame.data[1] = ((setpoint) & 0b11111111);
-        scc_frame.data[2] = ((setpoint >> 8)&0b11111111);
-        scc_frame.data[3] = (unsigned int)0 & 0b11111111;
-        // AcanPub.publish(scc_frame);
-        // usleep(100);
-
         can_msgs::Frame steering_frame;
         steering_frame.header.stamp = ros::Time::now();
         steering_frame.id = 0x300;
@@ -372,8 +352,6 @@ void PreviewCtrl::ControlLoop()
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
         // AcanPub.publish(steering_frame);
-
-        ROS_INFO("~~~~");
           
 
         ///////////

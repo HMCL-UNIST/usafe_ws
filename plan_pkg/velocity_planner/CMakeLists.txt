@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   autoware_msgs
   tf  
   dynamic_reconfigure
+  v2x_msgs
 )
 
 catkin_package(
@@ -28,6 +29,7 @@ catkin_package(
   tf 
   LIBRARIES
   dynamic_reconfigure
+  v2x_msgs
 )
 
 include_directories(

@@ -23,6 +23,7 @@
 #include <hmcl_msgs/BehaviorFactor.h>
 #include <hmcl_msgs/MissionWaypoint.h>   
 #include <hmcl_msgs/TransitionCondition.h>
+#include <v2x_msgs/SPAT.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 
 #include <sensor_msgs/Imu.h>
@@ -82,7 +83,7 @@ private:
     ros::NodeHandle nh_;
     ros::Publisher vel_pub, vel_debug, vel_vis_pub, motionstate_vis_pub;
     ros::Subscriber pose_sub, wheel_sub, acc_sub, predicted_objects_sub, start_end_sub,
-                    traffic_sign_sub, behavior_state_sub, behavior_state_condition_sub, local_traj_sub;
+                    traffic_sign_sub, behavior_state_sub, behavior_state_condition_sub, local_traj_sub, v2x_spat_sub;
     
     double runtime;
     
@@ -90,6 +91,9 @@ private:
     double object_x, object_y, object_vel;
 
     geometry_msgs::Point start, end;
+    v2x_msgs::SPAT junc1Signal, junc2Signal, junc3Signal;
+    int eventState = -1;
+    int timing_min_End_Time =-1;
 
     bool misson_stop=false;
     bool getLocalTraj;
@@ -99,6 +103,7 @@ private:
     double wait_tt;
     short LeadVehicleInd;
     double MaxVel;
+    int signal_id;
 
     BehaviorState CurrentMode, PreviousMode;
     MotionState MotionMode;
@@ -169,6 +174,7 @@ void VelocitySmoother();
 
 
 //***Callback Function
+void v2xSPATCallback(const v2x_msgs::SPAT& msg);
 void poseCallback(const nav_msgs::Odometry& state_msg);
 void accCallback(const sensor_msgs::Imu& msg);
 void wheelCallback(const hmcl_msgs::VehicleStatus& state_msg);
@@ -179,7 +185,7 @@ void BehaviorStateCallback(const std_msgs::Int16& mode); //from Behavior planner
 void BehaviorStateFactorCallback(const hmcl_msgs::BehaviorFactor& msg); //from Behavior planner
 // void TrafficSignCallback(); //from V2X
 void startendCallback(const hmcl_msgs::MissionWaypoint& msg);
-
+void checkTrafficSignal(const bool& leftTurn);
 void viz_vel_prof(std::vector<double> profile);
 void viz_motionstate();
 

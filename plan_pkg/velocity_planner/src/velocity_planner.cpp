@@ -59,7 +59,7 @@ VelocityPlanner::VelocityPlanner()
   // lanelet_map_sub = nh_.subscribe("", 1, &VelocityPlanner::LaneletCallback, this);
   local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityPlanner::trajCallback,this);
   start_end_sub =  nh_.subscribe("/start_end_pose", 1, &VelocityPlanner::startendCallback,this);
-
+  v2x_spat_sub = nh_.subscribe("/SPAT",1, &VelocityPlanner::v2xSPATCallback, this);
   // Publish
   vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);
   vel_debug  = nh_.advertise<geometry_msgs::PoseStamped>("/acc_debug", 2);
@@ -294,6 +294,8 @@ void VelocityPlanner::CheckMotionState()
      //2) If PreviousMode is Forward, check the possibility to pass 
      //3) Check the lead vehicle existence
     
+    checkTrafficSignal(0);
+
     if (passcrosswalk){
       if (!find_judgeline){
         j_idx = FindJudgeLine();
@@ -351,39 +353,43 @@ void VelocityPlanner::CheckMotionState()
       }
     }
 
-    if (!find_stopline){
-      std::cout << "FAIL TO FIND CROSSWALK in Crosswalk" << std::endl;
-      MotionMode = MotionState::FAIL;
-      targetVel1 = intersection_velocity/3.6;
-    }
-    else{
-      if (find_crosswalk){
-        Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - crosswalk_margin;
+    if (!passcrosswalk){
+      if (!find_stopline){
+        std::cout << "FAIL TO FIND Stopline in RightTurn" << std::endl;
+        MotionMode = MotionState::FAIL;
+        targetVel1 = intersection_velocity/3.6;
       }
       else{
-        Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - stopline_margin;
-      }
-
-      Dis = std::min(Dis, 150.0); 
-      DesiredDis = 0;
-      DesiredVel = 0;
-
-      if (Dis <= stop_margin && !passcrosswalk){
-        MotionMode = MotionState::STOP;
-        targetVel1 = 0;
-        wait_tt += 1/runtime;
-        if (wait_tt >= 3){
-          passcrosswalk = true;
+        if (find_crosswalk){
+          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - crosswalk_margin;
         }
-      }
-      else if (passcrosswalk){
-        MotionMode = MotionState::GO;
-        targetVel1 = intersection_velocity/3.6;;
-      }
-      else{
-        // Dis = std::min(Dis, 15.0);
-        MotionMode = MotionState::DECELERATE;
-        targetVel1 = ACC();
+        else{
+          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - stopline_margin;
+        }
+
+        Dis = std::min(Dis, 150.0); 
+        DesiredDis = 0;
+        DesiredVel = 0;
+
+        if (eventState == 5 || eventState == 6){
+          if (timing_min_End_Time >= 25) {
+            passcrosswalk = true;
+          }
+        }
+
+        if (Dis <= stop_margin && passcrosswalk != true){
+          MotionMode = MotionState::STOP;
+          targetVel1 = 0;
+        }
+        else if (passcrosswalk){
+          MotionMode = MotionState::GO;
+          targetVel1 = intersection_velocity/3.6;;
+        }
+        else{
+          // Dis = std::min(Dis, 15.0);
+          MotionMode = MotionState::DECELERATE;
+          targetVel1 = ACC();
+        }
       }
     }
 
@@ -397,32 +403,82 @@ void VelocityPlanner::CheckMotionState()
     //1) check the stop line (If there is no stop line, make stop line)  
     //2) Reduce the velocity before reaching the stopline
 
+    // int eventState = -1; //red::3, green::5,6, yellow::7,8
+    // int timing_min_End_Time = -1;
+    // eventState = junc1Signal.States[0].eventState;
+    // timing_min_End_Time = junc1Signal.States[0].timing_min_End_Time;
+    checkTrafficSignal(1);
+
     targetVel = intersection_velocity; 
     MotionMode = MotionState::GO;
-    // if (new_behavior_mode){
-    //   s_idx = FindStopLine();
-    //   if (s_idx != -1){
-    //     dis_x = traj[s_idx].waypoints.pose.pose.position.x;
-    //     dis_y = traj[s_idx].waypoints.pose.pose.position.y;
-    //     find_stopline = true;
-    //   }
-    //   else{
-    //     c_idx = FindCrossWalk();
-    //     j_idx = FindJunction();
-    //     if (c_idx != -1){
-    //       dis_x = traj[c_idx].waypoints.pose.pose.position.x;
-    //       dis_y = traj[c_idx].waypoints.pose.pose.position.y;
-    //       find_stopline = true;
-    //       find_crosswalk = true;
-    //     }
-    //     else if (j_idx != -1){
-    //       dis_x = traj[j_idx].waypoints.pose.pose.position.x;
-    //       dis_y = traj[j_idx].waypoints.pose.pose.position.y;
-    //       find_stopline = true;
-    //       find_junction = true;
-    //     }
-    //   }
+
+   
+    if (new_behavior_mode || !find_stopline){
+      s_idx = FindStopLine();
+      if (s_idx != -1){
+        dis_x = traj.waypoints[s_idx].pose.pose.position.x;
+        dis_y = traj.waypoints[s_idx].pose.pose.position.y;
+        find_stopline = true;
+      }
+      else{
+        c_idx = FindCrossWalk();
+        if (c_idx != -1){
+          dis_x = traj.waypoints[c_idx].pose.pose.position.x;
+          dis_y = traj.waypoints[c_idx].pose.pose.position.y;
+          find_stopline = true;
+          find_crosswalk = true;
+        }
+      }
     }
+
+    if (!passcrosswalk){
+      if (!find_stopline){
+        std::cout << "FAIL TO FIND Stopline in LeftTurn" << std::endl;
+        MotionMode = MotionState::FAIL;
+        targetVel1 = intersection_velocity/3.6;
+      }
+      else{
+        if (find_crosswalk){
+          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - crosswalk_margin;
+        }
+        else{
+          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - stopline_margin;
+        }
+
+        Dis = std::min(Dis, 150.0); 
+        DesiredDis = 0;
+        DesiredVel = 0;
+
+        if (eventState == 5 || eventState == 6){
+          if (timing_min_End_Time >= 25) {
+            passcrosswalk = true;
+          }
+        }
+
+        if (Dis <= stop_margin && passcrosswalk != true){
+          MotionMode = MotionState::STOP;
+          targetVel1 = 0;
+        }
+        else if (passcrosswalk){
+          MotionMode = MotionState::GO;
+          targetVel1 = intersection_velocity/3.6;;
+        }
+        else{
+          // Dis = std::min(Dis, 15.0);
+          MotionMode = MotionState::DECELERATE;
+          targetVel1 = ACC();
+        }
+      }
+    }
+
+    if (LeadVehicle){
+      MotionMode = MotionState::ACC;
+      targetVel2 = CheckLeadVehicle();
+    }
+    targetVel = std::min(targetVel1, targetVel2);
+
+
+  }
   else if(CurrentMode ==  BehaviorState::Init){
     targetVel = 0;
     MotionMode = MotionState::STOP; 
@@ -477,6 +533,96 @@ void VelocityPlanner::CheckMotionState()
   viz_motionstate();
   std::cout << "Distance" << Dis << std::endl;
 }
+void VelocityPlanner::checkTrafficSignal(const bool& leftTurn){
+
+  if(signal_id == 1 && leftTurn){
+      eventState = junc1Signal.States[1].eventState;
+      timing_min_End_Time = junc1Signal.States[1].timing_min_End_Time;
+  }
+  else if(signal_id == 1){
+      eventState = junc1Signal.States[0].eventState;
+      timing_min_End_Time = junc1Signal.States[0].timing_min_End_Time;
+  }
+  else if(signal_id == 2 && leftTurn){
+      eventState = junc1Signal.States[4].eventState;
+      timing_min_End_Time = junc1Signal.States[4].timing_min_End_Time;
+  }
+  else if(signal_id == 2){
+      eventState = junc1Signal.States[3].eventState;
+      timing_min_End_Time = junc1Signal.States[3].timing_min_End_Time;
+  }
+  else if(signal_id == 3 && leftTurn){
+      eventState = junc1Signal.States[7].eventState;
+      timing_min_End_Time = junc1Signal.States[7].timing_min_End_Time;
+  }
+  else if(signal_id == 3){
+      eventState = junc1Signal.States[6].eventState;
+      timing_min_End_Time = junc1Signal.States[6].timing_min_End_Time;
+  }
+  else if(signal_id == 4 && leftTurn){
+      eventState = junc1Signal.States[10].eventState;
+      timing_min_End_Time = junc1Signal.States[10].timing_min_End_Time;
+  }
+  else if(signal_id == 4){
+      eventState = junc1Signal.States[9].eventState;
+      timing_min_End_Time = junc1Signal.States[9].timing_min_End_Time;
+  }
+  else if(signal_id == 5 && leftTurn){
+      eventState = junc2Signal.States[1].eventState;
+      timing_min_End_Time = junc2Signal.States[1].timing_min_End_Time;
+  }
+  else if(signal_id == 5){
+      eventState = junc2Signal.States[0].eventState;
+      timing_min_End_Time = junc2Signal.States[0].timing_min_End_Time;
+  }
+  else if(signal_id == 6 && leftTurn){
+      eventState = junc2Signal.States[4].eventState;
+      timing_min_End_Time = junc2Signal.States[4].timing_min_End_Time;
+  }
+  else if(signal_id == 6){
+      eventState = junc2Signal.States[3].eventState;
+      timing_min_End_Time = junc2Signal.States[3].timing_min_End_Time;
+  }
+  else if(signal_id == 7 && leftTurn){
+      eventState = junc2Signal.States[7].eventState;
+      timing_min_End_Time = junc2Signal.States[7].timing_min_End_Time;
+  }
+  else if(signal_id == 7){
+      eventState = junc2Signal.States[6].eventState;
+      timing_min_End_Time = junc2Signal.States[6].timing_min_End_Time;
+  }
+  else if(signal_id == 8 && leftTurn){
+      eventState = junc2Signal.States[10].eventState;
+      timing_min_End_Time = junc2Signal.States[10].timing_min_End_Time;
+  }
+  else if(signal_id == 8){
+      eventState = junc2Signal.States[9].eventState;
+      timing_min_End_Time = junc2Signal.States[9].timing_min_End_Time;
+  }
+  else if(signal_id == 9 && leftTurn){
+      eventState = junc3Signal.States[0].eventState;
+      timing_min_End_Time = junc3Signal.States[0].timing_min_End_Time;
+  }
+  else if(signal_id == 10){
+      eventState = junc3Signal.States[1].eventState;
+      timing_min_End_Time = junc3Signal.States[1].timing_min_End_Time;
+  }
+  else if(signal_id == 11 && leftTurn){
+      eventState = junc3Signal.States[4].eventState;
+      timing_min_End_Time = junc3Signal.States[4].timing_min_End_Time;
+  }
+  else if(signal_id == 11){
+      eventState = junc3Signal.States[3].eventState;
+      timing_min_End_Time = junc3Signal.States[3].timing_min_End_Time;
+  }
+  else
+  {
+    eventState = -1;
+    timing_min_End_Time = -1;
+  }
+
+}
+
 //STOPLINE FUNCTION
 int VelocityPlanner::FindStopLine(){
   bool b_stop;
@@ -902,6 +1048,20 @@ void VelocityPlanner::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg)
   current_vel = abs(state_msg.wheelspeed.wheel_speed);
 }
 
+void VelocityPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
+    //traffic_signal
+    if(msg.id == 1){
+        junc1Signal = msg;
+    }
+    else if(msg.id == 2){
+        junc2Signal = msg;
+    }
+    else if(msg.id == 3){
+        junc3Signal = msg;
+    }
+}
+
+
 void VelocityPlanner::startendCallback(const hmcl_msgs::MissionWaypoint& msg)
 {
   // std::cout << "Get velocity: " << state_msg.twist.twist.linear.x << std::endl;
@@ -941,11 +1101,16 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
   // }
   // std::copy(msg.waypoints.begin()+current_idx,msg.waypoints.end(),traj.waypoints.begin());
 
+  signal_id = msg.signal_id;
   traj.waypoints = msg.waypoints;
   std::cout << "Get reference velocity: " << MaxVel << std::endl;
 }
 
 void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
+  
+  eventState = -1;
+  timing_min_End_Time = -1;
+
   CurrentMode =(BehaviorState)msg.data;
   if (CurrentMode == BehaviorState::Init){
     PreviousMode = CurrentMode;
