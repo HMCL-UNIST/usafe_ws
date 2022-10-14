@@ -21,9 +21,6 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
   node_priv.param<double>("Kp", Kp_, 1.0);
   node_priv.param<double>("Ki", Ki_, 0.0);
   node_priv.param<double>("Kd", Kd_, 0.0);
-  Kp_ = 1;
-  Ki_ = 0;
-  Kd_ = 0.1;
   node_priv.param<double>("upper_limit", upper_limit_, 1000.0);
   node_priv.param<double>("lower_limit", lower_limit_, -1000.0);
   node_priv.param<double>("windup_limit", windup_limit_, 1000.0);
@@ -50,7 +47,7 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
 
   // instantiate publishers & subscribers
   control_effort_pub_ = node.advertise<std_msgs::Float64>(topic_from_controller_, 1);
-  pid_debug_pub_ = node.advertise<std_msgs::Float64MultiArray>(pid_debug_pub_name_, 1);
+  pid_debug_pub_ = node.advertise<control_msgs::PidState>(pid_debug_pub_name_, 1);
 
   ros::Subscriber plant_sub_ = node.subscribe(topic_from_plant_, 1, &PidObject::plantStateCallback, this);
   ros::Subscriber setpoint_sub_ = node.subscribe(setpoint_topic_, 1, &PidObject::setpointCallback, this);
@@ -64,10 +61,10 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
   }
 
   // dynamic reconfiguration
-  // dynamic_reconfigure::Server<pid::PidConfig> config_server;
-  // dynamic_reconfigure::Server<pid::PidConfig>::CallbackType f;
-  // f = boost::bind(&PidObject::reconfigureCallback, this, _1, _2);
-  // config_server.setCallback(f);
+  dynamic_reconfigure::Server<pid::PidConfig> config_server;
+  dynamic_reconfigure::Server<pid::PidConfig>::CallbackType f;
+  f = boost::bind(&PidObject::reconfigureCallback, this, _1, _2);
+  config_server.setCallback(f);
 
   // Wait for first messages
   while( ros::ok() && !ros::topic::waitForMessage<std_msgs::Float64>(setpoint_topic_, ros::Duration(10.)))
@@ -162,22 +159,22 @@ void PidObject::printParameters()
   return;
 }
 
-// void PidObject::reconfigureCallback(pid::PidConfig& config, uint32_t level)
-// {
-//   if (first_reconfig_)
-//   {
-//     getParams(Kp_, config.Kp, config.Kp_scale);
-//     getParams(Ki_, config.Ki, config.Ki_scale);
-//     getParams(Kd_, config.Kd, config.Kd_scale);
-//     first_reconfig_ = false;
-//     return;  // Ignore the first call to reconfigure which happens at startup
-//   }
+void PidObject::reconfigureCallback(pid::PidConfig& config, uint32_t level)
+{
+  if (first_reconfig_)
+  {
+    getParams(Kp_, config.Kp, config.Kp_scale);
+    getParams(Ki_, config.Ki, config.Ki_scale);
+    getParams(Kd_, config.Kd, config.Kd_scale);
+    first_reconfig_ = false;
+    return;  // Ignore the first call to reconfigure which happens at startup
+  }
 
-//   Kp_ = config.Kp * config.Kp_scale;
-//   Ki_ = config.Ki * config.Ki_scale;
-//   Kd_ = config.Kd * config.Kd_scale;
-//   ROS_INFO("Pid reconfigure request: Kp: %f, Ki: %f, Kd: %f", Kp_, Ki_, Kd_);
-// }
+  Kp_ = config.Kp * config.Kp_scale;
+  Ki_ = config.Ki * config.Ki_scale;
+  Kd_ = config.Kd * config.Kd_scale;
+  ROS_INFO("Pid reconfigure request: Kp: %f, Ki: %f, Kd: %f", Kp_, Ki_, Kd_);
+}
 
 void PidObject::doCalcs()
 {
@@ -333,12 +330,17 @@ void PidObject::doCalcs()
     {
       cout << control_effort_ << endl;
       control_msg_.data = control_effort_;
+
+      pid_msgs_.header.stamp = ros::Time::now();
+      pid_msgs_.error = error_.at(0); 
+      pid_msgs_.output = control_effort_;
+      pid_msgs_.error_dot = setpoint_;
       control_effort_pub_.publish(control_msg_);
       // Publish topic with
-      std::vector<double> pid_debug_vect { plant_state_, control_effort_, proportional_, integral_, derivative_};
-      std_msgs::Float64MultiArray pidDebugMsg;
-      pidDebugMsg.data = pid_debug_vect;
-      pid_debug_pub_.publish(pidDebugMsg);
+      // std::vector<double> pid_debug_vect { plant_state_, control_effort_, proportional_, integral_, derivative_};
+      // std_msgs::Float64MultiArray pidDebugMsg;
+      // pidDebugMsg.data = pid_debug_vect;
+      pid_debug_pub_.publish(pid_msgs_);
     }
     else if (setpoint_timeout_ > 0 && (ros::Time::now() - last_setpoint_msg_time_).toSec() > setpoint_timeout_)
     {

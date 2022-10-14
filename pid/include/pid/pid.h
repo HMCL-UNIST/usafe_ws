@@ -44,6 +44,7 @@
 #include <std_msgs/Bool.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Float64MultiArray.h>
+#include <control_msgs/PidState.h>
 #include <stdio.h>
 #include <string>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
@@ -127,7 +128,8 @@ private:
   std::string topic_from_controller_, topic_from_plant_, setpoint_topic_, pid_enable_topic_;
   std::string pid_debug_pub_name_;
   std_msgs::Float64 control_msg_, state_msg_;
-
+  control_msgs::PidState pid_msgs_;
+  
   // Diagnostic objects
   double min_loop_frequency_ = 1, max_loop_frequency_ = 1000;
   int measurements_received_ = 0;
