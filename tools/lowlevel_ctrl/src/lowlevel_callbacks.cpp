@@ -72,18 +72,21 @@ void LowlevelCtrl::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){
 
 void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort_input)
 {
-  mtx_.lock();
+
   if(drivingState == DrivingState::Driving && scc_overwrite == false) {
+      mtx_.lock();
       if(gear_info_.gear == 0){
         setScc(0);
       }else{
       double ctrl_effort;
       ctrl_effort = round(control_effort_input.data *100)/100;      
-      short target_accel = (ctrl_effort*100);        
+      short target_accel = (ctrl_effort*100);       
       setScc(target_accel);
+      ROS_INFO("control effort callback");
       }      
+      mtx_.unlock();
   }   
-  mtx_.unlock();
+  
 }
 
 void LowlevelCtrl::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){

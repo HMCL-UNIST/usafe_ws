@@ -56,35 +56,50 @@ void LowlevelCtrl::DrivingStateMachine() {
         // AWAIT BEHAVIOR & GO TO PARKING -> CHECK
         // AWAIT BEHAVIOR             
         scc_overwrite = true;
-        if(abs(wheel_info_.wheel_speed) >= 0.1){          
-          setToDrive();          
-          setScc(-100);             
+        if(abs(wheel_info_.wheel_speed) >= 0.05){          
+          setToDrive();   
+          short target_dcel = (-2*100);       
+          setScc(target_dcel);    
+          ROS_INFO("Decel for Parking");             
         }else{          
           setToParking();
-          setScc(0);                
+          short zero_dcel = (0*100);       
+          setScc(zero_dcel);                           
+            
         }
         
       break;
 
       case DrivingState::DrivingStop: 
         scc_overwrite = true;
-        setToDrive();        
-        if(abs(wheel_info_.wheel_speed) >= 0.1){
-          setScc(-100);          
+        if(gear_info_.gear == 0 ){
+          short zero_dcel = (0*100);       
+          setScc(zero_dcel);  
+          setToDrive();        
         }else{
-          setScc(0);                         
+          if(abs(wheel_info_.wheel_speed) > 0.0){
+            short target_dcel = (-2*100);       
+            setScc(target_dcel);                        
+            ROS_WARN("set -200");  
+          }else{
+            short zero_dcel = (0*100);       
+            setScc(zero_dcel);                                               
+          }  
         }
       break;  
       
       case DrivingState::Driving:
         scc_overwrite = false;
-        setToDrive(); 
+         if(gear_info_.gear == 0 ){
+          setToDrive();        
+        }        
       break;  
 
       case DrivingState::EmergencyStop:
           scc_overwrite = true;
           if(abs(wheel_info_.wheel_speed) >= 0.1){
-            setScc(-500);          
+            short target_dcel = (-4*100);       
+            setScc(target_dcel);                
           }else{
             drivingState =DrivingState::Parking;      
           }         
@@ -116,29 +131,29 @@ void LowlevelCtrl::Test(){
       drivingState = DrivingState::Parking;      
     }
 
-    if(lc == 50) {      
-      drivingState = DrivingState::DrivingStop;      
-    }
-
-    if(lc  > 50 && lc < 100) {
+    if(lc > 100 && lc < 130) {      
       drivingState = DrivingState::Driving;      
     }
 
-     if(lc  > 100 && lc < 150) {
-      drivingState = DrivingState::DrivingStop;      
-    }
-
-     if(lc  > 150 && lc < 200) {
-      drivingState = DrivingState::Parking;      
-    }
-
-   if(lc  > 200 && lc < 250) {
+    if(lc  > 130 && lc < 200) {
       drivingState = DrivingState::Driving;      
     }
 
-    if(lc  > 250 && lc < 251) {
-      drivingState = DrivingState::EmergencyStop;      
+     if(lc  > 200 && lc < 220) {
+      drivingState = DrivingState::Driving;      
     }
+
+     if(lc  > 220) {
+      drivingState = DrivingState::DrivingStop;      
+    }
+
+  //  if(lc  > 200 && lc < 250) {
+  //     drivingState = DrivingState::Driving;      
+  //   }
+
+  //   if(lc  > 250 && lc < 251) {
+  //     drivingState = DrivingState::EmergencyStop;      
+  //   }
     
     lc++; 
     test_loop_rate.sleep();

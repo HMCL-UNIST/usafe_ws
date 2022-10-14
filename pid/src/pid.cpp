@@ -94,7 +94,11 @@ void PidObject::setpointCallback(const std_msgs::Float64& setpoint_msg)
 
 void PidObject::plantStateCallback(const hmcl_msgs::VehicleWheelSpeed& state_msg)
 {
-  plant_state_ = state_msg.wheel_speed ;
+  
+    plant_state_ = state_msg.wheel_speed ;
+  
+  
+  
 
   new_state_or_setpt_ = true;
 }
@@ -329,7 +333,12 @@ void PidObject::doCalcs()
     if (pid_enabled_ && (setpoint_timeout_ == -1 || 
                          (ros::Time::now() - last_setpoint_msg_time_).toSec() <= setpoint_timeout_))
     {
+      if( plant_state_ < 0.0 ||  plant_state_ > 45){
+        control_effort_ = 0.0;
+        ROS_WARN("current state is outside of working range");
+      }
       control_msg_.data = control_effort_;
+      
       control_effort_pub_.publish(control_msg_);
       // Publish topic with
       std::vector<double> pid_debug_vect { plant_state_, control_effort_, proportional_, integral_, derivative_};
