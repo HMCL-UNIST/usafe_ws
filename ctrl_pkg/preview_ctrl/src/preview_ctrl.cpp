@@ -116,7 +116,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
   debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);   
-  velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
+  // velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
   
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
   ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
@@ -351,7 +351,7 @@ void PreviewCtrl::ControlLoop()
         steering_frame.data[0] = (steer_value & 0b11111111);
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
-        AcanPub.publish(steering_frame);
+        // AcanPub.publish(steering_frame);
           
 
         ///////////

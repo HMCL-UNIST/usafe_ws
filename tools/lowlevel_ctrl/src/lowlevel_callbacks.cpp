@@ -66,13 +66,18 @@ void LowlevelCtrl::dyn_callback(lowlevel_ctrl::testConfig &config, uint32_t leve
 }
 
 void LowlevelCtrl::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){  
+  mtx_.lock();
   short steer_value = (short)((msg->steering_angle)*gear_ratio*180/PI*10)+steering_offset;
   setSteering(steer_value);    
+  mtx_.unlock();
 }
 
 void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort_input)
 {
+  float control_data = control_effort_input.data;
+  if(control_data > -5.0 && control_data < 3.0){
 
+  
   if(drivingState == DrivingState::Driving && scc_overwrite == false) {
       mtx_.lock();
       if(gear_info_.gear == 0){
@@ -86,6 +91,10 @@ void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort
       }      
       mtx_.unlock();
   }   
+
+  }else{
+    ROS_WARN("Invalid control effort");
+  }
   
 }
 

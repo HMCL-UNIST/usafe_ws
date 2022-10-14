@@ -40,7 +40,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
 
     nh_p_.param<double>("max_shift_speed_ratio", max_shift_speed_ratio, 0.95);
     nh_p_.param<double>("min_shift_speed_ratio", min_shift_speed_ratio, 0.987);
-    nh_p_.param<double>("lane_overwrite_distance", lane_overwrite_distance, 0.8);
+    nh_p_.param<double>("lane_overwrite_distance", lane_overwrite_distance, 0.4);
 
     nh_p_.param<double>("Goal_line_pose_lat", Goal_line_pose_lat, 35.65084331202714);
     nh_p_.param<double>("Goal_line_pose_lon", Goal_line_pose_lon, 128.3997533490543);
@@ -116,6 +116,8 @@ void RacingLinePlanner::callbackVehicleStatus(const hmcl_msgs::VehicleStatusCons
     double tmp_shift_speed_ratio = 0.00666*current_speed + 0.839;
     shift_speed_ratio = std::min(tmp_shift_speed_ratio,max_shift_speed_ratio);
     shift_speed_ratio = std::max(min_shift_speed_ratio,shift_speed_ratio);
+    shift_speed_ratio = 0.73;
+    ROS_INFO("shift_speed_ratio = %f", shift_speed_ratio);
   }else{
     local_path_length = min_local_path_length;
   }
@@ -375,6 +377,9 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
     if(!Mission_start){
         vel_msg.data = 0.0;
     }    
+    /////////////// test 
+    // vel_msg.data = 15;
+    ////////////test 
     velPub.publish(vel_msg);
     
 }
@@ -554,11 +559,20 @@ void RacingLinePlanner::insertDefaultWaypoints(int scenario_num){
     // waypoints.clear();
     // waypoints_pose.clear();
     // Insert Start and Goal waypoint
-    double goal_x = -205.89;
-    double goal_y = 426.2;  
+     
+    lanelet::GPSPoint goal_gnss_point{35.649286, 128.4013599, 0.};
+    lanelet::BasicPoint3d goal_point = projector->forward(goal_gnss_point);        
+
+    lanelet::GPSPoint start_gnss_point{35.6451557, 128.4031224, 0.};
+    lanelet::BasicPoint3d start_point = projector->forward(start_gnss_point);        
+
+    double goal_x = goal_point.x(); // -205.89;
+    double goal_y = goal_point.y(); //426.2;  
     inserWaypoints(waypoint_max_id+1,goal_x, goal_y, 0, true);    
-    double start_x = 76.5;
-    double start_y = -165;
+    double start_x = start_point.x();
+    double start_y = start_point.y();
+    
+
     inserWaypoints(-1,start_x, start_y, 200, true);
 
 }

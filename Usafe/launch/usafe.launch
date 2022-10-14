@@ -9,8 +9,8 @@
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
-      <param name="osm_file_name" value="$(find usafe)/maps/race_track_v4_2_fix_no_short.osm"/> 
-      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v4_2_fix_no_short_continue.osm"/> 
+      <param name="osm_file_name" value="$(find usafe)/maps/race_track_v5_2_fix_no_short_fix.osm"/> 
+      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v5_2_fix_no_short_continue_fix.osm"/> 
       
 
       <!-- <param name="map_origin_lat" value="0.002330359333808985"/> 
@@ -22,8 +22,8 @@
       <param name="map_origin_att" value="55.494"/>  -->
       
     
-    <param name="Goal_line_pose_lat" value="35.65084331202714"/> 
-    <param name="Goal_line_pose_lon" value="128.3997533490543"/> 
+    <param name="Goal_line_pose_lat" value="35.649286"/> 
+    <param name="Goal_line_pose_lon" value="128.4013599"/> 
 
       <!-- KIAPI -->
       <param name="map_origin_lat" value="35.6470671983"/> 
