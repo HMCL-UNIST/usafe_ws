@@ -152,7 +152,7 @@ ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lane
 ros::Publisher lir_pub;
 ros::Publisher way_pub;
 ros::Publisher mission_pub, mission_pt_pub, mission_pts_pub;
-ros::Subscriber mobileye_sub;
+ros::Subscriber mobileye_sub, ped_sub;
 ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub, v2x_mission_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
 mobileye_msgs::MobileyeInfo mobileye_data;
@@ -170,6 +170,7 @@ visualization_msgs::MarkerArray mission1_marker_array;
 
 autoware_msgs::DetectedObjectArray objects, prev_objects, ped_array; 
 
+std::vector<int> id_array;
 std::mutex mu_mtx;
 RoutePlanner rp_;
 lanelet::LaneletMapPtr map;
@@ -191,13 +192,13 @@ double max_dist, max_dist_vel;
 bool global_traj_available;
 bool goal_available;
 bool lir_available = false;
-bool ped_available, ped_in;
+bool ped_available = false, ped_in;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
 
 geometry_msgs::Pose pose_a, pose_b;
 
 int mission_status;
-
+int start_idx, end_idx;
 int cl_lane_idx = 0; 
 int cl_pt_idx = 0;
 std::vector<int> global_index ={};
@@ -229,7 +230,7 @@ lanelet::Areas stopline;
 
 lanelet::Optional<lanelet::routing::Route> route;
 
-
+bool find_check = false;
 bool left_change_signal, right_change_signal;
 LaneChangeState lane_change_state, prev_lane_change_state;
 double lane_change_weight;

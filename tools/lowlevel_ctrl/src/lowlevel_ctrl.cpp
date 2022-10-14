@@ -72,8 +72,8 @@ LowlevelCtrl::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros:
   // boost::thread test(&LowlevelCtrl::Test,this); 
 
   
-  // f = boost::bind(&LowlevelCtrl::dyn_callback,this, _1, _2);
-	// srv.setCallback(f);
+  f = boost::bind(&LowlevelCtrl::dyn_callback,this, _1, _2);
+	srv.setCallback(f);
 }
 
 LowlevelCtrl::~LowlevelCtrl()
@@ -84,7 +84,8 @@ void LowlevelCtrl::InitCanmsg(){
   short steer_value = (short)(0.0+steering_offset) ; // input  in radian, convert into degree
   setSteering(steer_value);  
   setScc(0);
-  setToParking();
+  // setToParking();
+  setToDrive(); 
 
   light_frame.header.stamp = ros::Time::now();
   light_frame.id = 0x306;
@@ -99,27 +100,30 @@ void LowlevelCtrl::InitCanmsg(){
 
 void LowlevelCtrl::AcanSender()
 {
-  ros::Rate loop_rate(50); // rate of cmd   
+  ros::Rate loop_rate(20); // rate of cmd   
   while (ros::ok())
   {   
     if(!Acan_recv_status){  ROS_WARN("ACAN is not available"); continue;}
     if(!Ccan_recv_status){ ROS_WARN("CCAN is not available"); continue;}
     ROS_INFO_ONCE("Communication Success");
 
-    usleep(1000);
     AcanPub.publish(scc_frame);
     usleep(1000);
-    AcanPub.publish(gear_frame);
-    usleep(1000);
-    AcanPub.publish(steering_frame);
-    usleep(1000);     
-    AcanPub.publish(light_frame);  
-    usleep(1000);     
+    // AcanPub.publish(gear_frame);
+    // usleep(1000);
+    // AcanPub.publish(steering_frame);
+    // usleep(1000);     
+    // AcanPub.publish(light_frame);  
+    // usleep(1000);     
     // publish vehicle info 
     steerPub.publish(steering_info_);
+    usleep(1000);   
     statusPub.publish(vehicle_status_);
-    sccPub.publish(scc_info_);  
-    wheelPub.publish(wheel_info_);      
+    usleep(1000);   
+    sccPub.publish(scc_info_);
+    usleep(1000);     
+    wheelPub.publish(wheel_info_);
+    usleep(1000);         
     loop_rate.sleep();
   }
 }
@@ -143,6 +147,19 @@ void LowlevelCtrl::setSteering(short steer_value){
 // e.g. acc_vel = 100 - > 1m/s^2
 void LowlevelCtrl::setScc(short acc_vel){
   int SCC_mode_auto = 2;
+
+  // if (tttt <= 20){
+  //   SCC_mode_auto = 0;
+  // }
+  // else if (tttt <= 60){
+  //   SCC_mode_auto = 1;
+  // }
+  // else{
+  //   ROS_INFO("HERERERERERERERERE");
+  //   SCC_mode_auto = 2; 
+  // }
+  // tttt = tttt+1;
+
   scc_frame.header.stamp = ros::Time::now();
   scc_frame.id = 0x303;
   scc_frame.dlc = 4;
@@ -169,7 +186,6 @@ void LowlevelCtrl::setToParking(){
 
 void LowlevelCtrl::setToDrive(){
   AD_GEAR_POS_CMD = 1;
-  // cout << "drive fn" << endl; 
   gear_frame.header.stamp = ros::Time::now();
   gear_frame.id = 0x304;
   gear_frame.dlc = 1;

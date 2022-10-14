@@ -33,7 +33,7 @@
 typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArrivalRequest, DriveToGoalPos,
             GoalArrivalRequest, MissionComplete} MissionState;
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival} BehaviorState;
+            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange} BehaviorState;
 
 class BehaviorPlanner
 {
@@ -44,11 +44,12 @@ class BehaviorPlanner
         ros::Publisher b_factor_pub, b_state_pub;
         // ros::Timer behavior_timer;
         double runRate;
-        float wLane, lenEgo, frontlenEgo, minFront, unknownFront, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTLtime, thresDistSG, successDistSG;
+        float wLane, lenEgo, frontlenEgo, minFront, front_dist, unknownFront, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
         autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage;
-        double startX, startY, goalX, goalY;
+        double startX, startY, startID, goalX, goalY, goalID;
+        int remain;
         //startpos info 
         //goalpos
         //traffic_signal

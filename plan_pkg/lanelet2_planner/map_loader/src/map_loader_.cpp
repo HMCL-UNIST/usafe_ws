@@ -503,6 +503,7 @@ void MapLoader::lane_in_range(){
   ll.signal_id = signal_id;
   double dist_cum = 0;
   int lane_id = current_id;
+  ROS_INFO("lane id is : %d", lane_id);
   bool lc_flag = false;
 
   for(int i=0; i<tmp_array2.lanes.size(); i++){

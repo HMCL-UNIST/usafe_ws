@@ -8,13 +8,11 @@ localplanners::localplanners(ros::NodeHandle& nh):
     sub_vel = nh_.subscribe("/vehicle_status", 1, &localplanners::wheelCallback, this);
     
     sub_traj = nh_.subscribe("/lane_in_range", 1, &localplanners::trajCallback, this);
-    // sub_global = nh_.subscribe("/global_traj", 1, &localplanners::globalCallback, this);
     sub_flag = nh_.subscribe("/behavior_state", 1, &localplanners::flagCallback, this);
 
     pub_traj = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 1);
-    pub_viz = nh_.advertise<visualization_msgs::MarkerArray>("/localplanner_viz", 1);
-
-    timer_ = nh_.createTimer(ros::Duration(1), &localplanners::connect_handler,this);
+    pub_viz = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1);
+    timer_ = nh_.createTimer(ros::Duration(0.05), &localplanners::connect_handler,this);
 
     //parameter
     nh_.param<double>("minimum_lane_change_length", min_lc_len, 5.0);
@@ -39,10 +37,16 @@ void localplanners::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg){
 void localplanners::flagCallback(const std_msgs::Int16ConstPtr& flag_msg){
     if ((BehaviorState)flag_msg->data == BehaviorState::LaneChange){
         lc_flag = true;
-        // std::cout << "lane change signal" << std::endl;
     }
     else{
         lc_flag = false;        
+    }
+
+    if ((BehaviorState)flag_msg->data == BehaviorState::ObstacleLaneChange){
+        obs_flag = true;
+    }
+    else{
+        obs_flag = false;
     }
 }
 void localplanners::trajCallback(const hmcl_msgs::LaneArray& lane_msg){   
@@ -60,6 +64,7 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
     }
 
     hmcl_msgs::Lane pub_lane;
+    pub_lane.signal_id = range_lane.lanes[0].signal_id;
     PreparePhase();
     Eigen::Quaterniond q;
     q.x() = current_pos.section.orientation.x;
@@ -79,9 +84,10 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
         std::cout <<" no waypoints here with size " << range_index.size() << std::endl;
         return;
     }
-    else if (lc_flag ==false || range_lane.lanes.size()<2){
+    else if (lc_flag ==false || range_lane.lanes.size()<2 || range_lane.lanes[1].lane_id == 1000){
         ROS_INFO("One Lane");
         int startidx = FindClosest(range_lane.lanes[0], current_pos.section);
+        cout << "wpt size :: " << range_lane.lanes[0].waypoints.size() - startidx<< ", st : " << startidx <<",  size:" << range_lane.lanes[0].waypoints.size() << endl;
         for (int i = startidx; i <range_lane.lanes[0].waypoints.size();i++){
             pub_lane.waypoints.push_back(range_lane.lanes[0].waypoints[i]);          
         }
@@ -176,7 +182,7 @@ void localplanners::PreparePhase(){
     double current_vel = max(current_pos.speed,1.0);
     double deceleration = 0;
     if (current_vel > 5){
-        deceleration = -2;
+        deceleration = -current_vel/5;
     }
     lc_prepare_vel = max(current_vel + deceleration * lc_prepare_dur,0.3);
     lc_prepare_dist = max(current_vel * lc_prepare_dur + 0.5 * deceleration * std::pow(lc_prepare_dur, 2), 0.0);  
@@ -196,6 +202,7 @@ int localplanners::FindClosest(const hmcl_msgs::Lane& lane, geometry_msgs::Pose 
         x_ = lane.waypoints[i].pose.pose.position.x;
         y_ = lane.waypoints[i].pose.pose.position.y;
         dis_ = sqrt(pow(x_- _x,2) + pow(y_ -_y,2));
+        // cout<< "dist " << dis_ <<endl;
         if ( dis_< dis){
             dis = dis_;
             idx = i;
@@ -231,7 +238,7 @@ void localplanners::viz_local(const hmcl_msgs::Lane& lane){
     lane_marker.header.frame_id = "map";
     lane_marker.header.stamp = ros::Time();
     lane_marker.ns = "local_markers";
-    lane_marker.id = 257080;
+    lane_marker.id = 2500;
     lane_marker.type = visualization_msgs::Marker::LINE_STRIP;
     lane_marker.action = visualization_msgs::Marker::ADD;
 

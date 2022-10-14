@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(local_planner)
 
 # find_package(PCL REQUIRED)
+find_package(Eigen3 REQUIRED)
 
 
 find_package(catkin REQUIRED COMPONENTS  
@@ -32,7 +33,7 @@ include_directories(
   include
   # ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
   ${catkin_INCLUDE_DIRS}
-  # ${EIGEN3_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 
@@ -45,10 +46,6 @@ add_executable(local_planners src/local_planners.cpp)
 target_link_libraries(local_planners ${catkin_LIBRARIES})
 add_dependencies(local_planners ${catkin_EXPORTED_TARGETS})
 
-add_executable(local_planner src/local_planner.cpp)
-target_link_libraries(local_planner ${catkin_LIBRARIES})
-add_dependencies(local_planner ${catkin_EXPORTED_TARGETS})
-
 
 add_executable(lirplanner src/lir.cpp)
 target_link_libraries(lirplanner ${catkin_LIBRARIES})
@@ -57,7 +54,6 @@ add_dependencies(lirplanner ${catkin_EXPORTED_TARGETS})
 install(
   TARGETS    
   lirplanner
-  local_planner
   local_planners
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}

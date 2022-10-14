@@ -21,12 +21,13 @@ VelocityPlanner::VelocityPlanner()
   ROS_INFO("Behavior Velocity Planner initialize");
 
   // Prameter 
-  nh_.param<double>("intersection_velocity", intersection_velocity, 10/3.6);
-  nh_.param<double>("max_lateral_acc", max_lat_acc, 3.0);
+  nh_.param<double>("intersection_velocity", intersection_velocity, 5);
+  nh_.param<double>("speedbump_velocity", speedbump_velocity, 10);
+  nh_.param<double>("max_lateral_acc", max_lat_acc, 4.0);
   nh_.param<double>("max_longitudinal_acc", max_long_acc, 1.5);
   nh_.param<double>("stopline_margin", stopline_margin, 0);
-  nh_.param<double>("crosswalk_margin", crosswalk_margin, 5);
-  nh_.param<double>("stop_margin", stop_margin, 2);
+  nh_.param<double>("crosswalk_margin", crosswalk_margin, 7);
+  nh_.param<double>("stop_margin", stop_margin, 7);
   nh_.param<double>("vehicle_length", vehicle_length, 2);
 
   nh_.param<double>("delay_in_sec", delay_in_sec, 1);
@@ -51,7 +52,7 @@ VelocityPlanner::VelocityPlanner()
   pose_sub = nh_.subscribe("/pose_estimate", 1, &VelocityPlanner::poseCallback, this);
   wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityPlanner::wheelCallback, this);
   acc_sub = nh_.subscribe("/nav/filtered_imu/data", 1, &VelocityPlanner::accCallback, this);
-  predicted_objects_sub = nh_.subscribe("/predicted_objs",1, &VelocityPlanner::PredictedObjectsCallback, this);
+  predicted_objects_sub = nh_.subscribe("/tracking_car/object",1, &VelocityPlanner::PredictedObjectsCallback, this);
 
   // traffic_sign_sub = nh_.subscribe("", 1, &VelocityPlanner::TrafficSignCallback, this);    
   behavior_state_sub = nh_.subscribe("/behavior_state", 1, &VelocityPlanner::BehaviorStateCallback, this);
@@ -98,7 +99,9 @@ void VelocityPlanner::CheckMotionState()
 { 
   double targetVel1,targetVel2;
   int s_idx, c_idx, j_idx;
-
+  motionstate_debug = ".";
+  Dis = 0.0;
+  // ROS_INFO("frontdist: %f", LeadVehicleDist);
   if (CurrentMode ==  BehaviorState::Crosswalk) {
       // When Traffic sign is green or there is no trraffic sign, there is crosswalk in front of vehicle
       // 1) Check the stop line (If there is no stop line, make stop line)
@@ -123,9 +126,10 @@ void VelocityPlanner::CheckMotionState()
     }
 
     if (!find_stopline){
-      std::cout << "FAIL TO FIND CROSSWALK in Crosswalk" << std::endl;
+      // std::cout << "FAIL TO FIND CROSSWALK in Crosswalk" << std::endl;
       MotionMode = MotionState::FAIL;
-      targetVel1 = intersection_velocity/3.6;
+      targetVel1 = speedbump_velocity/3.6;
+      motionstate_debug = "FAIL TO FIND CROSSWALK in Crosswalk";
     }
     else{
       if (find_crosswalk){
@@ -139,29 +143,30 @@ void VelocityPlanner::CheckMotionState()
       DesiredDis = 0;
       DesiredVel = 0;
 
-      if (Dis <= stop_margin && !passcrosswalk){
+      if (Dis <= stop_margin && passcrosswalk){
         MotionMode = MotionState::STOP;
-        targetVel1 = 0;
-        wait_tt += 1/runtime;
-        if (wait_tt >= 3){
-          passcrosswalk = true;
-        }
-      }
-      if (passcrosswalk){
-        MotionMode = MotionState::GO;
-        targetVel1 = intersection_velocity/3.6;
+        motionstate_debug = "At the stop line";
+        targetVel1 = speedbump_velocity/3.6;
+        passcrosswalk = true;
       }
       else{
         // Dis = std::min(Dis, 15.0);
         MotionMode = MotionState::DECELERATE;
+        motionstate_debug = "Before the stop line: Distance is" + to_string(Dis);
         targetVel1 = ACC();
       }
     }
     if (LeadVehicle){
-      MotionMode = MotionState::ACC;
       targetVel2 = CheckLeadVehicle();
+      targetVel = std::min(targetVel1, targetVel2);
+      if (targetVel2 <= targetVel1){
+        MotionMode = MotionState::ACC;
+        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+      }  
     }
-    targetVel = std::min(targetVel1, targetVel2);
+    else{
+      targetVel = targetVel1;
+    }
   }
   else if (CurrentMode ==  BehaviorState::Pedestrian) {
     // 1) If ego vehicle does not reach to stop line, stop at stop line
@@ -169,6 +174,7 @@ void VelocityPlanner::CheckMotionState()
     if (passcrosswalk){
       targetVel = 0;
       MotionMode = MotionState::STOP;
+      motionstate_debug = "Pass the stop line: Just stop!";
     }
     else{
       if (new_behavior_mode || !find_stopline){
@@ -190,7 +196,8 @@ void VelocityPlanner::CheckMotionState()
       }
       if (!find_stopline){
         MotionMode = MotionState::FAIL;
-        std::cout << "FAIL TO FIND STOPLINE in Pedestrian" << std::endl;
+        motionstate_debug = "FAIL TO FIND STOPLINE in Pedestrian: Just Stop!";
+        // std::cout << "FAIL TO FIND STOPLINE in Pedestrian" << std::endl;
         passcrosswalk = true;
         targetVel1 = 0;
       }
@@ -209,11 +216,13 @@ void VelocityPlanner::CheckMotionState()
 
         if (Dis <= stop_margin){
           MotionMode = MotionState::STOP;
+          motionstate_debug = "At the stopline";
           targetVel1 = 0;
           passcrosswalk = true;
         }
         else{
           MotionMode = MotionState::DECELERATE;
+          motionstate_debug = "Before the stop line: Distance is" + to_string(Dis);
           targetVel1 = ACC();
         }
       }
@@ -222,6 +231,7 @@ void VelocityPlanner::CheckMotionState()
   else if (CurrentMode ==  BehaviorState::TrafficLightStop) {
       //1) Find the stop line
       //2) Decelerate before Stop Line
+    checkTrafficSignal(0);
     if (new_behavior_mode || !find_stopline){
       s_idx = FindStopLine();
       if (s_idx != -1){
@@ -235,7 +245,8 @@ void VelocityPlanner::CheckMotionState()
       targetVel = 0;
     }
     else if (!find_stopline){
-      std::cout << "FAIL TO FIND STOPLINE in TrafficLightStop" << std::endl;
+      // std::cout << "FAIL TO FIND STOPLINE in TrafficLightStop" << std::endl;
+      motionstate_debug = "FAIL TO FIND STOPLINE in TrafficLightStop";
       MotionMode = MotionState::FAIL;
       targetVel = MaxVel;
     }
@@ -247,46 +258,56 @@ void VelocityPlanner::CheckMotionState()
 
       if (Dis <= stop_margin){
         MotionMode = MotionState::STOP;
+        motionstate_debug = "Before the stop line: Distance is" + to_string(Dis)
+        + ", Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
         targetVel1 = 0;
       }
       else{
         // Dis = std::min(Dis, 15.0);
         MotionMode = MotionState::DECELERATE;
+        motionstate_debug = "Before the stop line: Distance is" + to_string(Dis)
+        + ", Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
         targetVel1 = ACC();
       }
     }  
     if (LeadVehicle){
-      MotionMode = MotionState::ACC;
       targetVel2 = CheckLeadVehicle();
+      targetVel = std::min(targetVel1, targetVel2);
+      if (targetVel2 <= targetVel1){
+        MotionMode = MotionState::ACC;
+        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+      }  
     }
-    targetVel = std::min(targetVel1, targetVel2);
-    
+    else{
+      targetVel = targetVel1;
+    }
   }
 
   else if (CurrentMode ==  BehaviorState::SpeedBump) {
       // Reduce the velocity to 10km/h
-      targetVel = 10/3.6;
-      MaxVel = 10/3.6;
+      targetVel = speedbump_velocity/3.6;
+      MaxVel = speedbump_velocity/3.6;
       MotionMode = MotionState::GO;
   }
 
   else if (CurrentMode ==  BehaviorState::Follow){
     //Adaptive Cruise Control
     double DesiredDis = current_vel*d_time + d_safe;
-    double Dis = sqrt( pow(current_x-object_x,2) + pow(current_y-object_y,2)) - stopline_margin;
+    Dis = sqrt( pow(current_x-object_x,2) + pow(current_y-object_y,2)) - stopline_margin;
     Dis = std::min(Dis, 150.0); 
     
     double DesiredVel = object_vel; //- current_vel;    
 
     // velocity difference is not greater than the speed limit ... 
     if(DesiredVel > 0){
-      DesiredVel = std::min(DesiredVel, MaxVel/3.6);
+      DesiredVel = std::min(DesiredVel, MaxVel);
     }    
     if(DesiredVel < 0){
-      DesiredVel = std::max(DesiredVel, -MaxVel/3.6);
+      DesiredVel = std::max(DesiredVel, -MaxVel);
     }
     targetVel = ACC();
     MotionMode = MotionState::ACC;
+    motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
 
   }
   else if (CurrentMode ==  BehaviorState::RightTurn){
@@ -295,109 +316,141 @@ void VelocityPlanner::CheckMotionState()
      //3) Check the lead vehicle existence
     
     checkTrafficSignal(0);
+    double vel = Curvature();
+    
+    if (MaxVel <= vel){
+      vel = MaxVel;
+    }
+    else if (vel <= intersection_velocity/3.6){
+      vel = intersection_velocity/3.6;
+    }
 
-    if (passcrosswalk){
-      if (!find_judgeline){
-        j_idx = FindJudgeLine();
-        if (j_idx != -1){
-          dis_x = traj.waypoints[j_idx].pose.pose.position.x;
-          dis_y = traj.waypoints[j_idx].pose.pose.position.y;
-          find_judgeline = true;
+    if (eventState == -1 || timing_min_End_Time == -1){
+      MotionMode = MotionState::GO;
+      motionstate_debug = "No traffic light";
+      targetVel1 = vel;
+    }
+    else{
+      if (passcrosswalk){
+        if (!find_judgeline){
+          j_idx = FindJudgeLine();
+          if (j_idx != -1){
+            dis_x = traj.waypoints[j_idx].pose.pose.position.x;
+            dis_y = traj.waypoints[j_idx].pose.pose.position.y;
+            find_judgeline = true;
+          }
         }
-      }
-      if (!find_judgeline){
-        std::cout << "FAIL TO FIND Judgeline in Crosswalk" << std::endl;
-        MotionMode = MotionState::FAIL;
-        targetVel1 = intersection_velocity/3.6;
-      }
-      else {
-        Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2));
-        Dis = std::min(Dis, 150.0); 
-        DesiredDis = 0;
-        DesiredVel = 0;
+        if (!find_judgeline){
+          // std::cout << "FAIL TO FIND Judgeline in Crosswalk" << std::endl;
+          MotionMode = MotionState::FAIL;
+          targetVel1 = vel;
+        }
+        else {
+          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2));
+          // Dis = std::min(Dis, 150.0); 
+          DesiredDis = 0;
+          DesiredVel = speedbump_velocity/3.6;
 
-        if (Dis <= stop_margin || !passjudgeline){
-          MotionMode = MotionState::STOP;
-          targetVel1 = 0;
-          wait_tt += 1/runtime;
-          if (wait_tt >= 3){
+          // if (!passjudgeline){
+          //   if ( eventState != 5 || eventState != 6){
+          //     MotionMode = MotionState::STOP;
+          //     motionstate_debug = "Before the judge line: Distance is" + to_string(Dis);
+          //     targetVel1 = 0;
+          //   }
+          //   else if (timing_min_End_Time <= 7) {
+          //     MotionMode = MotionState::STOP;
+          //     motionstate_debug = "Before the judge line: Distance is" + to_string(Dis);
+          //     targetVel1 = 0;
+          //   }
+          // }
+
+          if (Dis <= stop_margin || !passjudgeline){
+            MotionMode = MotionState::GO;
+            motionstate_debug = "After the judge line: Distance is" + to_string(Dis);
+            targetVel1 = DesiredVel;
             passjudgeline = true;
           }
-        }
-        else if (passjudgeline){
-          MotionMode = MotionState::GO;
-          targetVel1 = intersection_velocity/3.6;;
-        }
-        else{
-          // Dis = std::min(Dis, 15.0);
-          MotionMode = MotionState::DECELERATE;
-          targetVel1 = ACC();
-        }
-      }
-    }
-    else if (new_behavior_mode || !find_stopline){
-      s_idx = FindStopLine();
-      if (s_idx != -1){
-        dis_x = traj.waypoints[s_idx].pose.pose.position.x;
-        dis_y = traj.waypoints[s_idx].pose.pose.position.y;
-        find_stopline = true;
-      }
-      else{
-        c_idx = FindCrossWalk();
-        if (c_idx != -1){
-          dis_x = traj.waypoints[c_idx].pose.pose.position.x;
-          dis_y = traj.waypoints[c_idx].pose.pose.position.y;
-          find_stopline = true;
-          find_crosswalk = true;
-        }
-      }
-    }
-
-    if (!passcrosswalk){
-      if (!find_stopline){
-        std::cout << "FAIL TO FIND Stopline in RightTurn" << std::endl;
-        MotionMode = MotionState::FAIL;
-        targetVel1 = intersection_velocity/3.6;
-      }
-      else{
-        if (find_crosswalk){
-          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - crosswalk_margin;
-        }
-        else{
-          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - stopline_margin;
-        }
-
-        Dis = std::min(Dis, 150.0); 
-        DesiredDis = 0;
-        DesiredVel = 0;
-
-        if (eventState == 5 || eventState == 6){
-          if (timing_min_End_Time >= 25) {
-            passcrosswalk = true;
+          else{
+            // Dis = std::min(Dis, 15.0);
+            MotionMode = MotionState::DECELERATE;
+            motionstate_debug = "Before the judge line: Distance is" + to_string(Dis);
+            targetVel1 = ACC();
           }
         }
-
-        if (Dis <= stop_margin && passcrosswalk != true){
-          MotionMode = MotionState::STOP;
-          targetVel1 = 0;
-        }
-        else if (passcrosswalk){
-          MotionMode = MotionState::GO;
-          targetVel1 = intersection_velocity/3.6;;
+      }
+      else if (new_behavior_mode || !find_stopline){
+        s_idx = FindStopLine();
+        if (s_idx != -1){
+          dis_x = traj.waypoints[s_idx].pose.pose.position.x;
+          dis_y = traj.waypoints[s_idx].pose.pose.position.y;
+          find_stopline = true;
         }
         else{
-          // Dis = std::min(Dis, 15.0);
-          MotionMode = MotionState::DECELERATE;
-          targetVel1 = ACC();
+          c_idx = FindCrossWalk();
+          if (c_idx != -1){
+            dis_x = traj.waypoints[c_idx].pose.pose.position.x;
+            dis_y = traj.waypoints[c_idx].pose.pose.position.y;
+            find_stopline = true;
+            find_crosswalk = true;
+          }
+        }
+      }
+
+      if (!passcrosswalk){
+        if (!find_stopline){
+          std::cout << "FAIL TO FIND Stopline in RightTurn" << std::endl;
+          MotionMode = MotionState::FAIL;
+          targetVel1 = vel;
+        }
+        else{
+          if (find_crosswalk){
+            Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - crosswalk_margin;
+          }
+          else{
+            Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - stopline_margin;
+          }
+
+          Dis = std::min(Dis, 150.0); 
+          DesiredDis = 0;
+          DesiredVel = speedbump_velocity/3.6;
+
+          if (eventState == 5 || eventState == 6){
+            if (timing_min_End_Time >= 7) {
+              passcrosswalk = true;
+            }
+          }
+
+          if (Dis <= stop_margin && passcrosswalk != true){
+            MotionMode = MotionState::STOP;
+            targetVel1 = speedbump_velocity/3.6;
+            motionstate_debug = "At the stop line";
+          }
+          else if (passcrosswalk){
+            MotionMode = MotionState::GO;
+            targetVel1 = speedbump_velocity/3.6;
+            motionstate_debug = "After the stop line: Distance is" + to_string(Dis);
+          }
+          else{
+            // Dis = std::min(Dis, 15.0);
+            MotionMode = MotionState::DECELERATE;
+            targetVel1 = ACC();
+            motionstate_debug = "Before the stop line: Distance is" + to_string(Dis)
+            +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
+          }
         }
       }
     }
-
     if (LeadVehicle){
-      MotionMode = MotionState::ACC;
       targetVel2 = CheckLeadVehicle();
+      targetVel = std::min(targetVel1, targetVel2);
+      if (targetVel2 <= targetVel1){
+        MotionMode = MotionState::ACC;
+        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+      }  
     }
-    targetVel = std::min(targetVel1, targetVel2);
+    else{
+      targetVel = targetVel1;
+    }
   }
   else if (CurrentMode ==  BehaviorState::LeftTurn){
     //1) check the stop line (If there is no stop line, make stop line)  
@@ -407,76 +460,109 @@ void VelocityPlanner::CheckMotionState()
     // int timing_min_End_Time = -1;
     // eventState = junc1Signal.States[0].eventState;
     // timing_min_End_Time = junc1Signal.States[0].timing_min_End_Time;
+
     checkTrafficSignal(1);
+    double vel = Curvature();
+    ROS_INFO ("desired velocity is %f", vel);
 
-    targetVel = intersection_velocity; 
-    MotionMode = MotionState::GO;
-
-   
-    if (new_behavior_mode || !find_stopline){
-      s_idx = FindStopLine();
-      if (s_idx != -1){
-        dis_x = traj.waypoints[s_idx].pose.pose.position.x;
-        dis_y = traj.waypoints[s_idx].pose.pose.position.y;
-        find_stopline = true;
-      }
-      else{
-        c_idx = FindCrossWalk();
-        if (c_idx != -1){
-          dis_x = traj.waypoints[c_idx].pose.pose.position.x;
-          dis_y = traj.waypoints[c_idx].pose.pose.position.y;
-          find_stopline = true;
-          find_crosswalk = true;
-        }
-      }
+    if (MaxVel <= vel){
+      vel = MaxVel;
+    }
+    else if (vel <= intersection_velocity/3.6){
+      vel = intersection_velocity/3.6;
     }
 
-    if (!passcrosswalk){
-      if (!find_stopline){
-        std::cout << "FAIL TO FIND Stopline in LeftTurn" << std::endl;
-        MotionMode = MotionState::FAIL;
-        targetVel1 = intersection_velocity/3.6;
-      }
-      else{
-        if (find_crosswalk){
-          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - crosswalk_margin;
+    if (eventState == -1 || timing_min_End_Time == -1){
+      MotionMode = MotionState::GO;
+      targetVel1 = vel;
+      motionstate_debug = "No traffic light";
+    }
+    else{
+      if (new_behavior_mode || !find_stopline){
+        s_idx = FindStopLine();
+        if (s_idx != -1){
+          dis_x = traj.waypoints[s_idx].pose.pose.position.x;
+          dis_y = traj.waypoints[s_idx].pose.pose.position.y;
+          find_stopline = true;
         }
         else{
-          Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - stopline_margin;
-        }
-
-        Dis = std::min(Dis, 150.0); 
-        DesiredDis = 0;
-        DesiredVel = 0;
-
-        if (eventState == 5 || eventState == 6){
-          if (timing_min_End_Time >= 25) {
-            passcrosswalk = true;
+          c_idx = FindCrossWalk();
+          if (c_idx != -1){
+            dis_x = traj.waypoints[c_idx].pose.pose.position.x;
+            dis_y = traj.waypoints[c_idx].pose.pose.position.y;
+            find_stopline = true;
+            find_crosswalk = true;
           }
         }
+      }
 
-        if (Dis <= stop_margin && passcrosswalk != true){
-          MotionMode = MotionState::STOP;
-          targetVel1 = 0;
-        }
-        else if (passcrosswalk){
-          MotionMode = MotionState::GO;
-          targetVel1 = intersection_velocity/3.6;;
+      if (!passcrosswalk){
+        if (!find_stopline){
+          // std::cout << "FAIL TO FIND Stopline in LeftTurn" << std::endl;
+          motionstate_debug = "FAIL TO FIND Stopline in LeftTurn" + to_string(Dis);
+          MotionMode = MotionState::FAIL;
+          targetVel1 = speedbump_velocity/3.6;
         }
         else{
-          // Dis = std::min(Dis, 15.0);
-          MotionMode = MotionState::DECELERATE;
-          targetVel1 = ACC();
+          if (find_crosswalk){
+            Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - crosswalk_margin;
+          }
+          else{
+            Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2)) - stopline_margin;
+          }
+
+          Dis = std::min(Dis, 150.0); 
+          DesiredDis = 0;
+          DesiredVel = 0;
+
+          if (eventState == 5 || eventState == 6){
+            if (timing_min_End_Time >= 7) {
+              passcrosswalk = true;
+            }
+          }
+
+          if (Dis <= stop_margin && passcrosswalk != true || stop){
+            motionstate_debug = "At the stop line: Distance is" + to_string(Dis)
+            +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
+            MotionMode = MotionState::STOP;
+            stop == true;
+            targetVel1 = 0;
+          }
+          else if (passcrosswalk){
+            MotionMode = MotionState::GO;
+            motionstate_debug = "After the stop line: Distance is" + to_string(Dis)
+            +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
+            targetVel1 = speedbump_velocity/3.6;
+          }
+          else{
+            // Dis = std::min(Dis, 15.0);
+            MotionMode = MotionState::DECELERATE;
+            motionstate_debug = "Before the stop line: Distance is" + to_string(Dis) +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
+            targetVel1 = ACC();
+          }
         }
       }
+      else{
+        MotionMode = MotionState::GO;  
+        motionstate_debug = "After the stop line: Distance is" + to_string(Dis)+" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
+        targetVel1 = speedbump_velocity/3.6;
+
+      }
+
     }
 
     if (LeadVehicle){
-      MotionMode = MotionState::ACC;
       targetVel2 = CheckLeadVehicle();
+      targetVel = std::min(targetVel1, targetVel2);
+      if (targetVel2 <= targetVel1){
+        MotionMode = MotionState::ACC;
+        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+      }  
     }
-    targetVel = std::min(targetVel1, targetVel2);
-
+    else{
+      targetVel = targetVel1;
+    }
+    
 
   }
   else if(CurrentMode ==  BehaviorState::Init){
@@ -493,51 +579,74 @@ void VelocityPlanner::CheckMotionState()
     targetVel = 0;
     if (Dis <= stop_margin || misson_stop){
       MotionMode = MotionState::STOP;
-      targetVel1 = targetVel;
+      motionstate_debug = "At the start position";
+      targetVel1 = 0;
       misson_stop = true;
     }
     else{
       Dis = std::min(Dis, 30.0);
+      motionstate_debug = "Before the start position: Distance is" + to_string(Dis);
       MotionMode = MotionState::DECELERATE;
       targetVel1 = ACC();
     }
     if (LeadVehicle){
-      MotionMode = MotionState::ACC;
       targetVel2 = CheckLeadVehicle();
-      misson_stop = true;
+      targetVel = std::min(targetVel1, targetVel2);
+      if (targetVel2 <= targetVel1){
+        MotionMode = MotionState::ACC;
+        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+      }  
     }
-    targetVel = std::min(targetVel1, targetVel2);
+    else{
+      targetVel = targetVel1;
+    }
+    
   }
   else if(CurrentMode == BehaviorState::StopAtGoalPos ){
     Dis = sqrt(pow(current_x-end.x,2) + pow(current_y-end.y,2));
     targetVel = 0;
     if (Dis <= stop_margin || misson_stop){
       MotionMode = MotionState::STOP;
-      targetVel1 = targetVel;
+      motionstate_debug = "At the goal position";
+      targetVel1 = 0;
     }
     else{
       Dis = std::min(Dis, 30.0);
       MotionMode = MotionState::DECELERATE;
+      motionstate_debug = "Before the goal position: Distance is" + to_string(Dis);
       targetVel1 = ACC();
     }
     if (LeadVehicle){
-      MotionMode = MotionState::ACC;
       targetVel2 = CheckLeadVehicle();
+      targetVel = std::min(targetVel1, targetVel2);
+      if (targetVel2 <= targetVel1){
+        MotionMode = MotionState::ACC;
+        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+      }  
     }
-    targetVel = std::min(targetVel1, targetVel2);
+    else{
+      targetVel = targetVel1;
+    }
+  }
+  else if (CurrentMode ==  BehaviorState::LaneChange){
+    targetVel = 10/3.6;
+    MotionMode = MotionState::GO;   
   }
   else{
     targetVel = MaxVel;
     MotionMode = MotionState::GO; 
   }
   viz_motionstate();
-  std::cout << "Distance" << Dis << std::endl;
+  // std::cout << "Distance" << Dis << std::endl;
 }
 void VelocityPlanner::checkTrafficSignal(const bool& leftTurn){
+
+  ROS_INFO("signal_id:  %d, leftTurn is: %d", signal_id, leftTurn);
 
   if(signal_id == 1 && leftTurn){
       eventState = junc1Signal.States[1].eventState;
       timing_min_End_Time = junc1Signal.States[1].timing_min_End_Time;
+      ROS_INFO("eventState:  %d, timing_min_End_Time is: %d", eventState, timing_min_End_Time);
   }
   else if(signal_id == 1){
       eventState = junc1Signal.States[0].eventState;
@@ -623,6 +732,54 @@ void VelocityPlanner::checkTrafficSignal(const bool& leftTurn){
 
 }
 
+double VelocityPlanner::Curvature(){
+  double dis = 0;
+  double x, y, x_, y_, _x, _y;
+  int target_id;
+
+  if (traj.waypoints.size() <= 2){
+    return MaxVel;
+  }
+
+  for (int i = 0; i < traj.waypoints.size()-1; i++){
+    x = traj.waypoints[i].pose.pose.position.x;
+    x_= traj.waypoints[i+1].pose.pose.position.x;
+    y = traj.waypoints[i].pose.pose.position.y;
+    y_= traj.waypoints[i+1].pose.pose.position.y;
+    dis = dis + sqrt(pow(x-x_,2)+pow(y-y_,2));
+    target_id = i;
+    if (dis >= 5){
+      break;
+    }
+  }
+
+  if (target_id == 1){
+    x = traj.waypoints[target_id+1].pose.pose.position.x;
+    x_= traj.waypoints[target_id+2].pose.pose.position.x;
+    _x = traj.waypoints[target_id].pose.pose.position.x;
+    y = traj.waypoints[target_id+1].pose.pose.position.y;
+    y_= traj.waypoints[target_id+2].pose.pose.position.y;
+    _y= traj.waypoints[target_id].pose.pose.position.y;
+  }
+  else{
+    x = traj.waypoints[target_id].pose.pose.position.x;
+    x_= traj.waypoints[target_id+1].pose.pose.position.x;
+    _x = traj.waypoints[target_id-1].pose.pose.position.x;
+    y = traj.waypoints[target_id].pose.pose.position.y;
+    y_= traj.waypoints[target_id+1].pose.pose.position.y;
+    _y= traj.waypoints[target_id-1].pose.pose.position.y;
+  }
+
+  double a = sqrt( pow(x - _x, 2) + pow(y - _y,2));
+  double b = sqrt( pow( _x - x, 2) + pow(_y - y,2));
+  double c = sqrt( pow( x_-_x, 2) + pow(y_ - _y,2));
+  double q = (pow(a,2)+pow(b,2)-pow(c,2))/(2*a*b);
+  double R = c/(2*sqrt(1-pow(q,2)));
+  double curv = 1/R;
+
+  return sqrt(max_lat_acc/curv);
+}
+
 //STOPLINE FUNCTION
 int VelocityPlanner::FindStopLine(){
   bool b_stop;
@@ -706,7 +863,7 @@ double VelocityPlanner::CheckLeadVehicle(){
   //Adaptive Cruise Control
   
   double DesiredDis = current_vel*d_time + d_safe;
-  double Dis = sqrt( pow(current_x-object_x,2) + pow(current_y-object_y,2) );
+  Dis = LeadVehicleDist;
   Dis = std::min(Dis, 150.0); 
   double DesiredVel = object_vel; //- current_vel;    
 
@@ -835,17 +992,28 @@ bool VelocityPlanner::solveRiccatiIterationD(const Eigen::MatrixXd &Ad,
 //VELOCITY SMOOTHER FUNCTION
 void VelocityPlanner::VelocitySmoother()
 {
+  geometry_msgs::PoseStamped debug;
+  debug.header.stamp = ros::Time::now();
+  debug.pose.position.x = Dis;
+  debug.pose.position.y = targetVel;
+  debug.pose.position.z = current_vel;
+  debug.pose.orientation.x = current_acc;
+  vel_debug.publish(debug);
+
   double v0 = current_vel;
   double a0 = current_acc;
-  double time = 1;
+  double time = 1.5;
   double P[3] = {1.0,1.0,5.0};
   double SF0;
   
   ref_speed = v0;
   if (MotionMode == MotionState::GO){
-    SF0 = 5;
+    SF0 = 12;
     ref_speed = targetVel;
     return;
+    // if (abs(current_vel-targetVel) <= 2.5) {
+    //   return;
+    // } 
 
   }
   else if (MotionMode == MotionState::STOP){
@@ -908,6 +1076,13 @@ void VelocityPlanner::VelocitySmoother()
         }
         previous_step = false;
         fail2determine = false; 
+
+        if (ref_speed >= targetVel){
+          ref_speed = targetVel;
+        }
+        else if (ref_speed <= 0 ){
+          ref_speed = 0;
+        }
         break;
       }
       else if (k >= 50 || fail2solve) {
@@ -1034,7 +1209,7 @@ void VelocityPlanner::PredictedObjectsCallback(const autoware_msgs::DetectedObje
     {
       object_x = msg.objects[LeadVehicleInd].pose.position.x;
       object_y = msg.objects[LeadVehicleInd].pose.position.y;
-      double rel_vel = msg.objects[0].velocity.linear.x;
+      double rel_vel = msg.objects[LeadVehicleInd].velocity.linear.x;
     }
   }
   // if (Pedestrian){
@@ -1075,7 +1250,7 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
       return;
   }
   getLocalTraj = true;
-  MaxVel = 30/3.6;
+  MaxVel = 20/3.6;
 
   double dis = 0;
   double old_dis = 150;
@@ -1137,6 +1312,7 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
     passcrosswalk = false;
     passjudgeline = false;
     wait_tt = 0;
+    stop == false;
   }
   else if (PreviousMode == BehaviorState::StopAtGoalPos && PreviousMode != CurrentMode){
     new_behavior_mode = true;
@@ -1146,6 +1322,7 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
     passcrosswalk = false;
     passjudgeline = false;
     wait_tt = 0;
+    stop == false;
   } 
   else if (PreviousMode != CurrentMode){
     new_behavior_mode = true;
@@ -1156,6 +1333,7 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
     passjudgeline = false;
     misson_stop = false;
     wait_tt = 0;
+    stop == false;
   }
   else{
     new_behavior_mode = false;
@@ -1165,6 +1343,8 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
 
 void VelocityPlanner::BehaviorStateFactorCallback(const hmcl_msgs::BehaviorFactor& msg){
   LeadVehicleInd = msg.front_id;
+  LeadVehicleDist = msg.front_dist;
+  LeadVehicle = false;
   if (LeadVehicleInd != -1)
   {
     LeadVehicle = true;
@@ -1188,15 +1368,15 @@ void VelocityPlanner::viz_motionstate()
 
   motionstate.pose.position.x = current_x;
   motionstate.pose.position.y = current_y;
-  motionstate.pose.position.z = 2;
+  motionstate.pose.position.z = 5;
 
-  motionstate.scale.z = 8;
+  motionstate.scale.z = 7;
   motionstate.text = stateToStringMotion(MotionMode);
 
   motionstate.color.a = 1.0;
   motionstate.color.r = 0.0;
   motionstate.color.g = 1.0;
-  motionstate.color.b = 0.0;
+  motionstate.color.b = 1.0;
   
   motionstates.markers.push_back(motionstate);
 
@@ -1211,17 +1391,41 @@ void VelocityPlanner::viz_motionstate()
 
   behaviorstate.pose.position.x = current_x;
   behaviorstate.pose.position.y = current_y;
-  behaviorstate.pose.position.z = 8;
+  behaviorstate.pose.position.z = 11;
 
-  behaviorstate.scale.z = 5;
+  behaviorstate.scale.z = 4;
   behaviorstate.text = stateToStringBehavior(CurrentMode);
 
   behaviorstate.color.a = 1.0;
-  behaviorstate.color.r = 0.5;
+  behaviorstate.color.r = 0.0;
   behaviorstate.color.g = 1.0;
-  behaviorstate.color.b = 0.0;
+  behaviorstate.color.b = 1.0;
 
   motionstates.markers.push_back(behaviorstate);
+
+  visualization_msgs::Marker motion_debug;
+
+  motion_debug.header.frame_id = "map";
+  motion_debug.header.stamp = ros::Time();
+  motion_debug.ns = "motion_debug";
+  motion_debug.id = 0;
+  motion_debug.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+  motion_debug.action = visualization_msgs::Marker::ADD;
+
+  motion_debug.pose.position.x = current_x;
+  motion_debug.pose.position.y = current_y;
+  motion_debug.pose.position.z = 0;
+
+  motion_debug.scale.z = 3;
+  motion_debug.text = motionstate_debug;
+
+  motion_debug.color.a = 1.0;
+  motion_debug.color.r = 0.0;
+  motion_debug.color.g = 1.0;
+  motion_debug.color.b = 1.0;
+
+  motionstates.markers.push_back(motion_debug);
+
 
   motionstate_vis_pub.publish(motionstates);
 }

@@ -35,7 +35,7 @@
 using namespace std;
 
 void LowlevelCtrl::DrivingStateMachine() {
-  ros::Rate state_loop_rate(4); // rate of cmd   
+  ros::Rate state_loop_rate(5); // rate of cmd   
   // cout << "states : " << ND << " " << EB << " " << RS << endl;
   ROS_INFO_ONCE("start state machine");
   while (ros::ok())
@@ -56,6 +56,7 @@ void LowlevelCtrl::DrivingStateMachine() {
         // AWAIT BEHAVIOR & GO TO PARKING -> CHECK
         // AWAIT BEHAVIOR             
         scc_overwrite = true;
+        cout << "PARKING" << endl;
         if(abs(wheel_info_.wheel_speed) >= 0.1){          
           setToDrive();          
           setScc(-100);             
@@ -78,8 +79,10 @@ void LowlevelCtrl::DrivingStateMachine() {
       
       case DrivingState::Driving:
         scc_overwrite = false;
-        cout << "drive" << endl;
-        setToDrive(); 
+        if (gear_info_.gear != 1) {
+          setToDrive();
+        }
+        
       break;  
 
       case DrivingState::EmergencyStop:
@@ -113,33 +116,21 @@ void LowlevelCtrl::Test(){
   {
     ROS_INFO("test time = %d",lc);
     
-    if(lc == 0) {      
-      drivingState = DrivingState::Parking;      
-    }
+    // if(lc == 0) {      
+    //   drivingState = DrivingState::Parking;      
+    // }
 
-    if(lc == 50) {      
-      drivingState = DrivingState::DrivingStop;      
-    }
-
-    if(lc  > 50 && lc < 100) {
+    if(lc  > 0) {
       drivingState = DrivingState::Driving;      
     }
 
-    if(lc  > 100 && lc < 150) {
-      drivingState = DrivingState::DrivingStop;      
-    }
+    // if(lc  > 150 && lc < 200) {
+    //   drivingState = DrivingState::Parking;      
+    // }
 
-    if(lc  > 150 && lc < 200) {
-      drivingState = DrivingState::Parking;      
-    }
-
-    if(lc  > 200 && lc < 250) {
-      drivingState = DrivingState::Driving;      
-    }
-
-    if(lc  > 250 && lc < 251) {
-      drivingState = DrivingState::EmergencyStop;      
-    }
+    // if(lc  > 200 && lc < 250) {
+    //   drivingState = DrivingState::Driving;      
+    // }
     
     lc++; 
     test_loop_rate.sleep();

@@ -25,9 +25,8 @@
 using namespace std;
 using namespace Eigen;
 
-typedef enum{Init, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival} BehaviorState;
-
+typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
+            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange} BehaviorState;
 struct Sector 
 {
     geometry_msgs::Pose section{};
@@ -62,6 +61,7 @@ private:
     bool lc_flag = false;
     bool st_flag = false;
     bool vel_flag = false;
+    bool obs_flag = false;
     Sector current_pos;
 
     double min_lc_len, lc_prepare_dur, lc_duration, min_lc_vel, lc_dec, lane_width;
@@ -84,7 +84,6 @@ public:
     void PreparePhase();
     int FindIndex(const hmcl_msgs::Lane& lane, double dist, geometry_msgs::Pose pose);
     int FindClosest(const hmcl_msgs::Lane& lane, geometry_msgs::Pose pose);
-
     void viz_local(const hmcl_msgs::Lane& lane);
 
 };

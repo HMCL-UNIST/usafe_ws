@@ -155,9 +155,10 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
 
     case 0x604:
       // receive AD_SHIFT_INFO      
-      ROS_INFO_ONCE("Gear and Auto Ch OK");
+      ROS_INFO("Gear and Auto Ch OK");
       gear_info_.gear = (unsigned int)acan_data->data[0]; //AD_SHIFT_MODE_STAT       
-      vehicle_status_.auto_mode = (unsigned int)acan_data->data[1]; //AD_SHIFT_ACT_POS_STAT       
+      vehicle_status_.auto_mode = (unsigned int)acan_data->data[1]; //AD_SHIFT_ACT_POS_STAT    
+      // cout << "auto mode : " << (unsigned int)acan_data->data[1] << endl;
       vehicle_status_.gear_info = gear_info_;      
       break;
 

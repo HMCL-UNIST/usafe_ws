@@ -199,6 +199,7 @@ int previous_id = -1;
 bool lir_flag = false;
 int ped_count;
 
+
 std::string osm_file_name;
 double map_road_resolution;
 

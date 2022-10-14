@@ -27,9 +27,9 @@ catkin_package(
   std_msgs
   autoware_msgs
   tf 
+  v2x_msgs
   LIBRARIES
   dynamic_reconfigure
-  v2x_msgs
 )
 
 include_directories(
