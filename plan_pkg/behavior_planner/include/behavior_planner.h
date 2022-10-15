@@ -35,6 +35,52 @@ typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArriv
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
             Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange} BehaviorState;
 
+inline const char* stateToStringBehavior(BehaviorState v)
+
+{
+
+    switch (v)
+
+    {
+
+        case BehaviorState::Init2:   return "Init2";
+
+        case BehaviorState::Forward:   return "Forward";
+
+        case BehaviorState::Follow:   return "Follow";
+
+        case BehaviorState::StopAtStartPos:   return "StopAtStartPos";
+
+        case BehaviorState::StartArrival:   return "StartArrival";
+
+        case BehaviorState::RightTurn:   return "RightTurn";
+
+        case BehaviorState::LeftTurn:   return "LeftTurn";
+
+        case BehaviorState::Crosswalk:   return "Crosswalk";
+
+        case BehaviorState::Pedestrian:   return "Pedestrian";
+
+        case BehaviorState::FrontLuggage:   return "FrontLuggage";
+
+        case BehaviorState::FrontCarStop:   return "FrontCarStop";
+
+        case BehaviorState::LaneChange:   return "LaneChange";
+
+        case BehaviorState::SpeedBump:   return "SpeedBump";
+
+        case BehaviorState::StopAtGoalPos:   return "StopAtGoalPos";
+
+        case BehaviorState::GoalArrival:   return "GoalArrival";
+
+        case BehaviorState::ObstacleLaneChange: return "ObstacleLaneChange";
+
+        default:      return "[Unknown BehaviorState]";
+
+    }
+
+}
+
 class BehaviorPlanner
 {
     private:
@@ -61,9 +107,9 @@ class BehaviorPlanner
         bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone;
         bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
         short front_id, prevLaneID, unknown_id;
-        int nStore, countFront, countStationary, countSB;
+        int nStore, countFront, countStationary, countSB, countStart;
         bool stop_line_stop;
-        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getSPAT, getMission;
+        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3;
         bool inCW, frontPrev, stationaryPrev, sbPrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
@@ -79,6 +125,7 @@ class BehaviorPlanner
         void updateFactors();
         void updateBehaviorState();
         BehaviorState getCurrentBehavior();
+        bool calculateDistObjs(geometry_msgs::Point& pos);
         // void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
         void odometryCallback(const nav_msgs::Odometry& msg);
         void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);

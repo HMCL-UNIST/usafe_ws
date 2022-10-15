@@ -7,7 +7,7 @@ V2XPvd::V2XPvd(ros::NodeHandle& nh, ros::NodeHandle& nh_local):
     sub_pos = nh_local_.subscribe("/fix", 1, &V2XPvd::pos_callback, this);
     sub_dir = nh_.subscribe("/heading_ned", 1, &V2XPvd::dir_callback, this);
     sub_veh = nh_.subscribe("/vehcle_status", 1, &V2XPvd::veh_callback,this);
-    timer_ = nh_.createTimer(ros::Duration(0.001), &V2XPvd::connect_handler,this);    
+    timer_ = nh_.createTimer(ros::Duration(0.1), &V2XPvd::connect_handler,this);    
 
     ROS_INFO("V2X PVD Publisher Node Initialize");
 }
@@ -15,7 +15,8 @@ V2XPvd::V2XPvd(ros::NodeHandle& nh, ros::NodeHandle& nh_local):
 V2XPvd::~V2XPvd(){}
 
 void V2XPvd::connect_handler(const ros::TimerEvent& time){
-        V2XPvd::publisher();
+    // ROS_INFO("V2X PVD Pub");
+    V2XPvd::publisher();
 }
 
 
@@ -23,15 +24,15 @@ void V2XPvd::pos_callback(const sensor_msgs::NavSatFix::ConstPtr& nav_data){
     lat_c = nav_data -> latitude;
     lon_c = nav_data -> longitude;
     alt_c = nav_data -> altitude;
-    lat_c = lat_c*1e+7;
-    lon_c = lon_c*1e+7;
-    alt_c = alt_c*10;
+    lat_c = lat_c;
+    lon_c = lon_c;
+    alt_c = alt_c;
 }
 
 void V2XPvd::dir_callback(const std_msgs::Float64::ConstPtr& dir_data){
     dir_c = 90-(dir_data-> data - 0.3*180/M_PI);
     dir_c = dir_c/0.0125;
-    ROS_INFO("dir data %.2f", dir_c);
+    // ROS_INFO("dir data %.2f", dir_c);
 }
 
 void V2XPvd::veh_callback(const hmcl_msgs::VehicleStatus::ConstPtr& veh_data){
@@ -50,7 +51,7 @@ void V2XPvd::publisher(){
     V2X_pvd.vel = vel_c;
     V2X_pvd.gear = gear_c;
 
-    // printf("lat : %f , lon : %f , alt : %f , dir %f, vel : %f , gear %d \n", lat_c,lon_c,alt_c,dir_c,vel_c,gear_c);
+    // printf("pvd ::: lat : %f , lon : %f , alt : %f , dir %f, vel : %f , gear %d \n", lat_c,lon_c,alt_c,dir_c,vel_c,gear_c);
     pub_pvd.publish(V2X_pvd);
 }
 

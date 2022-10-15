@@ -2,8 +2,5 @@
 <launch>
     <node pkg="hmcl_v2x" type="spat_pub" name="spat_pub" output="screen">
     </node>
-    <node pkg="hmcl_v2x" type="pvd_pub" name="pvd_pub" output="screen">
-    </node>
-
-
+    
 </launch>

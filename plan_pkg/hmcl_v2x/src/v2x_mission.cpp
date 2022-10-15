@@ -21,6 +21,7 @@ void V2XMission::connect_handler(const ros::TimerEvent& time){
   
     if(sock_connect_state == -1)
     {
+        cout << " connect try" <<endl;
         Disconnect_socket();
         sock_connect_state = Connect_socket();
         buf.clear();
@@ -29,8 +30,11 @@ void V2XMission::connect_handler(const ros::TimerEvent& time){
     }
 
     unsigned char recvbuf[MAX_READ_LEN] = {0,};
+    cout <<"sock_coonect_state "<<sock_connect_state<<endl;
+    cout << "clnt_sock" << clnt_sock<<endl;
+    cout << "recvbuf" << clnt_sock<<endl;
     int len = recv(clnt_sock, recvbuf, sizeof(recvbuf), 0); //blocking function!
-
+    cout <<"len "<<len<<endl;
     if(len <= 0)
     {
         sock_connect_state = Disconnect_socket();
@@ -155,9 +159,8 @@ int V2XMission::RecvMissionStage1(unsigned char* buf)
     // writeMissionpos1(&msg);
     
     //select mission
-    // 0: wait , 1 : start, 2 : stop, 4 : test mode
-    // if(msg.mission_count > 0 && msg.mission_status == 4)
-    if(msg.mission_count > 0 && (msg.mission_status == 0 || msg.mission_status == 4) )
+    // 0: wait , 1 : start, 2 : stop, 4 : test mode)
+    if(msg.mission_count > 0 && msg.mission_status != 2 )
     {
         for(int i=0; i<msg.mission_count; i++)
         {

@@ -60,7 +60,7 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
     exit(EXIT_FAILURE);
   }
 
-  // dynamic reconfiguration
+  // // dynamic reconfiguration
   dynamic_reconfigure::Server<pid::PidConfig> config_server;
   dynamic_reconfigure::Server<pid::PidConfig>::CallbackType f;
   f = boost::bind(&PidObject::reconfigureCallback, this, _1, _2);
@@ -87,6 +87,9 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
 void PidObject::setpointCallback(const std_msgs::Float64& setpoint_msg)
 {
   setpoint_ = setpoint_msg.data;
+  if (setpoint_ < 2.0 && setpoint_ != 0) {
+    setpoint_ = 2;
+  }
   last_setpoint_msg_time_ = ros::Time::now();
   new_state_or_setpt_ = true;
 }
@@ -328,7 +331,7 @@ void PidObject::doCalcs()
     if (pid_enabled_ && (setpoint_timeout_ == -1 || 
                          (ros::Time::now() - last_setpoint_msg_time_).toSec() <= setpoint_timeout_))
     {
-      cout << control_effort_ << endl;
+      // cout << control_effort_ << endl;
       control_msg_.data = control_effort_;
 
       pid_msgs_.header.stamp = ros::Time::now();

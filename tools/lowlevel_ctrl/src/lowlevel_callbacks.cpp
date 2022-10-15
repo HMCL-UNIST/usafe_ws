@@ -63,36 +63,43 @@ void LowlevelCtrl::dyn_callback(lowlevel_ctrl::testConfig &config, uint32_t leve
   config.AD_GEAR_POS_CMD,
   config.AD_SCC_MODE_CMD);
 
-  AD_STR_MODE_CMD       = config.AD_STR_MODE_CMD;
-  AD_STR_POS_CMD        = config.AD_STR_POS_CMD;
-  AD_SCC_ACCEL_CMD      = config.AD_SCC_ACCEL_CMD;
-  AD_SCC_TAKEOVER_CMD   = config.AD_SCC_TAKEOVER_CMD;
-  AD_LEFT_TURNLAMP_STAT = config.AD_LEFT_TURNLAMP_STAT;
-  AD_RIGHT_TURNLAMP_STAT= config.AD_RIGHT_TURNLAMP_STAT;
-  AD_HAZARD_STAT        = config.AD_HAZARD_STAT;
-  AD_GEAR_POS_CMD       = config.AD_GEAR_POS_CMD;
-  AD_SCC_MODE_CMD       = config.AD_SCC_MODE_CMD;
 }
 
 void LowlevelCtrl::SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg){  
+  mtx_.lock();
   short steer_value = (short)((msg->steering_angle)*gear_ratio*180/PI*10)+steering_offset;
   setSteering(steer_value);    
+  mtx_.unlock();
 }
 
 void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort_input)
 {
-  mtx_.lock();
+  float control_data = control_effort_input.data;
+  if(control_data > -5.0 && control_data < 3.0){
+
+  
   if(drivingState == DrivingState::Driving && scc_overwrite == false) {
+      mtx_.lock();
       if(gear_info_.gear == 0){
         setScc(0);
       }else{
       double ctrl_effort;
       ctrl_effort = round(control_effort_input.data *100)/100;      
-      short target_accel = (ctrl_effort*100);        
+      short target_accel = (ctrl_effort*100);       
       setScc(target_accel);
+      // if (wheel_info_.wheel_speed > 0 && control_effort_input.data < 0 && target_vel == 0.0) {
+      //   setScc(-300);
+      //   ROS_INFO("Target vel 0 auto stop");
+      // }
+      // ROS_INFO("control effort callback");
       }      
+      mtx_.unlock();
   }   
-  mtx_.unlock();
+
+  }else{
+    ROS_WARN("Invalid control effort");
+  }
+  
 }
 
 void LowlevelCtrl::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
@@ -129,8 +136,7 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
   double steer_d;
   switch(msg_id) {    
     case 0x600:      
-      // receive AD_STR_INFO   
-      ROS_INFO_ONCE("Steer Ch OK");     
+      // receive AD_STR_INFO      
       steering_info_.header = acan_data->header;
       steering_info_.takeover = (unsigned int)acan_data->data[3]; //AD_STR_TAKEOVER_INFO 
       steering_info_.mode = (unsigned int)acan_data->data[0]; //AD_STR_MODE_STAT 
@@ -141,8 +147,7 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
       break;
 
     case 0x602:      
-      // receive AD_SCC_INFO    
-      ROS_INFO_ONCE("SCC Ch OK");
+      // receive AD_SCC_INFO      
       vehicle_status_.header = acan_data->header;
       // wheel_info_.header = acan_data->header;
       scc_info_.header = acan_data->header;
@@ -155,10 +160,8 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
 
     case 0x604:
       // receive AD_SHIFT_INFO      
-      ROS_INFO("Gear and Auto Ch OK");
       gear_info_.gear = (unsigned int)acan_data->data[0]; //AD_SHIFT_MODE_STAT       
-      vehicle_status_.auto_mode = (unsigned int)acan_data->data[1]; //AD_SHIFT_ACT_POS_STAT    
-      // cout << "auto mode : " << (unsigned int)acan_data->data[1] << endl;
+      vehicle_status_.auto_mode = (unsigned int)acan_data->data[1]; //AD_SHIFT_ACT_POS_STAT       
       vehicle_status_.gear_info = gear_info_;      
       break;
 
@@ -173,7 +176,6 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
       // receive TL_INFO
       // left_light_on = (unsigned int)acan_data->data[0]; //AD_HAZARD_STAT 
       // 1 left 2 right
-      ROS_INFO_ONCE("Turn Light Ch OK");
       light_on = (unsigned int)acan_data->data[1]; //AD_RIGHT_TURNLAMP_STAT  
       if(light_on == 1){
         vehicle_status_.light_info.left_light = 1;
@@ -204,7 +206,6 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
 
 void LowlevelCtrl::CcanCallback(can_msgs::FrameConstPtr ccan_data)
 {
-  // cout << "here" << endl;
   Ccan_recv_status = true;
   int msg_id = ccan_data->id;    
   float lat_acc, long_acc, yaw_rate;

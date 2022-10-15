@@ -21,7 +21,7 @@ VelocityPlanner::VelocityPlanner()
   ROS_INFO("Behavior Velocity Planner initialize");
 
   // Prameter 
-  nh_.param<double>("intersection_velocity", intersection_velocity, 5);
+  nh_.param<double>("intersection_velocity", intersection_velocity, 3);
   nh_.param<double>("speedbump_velocity", speedbump_velocity, 10);
   nh_.param<double>("max_lateral_acc", max_lat_acc, 4.0);
   nh_.param<double>("max_longitudinal_acc", max_long_acc, 1.5);
@@ -39,7 +39,7 @@ VelocityPlanner::VelocityPlanner()
   nh_.param<double>("d_time", d_time, 2.0);
   nh_.param<double>("d_safe", d_safe, 15.0);
   delay_step = (int)(delay_in_sec/dt);
-  runtime = 10;
+  runtime = 20;
 
   new_behavior_mode = false;
   passcrosswalk = false;
@@ -199,7 +199,7 @@ void VelocityPlanner::CheckMotionState()
         motionstate_debug = "FAIL TO FIND STOPLINE in Pedestrian: Just Stop!";
         // std::cout << "FAIL TO FIND STOPLINE in Pedestrian" << std::endl;
         passcrosswalk = true;
-        targetVel1 = 0;
+        targetVel = 0;
       }
       else{
         // if (find_crosswalk){
@@ -217,13 +217,15 @@ void VelocityPlanner::CheckMotionState()
         if (Dis <= stop_margin){
           MotionMode = MotionState::STOP;
           motionstate_debug = "At the stopline";
-          targetVel1 = 0;
+          targetVel = 0;
           passcrosswalk = true;
         }
         else{
-          MotionMode = MotionState::DECELERATE;
-          motionstate_debug = "Before the stop line: Distance is" + to_string(Dis);
-          targetVel1 = ACC();
+          // MotionMode = MotionState::DECELERATE;
+          // motionstate_debug = "Before the stop line: Distance is" + to_string(Dis);
+          // targetVel1 = ACC();
+          targetVel = 0;
+          MotionMode = MotionState::STOP;
         }
       }
     }
@@ -316,14 +318,15 @@ void VelocityPlanner::CheckMotionState()
      //3) Check the lead vehicle existence
     
     checkTrafficSignal(0);
-    double vel = Curvature();
+    double vel = 5.5/3.6;
+    // double vel = Curvature();
     
-    if (MaxVel <= vel){
-      vel = MaxVel;
-    }
-    else if (vel <= intersection_velocity/3.6){
-      vel = intersection_velocity/3.6;
-    }
+    // if ((7)/3.6 <= vel || isnan(vel)){
+    //   vel = (7)/3.6;
+    // }
+    // else if (vel <= 3/3.6){
+    //   vel = 3/3.6;
+    // }
 
     if (eventState == -1 || timing_min_End_Time == -1){
       MotionMode = MotionState::GO;
@@ -462,15 +465,16 @@ void VelocityPlanner::CheckMotionState()
     // timing_min_End_Time = junc1Signal.States[0].timing_min_End_Time;
 
     checkTrafficSignal(1);
-    double vel = Curvature();
-    ROS_INFO ("desired velocity is %f", vel);
+    double vel = 5.5/3.6;
+    // double vel = Curvature();
+    // ROS_INFO ("desired velocity is %f", vel);
 
-    if (MaxVel <= vel){
-      vel = MaxVel;
-    }
-    else if (vel <= intersection_velocity/3.6){
-      vel = intersection_velocity/3.6;
-    }
+    // if ((7)/3.6 <= vel || isnan(vel)){
+    //   vel = (7)/3.6;
+    // }
+    // else if (vel <= 3/3.6){
+    //   vel = 3/3.6;
+    // }
 
     if (eventState == -1 || timing_min_End_Time == -1){
       MotionMode = MotionState::GO;
@@ -569,7 +573,7 @@ void VelocityPlanner::CheckMotionState()
     targetVel = 0;
     MotionMode = MotionState::STOP; 
   }
-  else if(CurrentMode == BehaviorState::StartArrival || CurrentMode == BehaviorState::StopArrival ||
+  else if(CurrentMode == BehaviorState::StartArrival || CurrentMode == BehaviorState::GoalArrival ||
     CurrentMode == BehaviorState::FrontCarStop || CurrentMode == BehaviorState::FrontLuggage){
     targetVel = 0;
     MotionMode = MotionState::STOP;       
@@ -628,7 +632,7 @@ void VelocityPlanner::CheckMotionState()
       targetVel = targetVel1;
     }
   }
-  else if (CurrentMode ==  BehaviorState::LaneChange){
+  else if (CurrentMode ==  BehaviorState::LaneChange|| CurrentMode== BehaviorState::ObstacleLaneChange){
     targetVel = 10/3.6;
     MotionMode = MotionState::GO;   
   }
@@ -741,7 +745,7 @@ double VelocityPlanner::Curvature(){
     return MaxVel;
   }
 
-  for (int i = 0; i < traj.waypoints.size()-1; i++){
+  for (int i = 0; i < traj.waypoints.size()-2; i++){
     x = traj.waypoints[i].pose.pose.position.x;
     x_= traj.waypoints[i+1].pose.pose.position.x;
     y = traj.waypoints[i].pose.pose.position.y;
@@ -753,31 +757,50 @@ double VelocityPlanner::Curvature(){
     }
   }
 
-  if (target_id == 1){
-    x = traj.waypoints[target_id+1].pose.pose.position.x;
-    x_= traj.waypoints[target_id+2].pose.pose.position.x;
+  if (target_id <= 1){
+    x = traj.waypoints[target_id+2].pose.pose.position.x;
+    x_= traj.waypoints[target_id+4].pose.pose.position.x;
     _x = traj.waypoints[target_id].pose.pose.position.x;
-    y = traj.waypoints[target_id+1].pose.pose.position.y;
-    y_= traj.waypoints[target_id+2].pose.pose.position.y;
+    y = traj.waypoints[target_id+2].pose.pose.position.y;
+    y_= traj.waypoints[target_id+4].pose.pose.position.y;
     _y= traj.waypoints[target_id].pose.pose.position.y;
   }
   else{
     x = traj.waypoints[target_id].pose.pose.position.x;
-    x_= traj.waypoints[target_id+1].pose.pose.position.x;
-    _x = traj.waypoints[target_id-1].pose.pose.position.x;
+    x_= traj.waypoints[target_id+2].pose.pose.position.x;
+    _x = traj.waypoints[target_id-2].pose.pose.position.x;
     y = traj.waypoints[target_id].pose.pose.position.y;
-    y_= traj.waypoints[target_id+1].pose.pose.position.y;
-    _y= traj.waypoints[target_id-1].pose.pose.position.y;
+    y_= traj.waypoints[target_id+2].pose.pose.position.y;
+    _y= traj.waypoints[target_id-2].pose.pose.position.y;
   }
 
   double a = sqrt( pow(x - _x, 2) + pow(y - _y,2));
   double b = sqrt( pow( _x - x, 2) + pow(_y - y,2));
   double c = sqrt( pow( x_-_x, 2) + pow(y_ - _y,2));
   double q = (pow(a,2)+pow(b,2)-pow(c,2))/(2*a*b);
-  double R = c/(2*sqrt(1-pow(q,2)));
-  double curv = 1/R;
+  ROS_INFO("q is:: %f", q);
+  if (q>=1){
+    return speedbump_velocity /3.6;
+  }
 
-  return sqrt(max_lat_acc/curv);
+  double R = c/(2*sqrt(1-pow(q,2)));
+
+  if (R <= 0.01 || isnan(R)){
+    return speedbump_velocity/3.6;
+  }
+  double curv = 1/R;
+  if (curv <= 0.0001){
+    curv = 0.0001;
+  }
+
+  double vvel = sqrt(max_lat_acc/curv);
+
+  ROS_INFO("current curv is %f", curv);
+  ROS_INFO("current R is %f", R);
+  ROS_INFO("current desired vel for curv is %f", vvel);
+  
+
+  return vvel;
 }
 
 //STOPLINE FUNCTION
@@ -865,14 +888,14 @@ double VelocityPlanner::CheckLeadVehicle(){
   double DesiredDis = current_vel*d_time + d_safe;
   Dis = LeadVehicleDist;
   Dis = std::min(Dis, 150.0); 
-  double DesiredVel = object_vel; //- current_vel;    
+  double DesiredVel = current_vel+rel_vel; //- current_vel;    
 
   // velocity difference is not greater than the speed
   if(DesiredVel > 0){
-    DesiredVel = std::min(DesiredVel, MaxVel/3.6);
+    DesiredVel = std::min(DesiredVel, MaxVel);
   }    
   if(DesiredVel < 0){
-    DesiredVel = std::max(DesiredVel, -MaxVel/3.6);
+    DesiredVel = std::max(DesiredVel, 0.0);
   }
   targetVel = ACC();
   return targetVel;
@@ -891,7 +914,7 @@ double VelocityPlanner::ACC()
     computeMatrices();
 
     double vel_cmd = current_vel + acc_cmd * dt;
-    vel_cmd = std::min(std::max(vel_cmd,0.0), MaxVel/3.6);    
+    vel_cmd = std::min(std::max(vel_cmd,0.0), MaxVel);    
 
     auto end = std::chrono::steady_clock::now();
     std::chrono::duration<double> elapsed_seconds = end-start;
@@ -1209,7 +1232,7 @@ void VelocityPlanner::PredictedObjectsCallback(const autoware_msgs::DetectedObje
     {
       object_x = msg.objects[LeadVehicleInd].pose.position.x;
       object_y = msg.objects[LeadVehicleInd].pose.position.y;
-      double rel_vel = msg.objects[LeadVehicleInd].velocity.linear.x;
+      rel_vel = msg.objects[LeadVehicleInd].velocity.linear.x;
     }
   }
   // if (Pedestrian){

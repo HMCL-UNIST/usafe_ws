@@ -35,7 +35,7 @@
 using namespace std;
 
 void LowlevelCtrl::DrivingStateMachine() {
-  ros::Rate state_loop_rate(5); // rate of cmd   
+  ros::Rate state_loop_rate(4); // rate of cmd   
   // cout << "states : " << ND << " " << EB << " " << RS << endl;
   ROS_INFO_ONCE("start state machine");
   while (ros::ok())
@@ -56,39 +56,51 @@ void LowlevelCtrl::DrivingStateMachine() {
         // AWAIT BEHAVIOR & GO TO PARKING -> CHECK
         // AWAIT BEHAVIOR             
         scc_overwrite = true;
-        cout << "PARKING" << endl;
-        if(abs(wheel_info_.wheel_speed) >= 0.1){          
-          setToDrive();          
-          setScc(-100);             
+        if(abs(wheel_info_.wheel_speed) >= 0.05){          
+          setToDrive();   
+          short target_dcel = (-2*100);       
+          setScc(target_dcel);    
+          ROS_INFO("Decel for Parking");             
         }else{          
           setToParking();
-          setScc(0);                
+          short zero_dcel = (0*100);       
+          setScc(zero_dcel);                           
+            
         }
         
       break;
 
       case DrivingState::DrivingStop: 
         scc_overwrite = true;
-        setToDrive();        
-        if(abs(wheel_info_.wheel_speed) >= 0.1){
-          setScc(-100);          
+        if(gear_info_.gear == 0 ){
+          short zero_dcel = (0*100);       
+          setScc(zero_dcel);  
+          setToDrive();        
         }else{
-          setScc(0);                         
+          if(abs(wheel_info_.wheel_speed) > 0.0){
+            short target_dcel = (-3*100);       
+            setScc(target_dcel);                        
+            ROS_WARN("set -300");  
+          }else{
+            short zero_dcel = (0*100);       
+            setScc(zero_dcel);                                               
+          }  
         }
       break;  
       
       case DrivingState::Driving:
         scc_overwrite = false;
-        if (gear_info_.gear != 1) {
-          setToDrive();
-        }
-        
+          if(gear_info_.gear == 0 ){
+           setToDrive(); 
+           setScc(-100);     
+          }        
       break;  
 
       case DrivingState::EmergencyStop:
           scc_overwrite = true;
           if(abs(wheel_info_.wheel_speed) >= 0.1){
-            setScc(-500);          
+            short target_dcel = (-4*100);       
+            setScc(target_dcel);                
           }else{
             drivingState =DrivingState::Parking;      
           }         
@@ -116,24 +128,38 @@ void LowlevelCtrl::Test(){
   {
     ROS_INFO("test time = %d",lc);
     
-    // if(lc == 0) {      
-    //   drivingState = DrivingState::Parking;      
-    // }
+    if(lc == 0) {      
+      drivingState = DrivingState::Parking;      
+    }
 
-    if(lc  > 0) {
+    if(lc > 0 && lc < 50) {      
+      drivingState = DrivingState::Parking;      
+    }
+
+    if(lc  > 50 && lc < 100) {
       drivingState = DrivingState::Driving;      
     }
 
-    // if(lc  > 150 && lc < 200) {
-    //   drivingState = DrivingState::Parking;      
+    if(lc  > 100 && lc < 200) {
+      drivingState = DrivingState::Driving;      
+    }
+
+    // if(lc  > 200) {
+    //   drivingState = DrivingState::DrivingStop;      
     // }
 
-    // if(lc  > 200 && lc < 250) {
-    //   drivingState = DrivingState::Driving;      
-    // }
+  //  if(lc  > 200 && lc < 250) {
+  //     drivingState = DrivingState::Driving;      
+  //   }
+
+  //   if(lc  > 250 && lc < 251) {
+  //     drivingState = DrivingState::EmergencyStop;      
+  //   }
     
     lc++; 
     test_loop_rate.sleep();
-  } 
+  }
+  
+  
 }
 

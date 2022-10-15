@@ -89,7 +89,6 @@ bool Acan_recv_status;
 bool Ccan_recv_status;
 bool emergency_stop_activate;
 int emergency_count;
-int tttt = 0;
 
 unsigned int light_on;
 double target_vel;

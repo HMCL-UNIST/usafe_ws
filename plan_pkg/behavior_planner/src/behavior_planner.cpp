@@ -32,7 +32,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<int>("nStore", nStore, 10); //need to check
     nh_.param<float>("thresLC", thresLC, 0.8); // need to check if 1 is sufficient
     nh_.param<float>("thresStop", thresStop, 0.1); // need to check if 0.01 is sufficient
-    nh_.param<float>("thresCW", thresCW, 25);
+    nh_.param<float>("thresCW", thresCW, 15);
     nh_.param<float>("thresSB", thresSB, 15);
     nh_.param<float>("thresTurn", thresTurn, 25);
     nh_.param<float>("thresTL", thresTL, 25);
@@ -47,7 +47,7 @@ BehaviorPlanner::BehaviorPlanner(){
     // objs_sub = nh_.subscribe("/detection/lidar_tracker/objects",1, &BehaviorPlanner::objsCallback,this);
     objs_sub = nh_.subscribe("/tracking_car/objects",1, &BehaviorPlanner::objsCallback,this);
     sb_sub = nh_.subscribe("/tracking_traffic_sign/objects",1, &BehaviorPlanner::sbCallback,this);
-    lug_sub = nh_.subscribe("/tracking_luggage/objects",1, &BehaviorPlanner::luggageCallback,this);
+    lug_sub = nh_.subscribe("/tracking_unknown/objects",1, &BehaviorPlanner::luggageCallback,this);
     //goal_sub = nh_.subscribe("move_base_simple/goal", 1, &BehaviorPlanner::callbackGetGoalPose, this);
     start_goal_sub = nh_.subscribe("/start_goal_pose", 1, &BehaviorPlanner::v2xStartGoalCallback, this);
     v2x_spat_sub = nh_.subscribe("/SPAT",1, &BehaviorPlanner::v2xSPATCallback, this);
@@ -93,7 +93,9 @@ BehaviorPlanner::BehaviorPlanner(){
     getPose = false;
     getSpeed = false;
     getSGpos = false;
-    getSPAT = false;
+    getSPAT1 = false;
+    getSPAT2 = false;
+    getSPAT3 = false;
     getMission = false;
 
     // to velocity planner
@@ -115,6 +117,7 @@ BehaviorPlanner::BehaviorPlanner(){
     countFront = 0;
     countStationary = 0;
     countSB = 0;
+    countStart = 0;
     prevLaneID = -1;
     pedestrian = false;
 
@@ -135,7 +138,8 @@ BehaviorPlanner::~BehaviorPlanner(){
 void BehaviorPlanner::calculateLon(int n, float* psarr, hmcl_msgs::Lane &lane){
     psarr[0] = 0;
     for(int i = 1; i < n; i++){
-        float d = sqrt(pow(lane.waypoints[i].pose.pose.position.x - lane.waypoints[i-1].pose.pose.position.x,2)+pow(lane.waypoints[i].pose.pose.position.y - lane.waypoints[i-1].pose.pose.position.y,2));
+        float d = sqrt(pow(lane.waypoints[i].pose.
+pose.position.x - lane.waypoints[i-1].pose.pose.position.x,2)+pow(lane.waypoints[i].pose.pose.position.y - lane.waypoints[i-1].pose.pose.position.y,2));
         psarr[i] = psarr[i-1] + d;
     }
 }
@@ -239,12 +243,6 @@ void BehaviorPlanner::updateFactors(){
 
         // check if ego stop
         if(egoSpeed < thresStop) stopCheck = true;
-
-
-        
-        if(startArrivalSuccess == false){
-            approachToGoalPos = false;
-        }
     
 
         if(!getMission){
@@ -280,14 +278,14 @@ void BehaviorPlanner::updateFactors(){
         if(!getPedestrian){
             ROS_INFO("Can not receive pedestrian data");
         }
-        if(!getSPAT){
+        if(!getSPAT1 || !getSPAT2 || !getSPAT3){
             ROS_INFO("Can not receive SPAT data");
             break;
         }
 
         ROS_INFO("global lanes size: %d", globalLaneArray.lanes.size());
         ROS_INFO("ego lane wpts size: %d", globalLaneArray.lanes[0].waypoints.size());
-        if(globalLaneArray.lanes.size() < 1||globalLaneArray.lanes[0].waypoints.size()<1){
+        if(globalLaneArray.lanes.size() < 1 || globalLaneArray.lanes[0].waypoints.size()<1){
             ROS_INFO("global array doesn't contain waypoint");
             break;
         }
@@ -302,21 +300,50 @@ void BehaviorPlanner::updateFactors(){
         
         float sEgo, dsEgo, lEgo;
         float* psarr;
+
         float* psl;
 
-        int on = detectedObjects.objects.size();
-        int sbn = sb.objects.size();
-        int lugn = luggage.objects.size();
+        float thresDetect = 30;
+
+        int on = 0;
+        int rawon = detectedObjects.objects.size();
+        int sbn = 0;
+        int rawsbn = sb.objects.size();
+        int lugn = 0;
+        int rawlugn = luggage.objects.size();
+
+        for(int i = 0; i < rawon; i++){
+            if(sqrt(pow(detectedObjects.objects[i].pose.position.x,2)+pow(detectedObjects.objects[i].pose.position.y,2)) < thresDetect){
+                on++;
+            }
+        }
+        for(int i = 0; i < rawsbn; i++){
+            if(sqrt(pow(sb.objects[i].pose.position.x,2)+pow(sb.objects[i].pose.position.y,2)) < thresDetect){
+                sbn++;
+            }
+        }
+        for(int i = 0; i < rawlugn; i++){
+            if(sqrt(pow(luggage.objects[i].pose.position.x,2)+pow(luggage.objects[i].pose.position.y,2)) < thresDetect){
+                lugn++;
+            }
+        }
+
+
+
         float xObj[on], yObj[on], vxObj[on], vyObj[on];
         float sObj[on], lObj[on], dsObj[on], dlObj[on];
         float xSB[sbn], ySB[sbn];
         float xLug[lugn], yLug[lugn], vxLug[lugn], vyLug[lugn];
         float sLug[lugn], lLug[lugn], dsLug[lugn], dlLug[lugn];
         float distToGlobal = 6;
+        int idEgo = 0;
 
         for(int i = 0; i < n0; i++){
             float dGlobal = sqrt(pow(egoPose.position.x-globalLaneArray.lanes[0].waypoints[i].pose.pose.position.x,2)+pow(egoPose.position.y-globalLaneArray.lanes[0].waypoints[i].pose.pose.position.y,2));
-            if(distToGlobal > dGlobal) distToGlobal = dGlobal;
+            if(distToGlobal > dGlobal){
+                distToGlobal = dGlobal;
+                idEgo = i;
+            }
         }
         if(distToGlobal > 5){
             ROS_INFO("ego vehicle is not located on the global lane");
@@ -328,8 +355,9 @@ void BehaviorPlanner::updateFactors(){
             float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
             if(distToStart < thresDistSG){
                 approachToStartPos = true;
+                countStart++;
             }
-            if(distToStart < successDistSG && stopCheck ){
+            if(distToStart < successDistSG && stopCheck){
                 startArrivalCheck = true;
             }
             ROS_INFO("dist to START: %f, %f, %f", distToStart,startX, startY);
@@ -350,25 +378,40 @@ void BehaviorPlanner::updateFactors(){
         ROS_INFO("globalpose x: %f, y: %f",globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y);
 
         // convert relative coordinate to global coordinate
-        for(int i = 0; i < on; i++){
-            xObj[i] = egoPose.position.x + detectedObjects.objects[i].pose.position.x*cos(yaw)-detectedObjects.objects[i].pose.position.y*sin(yaw);
-            yObj[i] = egoPose.position.y + detectedObjects.objects[i].pose.position.x*sin(yaw)+detectedObjects.objects[i].pose.position.y*cos(yaw);
-            vxObj[i] = detectedObjects.objects[i].velocity.linear.x*cos(yaw) - detectedObjects.objects[i].velocity.linear.y*sin(yaw);
-            vyObj[i] = detectedObjects.objects[i].velocity.linear.x*sin(yaw) + detectedObjects.objects[i].velocity.linear.y*cos(yaw);
-            ROS_INFO("i:%d,x: %f,y: %f,vx: %f,vy: %f",i,xObj[i],yObj[i],vxObj[i],vxObj[i]);
+        int idxtmp = 0;
+        for(int i = 0; i < rawon; i++){
+            if(sqrt(pow(detectedObjects.objects[i].pose.position.x,2)+pow(detectedObjects.objects[i].pose.position.y,2)) < thresDetect){
+                xObj[idxtmp] = egoPose.position.x + detectedObjects.objects[i].pose.position.x*cos(yaw)-detectedObjects.objects[i].pose.position.y*sin(yaw);
+                yObj[idxtmp] = egoPose.position.y + detectedObjects.objects[i].pose.position.x*sin(yaw)+detectedObjects.objects[i].pose.position.y*cos(yaw);
+                vxObj[idxtmp] = detectedObjects.objects[i].velocity.linear.x*cos(yaw) - detectedObjects.objects[i].velocity.linear.y*sin(yaw);
+                vyObj[idxtmp] = detectedObjects.objects[i].velocity.linear.x*sin(yaw) + detectedObjects.objects[i].velocity.linear.y*cos(yaw);
+                idxtmp++;
+                ROS_INFO("i:%d,x: %f,y: %f,vx: %f,vy: %f",i,xObj[i],yObj[i],vxObj[i],vxObj[i]);
+            }
         }
-        for(int i = 0; i < lugn; i++){
-            xLug[i] = egoPose.position.x + luggage.objects[i].pose.position.x*cos(yaw)-luggage.objects[i].pose.position.y*sin(yaw);
-            yLug[i] = egoPose.position.y + luggage.objects[i].pose.position.x*sin(yaw)+luggage.objects[i].pose.position.y*cos(yaw);
-            vxLug[i] = luggage.objects[i].velocity.linear.x*cos(yaw) - luggage.objects[i].velocity.linear.y*sin(yaw);
-            vyLug[i] = luggage.objects[i].velocity.linear.x*sin(yaw) + luggage.objects[i].velocity.linear.y*cos(yaw);
-            ROS_INFO("i:%d,xLug: %f,yLug: %f,vxLug: %f,vyLug: %f",i,xLug[i],yLug[i],vxLug[i],vxLug[i]);
+        idxtmp = 0;
+        if(globalLaneArray.lanes[0].lane_id == 7){
+            for(int i = 0; i < rawlugn; i++){
+                if(sqrt(pow(luggage.objects[i].pose.position.x,2)+pow(luggage.objects[i].pose.position.y,2)) < thresDetect){
+                    xLug[idxtmp] = egoPose.position.x + luggage.objects[i].pose.position.x*cos(yaw)-luggage.objects[i].pose.position.y*sin(yaw);
+                    yLug[idxtmp] = egoPose.position.y + luggage.objects[i].pose.position.x*sin(yaw)+luggage.objects[i].pose.position.y*cos(yaw);
+                    vxLug[idxtmp] = luggage.objects[i].velocity.linear.x*cos(yaw) - luggage.objects[i].velocity.linear.y*sin(yaw);
+                    vyLug[idxtmp] = luggage.objects[i].velocity.linear.x*sin(yaw) + luggage.objects[i].velocity.linear.y*cos(yaw);
+                    ROS_INFO("i:%d,xLug: %f,yLug: %f,vxLug: %f,vyLug: %f",i,xLug[i],yLug[i],vxLug[i],vxLug[i]);
+                    idxtmp++;
+                }
+            }
+        }
+        idxtmp = 0;
+        for(int i = 0; i < rawsbn; i++){
+            if(sqrt(pow(sb.objects[i].pose.position.x,2)+pow(sb.objects[i].pose.position.y,2)) < thresDetect){
+                xSB[idxtmp] = egoPose.position.x + sb.objects[i].pose.position.x*cos(yaw)-sb.objects[i].pose.position.y*sin(yaw);
+                ySB[idxtmp] = egoPose.position.y + sb.objects[i].pose.position.x*sin(yaw)+sb.objects[i].pose.position.y*cos(yaw);
+                ROS_INFO("i:%d,xSB: %f,ySB: %f",i,xSB[i],ySB[i]);
+                idxtmp++;
+            }
         }
         for(int i = 0; i < sbn; i++){
-            xSB[i] = egoPose.position.x + sb.objects[i].pose.position.x*cos(yaw)-sb.objects[i].pose.position.y*sin(yaw);
-            ySB[i] = egoPose.position.y + sb.objects[i].pose.position.x*sin(yaw)+sb.objects[i].pose.position.y*cos(yaw);
-            ROS_INFO("i:%d,xSB: %f,ySB: %f",i,xSB[i],ySB[i]);
-
             // calculate distance to speed bump
             double old_dis = 100;
             double dis = 0;
@@ -421,11 +464,12 @@ void BehaviorPlanner::updateFactors(){
         sEgo = slEgo[0];
         lEgo = slEgo[1];
         dsEgo = egoSpeed;
-        ROS_INFO("egopose s: %f, l: %f, dsEgo: %f",sEgo,lEgo, dsEgo);
+        ROS_INFO("egopose s: %f, l: %f, dsEgo: %f", sEgo, lEgo, dsEgo);
 
 
         // calculate Frenet coordinate of objects
         psl = slObj;
+        minFront = 50;
         for(int i = 0; i < on; i++){
             psarr = sarr0;
             this->calculateFrenet(n0, psarr, xObj[i], yObj[i], vxObj[i], vyObj[i], psl, globalLaneArray.lanes[0]);
@@ -444,23 +488,26 @@ void BehaviorPlanner::updateFactors(){
                     frontCar = true;
                 }
             }
-        } 
-        for(int i = 0; i < lugn; i++){
-            psarr = sarr0;
-            this->calculateFrenet(n0, psarr, xLug[i], yLug[i], vxLug[i], vyLug[i], psl, globalLaneArray.lanes[0]);
-            sLug[i] = slObj[0];
-            lLug[i] = slObj[1];
-            dsLug[i] = slObj[2];
-            dlLug[i] = slObj[3];
-            ROS_INFO("i:%d,sLug: %f,lLug: %f,vx: %f,vy: %f",i,sLug[i],lLug[i],dsLug[i],dlLug[i]);
-            if(abs(lLug[i]) <= wLane/2){
-                // front luggage
-                if(sLug[i]-sEgo < unknownFront && sLug[i]-sEgo > 0){
-                    unknownFront = sLug[i]-sEgo;
-                    luggageDrop = true;
+        }
+        if(globalLaneArray.lanes[0].lane_id == 7){ //for Rehearsal
+            unknownFront = 50;
+            for(int i = 0; i < lugn; i++){
+                psarr = sarr0;
+                this->calculateFrenet(n0, psarr, xLug[i], yLug[i], vxLug[i], vyLug[i], psl, globalLaneArray.lanes[0]);
+                sLug[i] = slObj[0];
+                lLug[i] = slObj[1];
+                dsLug[i] = slObj[2];
+                dlLug[i] = slObj[3];
+                ROS_INFO("i:%d,sLug: %f,lLug: %f,vx: %f,vy: %f",i,sLug[i],lLug[i],dsLug[i],dlLug[i]);
+                if(abs(lLug[i]) <= wLane/2){
+                    // front luggage
+                    if(sLug[i]-sEgo < unknownFront && sLug[i]-sEgo > 0){
+                        unknownFront = sLug[i]-sEgo;
+                        luggageDrop = true;
+                    }
                 }
             }
-        }  
+        } 
 
         
         // calculate safe distance and check if it is stationary car
@@ -508,7 +555,7 @@ void BehaviorPlanner::updateFactors(){
 
         // compute dist to crosswalk
         float distToCW = -1;
-        for(int i = 0; i < n0; i++){
+        for(int i = idEgo; i < n0; i++){
             if(globalLaneArray.lanes[0].waypoints[i].Crosswalk == true){
                 float cwX, cwY;
                 cwX = globalLaneArray.lanes[0].waypoints[i].pose.pose.position.x-egoPose.position.x;
@@ -522,7 +569,7 @@ void BehaviorPlanner::updateFactors(){
         }
 
         // decide if ego is in crosswalk
-        if(globalLaneArray.lanes[0].waypoints[0].Crosswalk == true){
+        if(globalLaneArray.lanes[0].waypoints[idEgo].Crosswalk == true){
             inCW = true;
         }
         ROS_INFO("distToCW: %f,inCW: %d, crosswalkPass: %d", distToCW, inCW, crosswalkPass);
@@ -532,7 +579,7 @@ void BehaviorPlanner::updateFactors(){
         bool isJunc = false;
         float dJunc = -1, lenJunc = -1;
         float StrX, StrY, JuncX, JuncY;
-        for(int i = 0; i < n0; i++){    
+        for(int i = idEgo; i < n0; i++){    
             if(globalLaneArray.lanes[0].waypoints[i].Junction == true){
                 if(firstIdJunc == -1){
                     firstIdJunc = i;
@@ -548,8 +595,8 @@ void BehaviorPlanner::updateFactors(){
             } 
         }
         if(isJunc){
-            StrX = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.x-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-            StrY = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.y-globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            StrX = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.x-globalLaneArray.lanes[0].waypoints[idEgo].pose.pose.position.x;
+            StrY = globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.y-globalLaneArray.lanes[0].waypoints[idEgo].pose.pose.position.y;
             dJunc = sqrt(pow(StrX,2)+pow(StrY,2));
             ROS_INFO("StrX: %f, StrY: %f", StrX, StrY);
         }
@@ -579,12 +626,12 @@ void BehaviorPlanner::updateFactors(){
                 leftTurn = false;
                 rightTurn = true;
             }
-            else if(globalLaneArray.lanes[0].waypoints[0].Junction == false){
+            else if(globalLaneArray.lanes[0].waypoints[idEgo].Junction == false){
                 leftTurn = false;
                 rightTurn = false;
             }
         
-            ROS_INFO("isJunc: %f, dJunc: %f", isJunc, dJunc);
+            ROS_INFO("isJunc: %d, dJunc: %f", isJunc, dJunc);
             ROS_INFO("first: %d, last: %d", firstIdJunc, lastIdJunc);
             ROS_INFO("hGap: %f, lflag: %d, rflag: %d", hGap, leftTurn, rightTurn);
         }
@@ -595,7 +642,6 @@ void BehaviorPlanner::updateFactors(){
         if(leftTurn || rightTurn) turn = true;
 
         // check if Lane Change is essential
-        ROS_INFO("%d",globalLaneArray.lanes[0].lane_change_flag);
         if(globalLaneArray.lanes[0].lane_change_flag == true){
             essentialLaneChange = true;
             if(prevLaneID == -1){
@@ -609,7 +655,6 @@ void BehaviorPlanner::updateFactors(){
             laneChangeDone = true;
             prevLaneID = -1;
         }
-
         // get traffic light state correspond to current lane and ego 
         // need to add signalID correctly to the map 
         // int signal_id = -1;
@@ -658,6 +703,7 @@ void BehaviorPlanner::updateFactors(){
         }
         // else if(signal_id == 6 && leftTurn){
         //     eventState = junc2Signal.States[4].eventState;
+
         //     timing_min_End_Time = junc2Signal.States[4].timing_min_End_Time;
         // }
         else if(signal_id == 6){
@@ -671,6 +717,7 @@ void BehaviorPlanner::updateFactors(){
         else if(signal_id == 7){
             eventState = junc2Signal.States[6].eventState;
             timing_min_End_Time = junc2Signal.States[6].timing_min_End_Time;
+
         }
         // else if(signal_id == 8 && leftTurn){
         //     eventState = junc2Signal.States[10].eventState;
@@ -696,6 +743,7 @@ void BehaviorPlanner::updateFactors(){
             eventState = junc3Signal.States[3].eventState;
             timing_min_End_Time = junc3Signal.States[3].timing_min_End_Time;
         }
+        ROS_INFO("dkkdkdkk");
         if(essentialLaneChange == false && turn == false && signal_id != -1 && dJunc < thresTL && dJunc > 0){
             // red light
             if(eventState == 3){
@@ -718,6 +766,9 @@ void BehaviorPlanner::updateFactors(){
 
         break;
     }
+    if(trafficLightStop){
+        speedBumpSign = false;
+    }
     
     if(approachToCrosswalk == false && inCW == false) crosswalkPass = true;
     if(turn || trafficLightStop) approachToCrosswalk = false;
@@ -726,6 +777,10 @@ void BehaviorPlanner::updateFactors(){
 
     if(startArrivalSuccess){
         approachToStartPos = false;
+    }
+
+    if(countStart > runRate*30){
+        startArrivalSuccess = true;
     }
 
     if(currentMission==MissionState::DriveToGoalPos){
@@ -946,6 +1001,7 @@ void BehaviorPlanner::updateBehaviorState(){
     if(currentBehavior == BehaviorState::TrafficLightStop || currentBehavior == BehaviorState::Crosswalk || currentBehavior == BehaviorState::Pedestrian){
         NormalDrive = true;
     }
+    std::cout<< stateToStringBehavior(currentBehavior) <<std::endl;
     behavior_msg.data = currentBehavior;
     b_state_pub.publish(behavior_msg);
 }
@@ -994,15 +1050,17 @@ void BehaviorPlanner::v2xStartGoalCallback(const hmcl_msgs::MissionWaypoint& msg
 }
 
 void BehaviorPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
-    getSPAT = true;
     //traffic_signal
     if(msg.id == 1){
+        getSPAT1 = true;
         junc1Signal = msg;
     }
     else if(msg.id == 2){
+        getSPAT2 = true;
         junc2Signal = msg;
     }
     else if(msg.id == 3){
+        getSPAT3 = true;
         junc3Signal = msg;
     }
 }

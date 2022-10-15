@@ -8,13 +8,28 @@ V2XInfo::V2XInfo(ros::NodeHandle& nh):
 {  
     pub_spat = nh_.advertise<v2x_msgs::SPAT>("SPAT", 10);
     sub_pvd = nh_.subscribe("/pvd", 1, &V2XInfo::car_info_callback,this);
+    sub_dir = nh_.subscribe("/heading_ned", 1, &V2XInfo::dir_callback, this);
 
-    ros::Rate loop_rate(1000);
     txPvd = get_clock_time();
     txBsm = get_clock_time();
 
     ROS_INFO("V2X Info Publisher Initialization");
+    boost::thread while_loop(&V2XInfo::whilecallback,this); 
+    
+}
 
+
+
+V2XInfo::~V2XInfo()
+{}
+
+void V2XInfo::dir_callback(const std_msgs::Float64::ConstPtr& msg){
+    ROS_INFO("direction call back");
+}
+
+
+void V2XInfo::whilecallback(){
+ros::Rate loop_rate(10);
     while(ros::ok())
     {    
         // std::cout << "Debugging \n" <<std::endl;
@@ -35,23 +50,20 @@ V2XInfo::V2XInfo(ros::NodeHandle& nh):
             } 
         }
         if (((storedSize = receive_from_obu(sockFd, rxBuffer, OBU_RECEIVE_BUFFER_SIZE, storedSize, rxUperBuffer, MAX_UPER_SIZE, &uperSize)) < 0) || (tx_v2i_pvd(sockFd,&txPvd) < 0))
-            // (tx_v2v_bsm(sockFd,&txBsm) < 0) || 
         {
             // OBU와 TCP 연결이 끊어진 경우, 연결 재시도
             close(sockFd);
             sockFd = -1;
+            loop_rate.sleep();
             continue;
         }
         
-        // std::cout <<"Now, It's working :: Parsing  \n"<< std::endl;
-
+        std::cout <<"Now, It's working :: Parsing  \n"<< std::endl;
         parse_wave_msg();
         loop_rate.sleep();
     }
 }
 
-V2XInfo::~V2XInfo()
-{}
 
 unsigned long long V2XInfo::get_clock_time(){  
     struct timespec ts;
@@ -207,6 +219,7 @@ int V2XInfo::tx_v2i_pvd(int sockFd, unsigned long long *time)
     MessageFrame_t msg;
     char uper[MAX_UPER_SIZE]; 
     cur_pTimeInfo = localtime(&rawTime);
+    cout << "PVD:::: ::::: ::: :: ::: :: "<<endl;
 
     fill_j2735_pvd(&msg, cur_lat,  cur_lon,  cur_alt,  cur_dir,  cur_vel , cur_gear,
                         prev_lat, prev_lon, prev_alt, prev_dir, prev_vel, prev_gear,
@@ -255,7 +268,7 @@ void V2XInfo::parse_wave_msg()
         printf("[INFO]  WAVE Message Received\n");
         MessageFrame_t *msgFrame = NULL;
         std_msgs::String msg;
-
+// 
         decode_j2735_uper(msgFrame, rxUperBuffer, uperSize);
         ASN_STRUCT_FREE(asn_DEF_MessageFrame, msgFrame);
     }
@@ -272,7 +285,7 @@ int V2XInfo::decode_j2735_uper(MessageFrame_t *dst, char *src, int size)
         return res;    
     res = ret.consumed;
 
-    // asn_fprint(stdout,&asn_DEF_MessageFrame,dst);
+    asn_fprint(stdout,&asn_DEF_MessageFrame,dst);
     parse_decoded_j2735(dst);
 
     return res;
@@ -280,17 +293,17 @@ int V2XInfo::decode_j2735_uper(MessageFrame_t *dst, char *src, int size)
 
 void V2XInfo::parse_decoded_j2735(MessageFrame_t *msg)
 {   
+    cout << msg->messageId <<endl; 
     switch(msg->messageId){
         case DSRC_ID_BSM:
-            // cout << ">> Parse J2735 : BSM\n"<< endl;
+            cout << ">> Parse J2735 : BSM\n"<< endl;
             break;
         case DSRC_ID_SPAT:
-            // cout << ">> Parse J2735 : SPAT\n"<< endl;
+            cout << ">> Parse J2735 : SPAT\n"<< endl;
             parse_spat(&msg->value.choice.SPAT);
             break;  
         case DSRC_ID_MAP:
-            // cout << ">> Parse J2735 : MAP\n"<< endl;
-            // parse_map(&msg->value.choice.MapData);
+            cout << ">> Parse J2735 : MAP\n"<< endl;
             break;
     }
 }
@@ -306,6 +319,7 @@ void V2XInfo::parse_map(MapData_t *map)
 
 void V2XInfo::parse_spat(SPAT_t *spat)
 {
+    ROS_INFO(" parse spat");
     for (int i = 0; i < spat->intersections.list.count; i++)
     {
         struct IntersectionState *ptr = spat->intersections.list.array[i]; 
@@ -349,20 +363,23 @@ int V2XInfo::encode_j2735_uper(char *dst, unsigned short dstLen, MessageFrame_t 
     }
 }
 
-void V2XInfo::car_info_callback(const v2x_msgs::PVD& msg)
+void V2XInfo::car_info_callback(const v2x_msgs::PVDConstPtr& msg)
 {
+    ROS_INFO("car info callback");
     prev_lat=cur_lat;
     prev_lon=cur_lon;
     prev_alt=cur_alt;
     prev_dir=cur_dir;
     prev_vel=cur_vel;
     prev_gear=cur_gear;
-    cur_lat = msg.lat;
-    cur_lon = msg.lon; 
-    cur_alt = msg.alt;
-    cur_dir = msg.dir;
-    cur_vel = msg.vel;
-    cur_gear = msg.gear;
+    cur_lat = msg->lat*1e7;
+    cur_lon = msg->lon*1e7; 
+    cur_alt = msg->alt*10;
+    cur_dir = msg->dir;
+    cur_vel = msg->vel;
+    cur_gear = msg->gear;
+
+    printf("v2x_info :::; long : %f , laT :  %f , alt : %f ,dir : %f , vel %f, gear %d sec \n", cur_lat, cur_lon, cur_alt, cur_dir, cur_vel, cur_gear);
 
     prev_pTimeInfo = cur_pTimeInfo;
     cur_pTimeInfo = localtime(&rawTime);

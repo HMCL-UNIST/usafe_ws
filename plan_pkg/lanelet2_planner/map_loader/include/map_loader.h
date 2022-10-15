@@ -151,7 +151,7 @@ ros::NodeHandle nh_, nh_p_, nh_local_path_;
 ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub, ped_cw_pub;
 ros::Publisher lir_pub;
 ros::Publisher way_pub;
-ros::Publisher mission_pub, mission_pt_pub, mission_pts_pub;
+ros::Publisher mission_pub, mission_pt_pub, mission_pts_pub, ped_pts_pub;
 ros::Subscriber mobileye_sub, ped_sub;
 ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub, v2x_mission_sub;
 ros::Subscriber lanechange_left_sub,lanechange_right_sub;
@@ -166,7 +166,7 @@ bool getV2Xinfo;
 hmcl_msgs::MissionWaypoint mission_pt;
 v2x_msgs::Mission1state MissionStates;
 v2x_msgs::Mission1 Mission_msg;
-visualization_msgs::MarkerArray mission1_marker_array;
+visualization_msgs::MarkerArray mission1_marker_array, ped_marker_array;
 
 autoware_msgs::DetectedObjectArray objects, prev_objects, ped_array; 
 
@@ -192,7 +192,7 @@ double max_dist, max_dist_vel;
 bool global_traj_available;
 bool goal_available;
 bool lir_available = false;
-bool ped_available = false, ped_in;
+bool ped_available = false, ped_in=false, ped_tmp=false;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
 
 geometry_msgs::Pose pose_a, pose_b;
@@ -313,6 +313,7 @@ void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_
 void fix_and_save_osm();
 void mission_state(const std::vector<std::pair<double,double>>  mission_positions);
 void mission1Callback(const v2x_msgs::Mission1& msg, const std::vector<std::pair<double,double>>  mission_positions);
+void ped_state(const autoware_msgs::DetectedObjectArray& pobjects);
 
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg);
@@ -346,6 +347,5 @@ void pub_autoware_traj(const hmcl_msgs::Lane& lane);
 void v2xMissionCallback(const v2x_msgs::Mission1& msg);
 
 };
-
 
 

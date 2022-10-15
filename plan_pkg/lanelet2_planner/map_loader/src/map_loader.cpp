@@ -71,6 +71,7 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   mission_pub= nh_.advertise<hmcl_msgs::MissionWaypoint>("/start_goal_pose",2,true);
   mission_pt_pub= nh_.advertise<visualization_msgs::Marker>("/mission_pt",2,true);
   mission_pts_pub= nh_.advertise<visualization_msgs::Marker>("/mission_pts",2,true);
+  ped_pts_pub= nh_.advertise<visualization_msgs::MarkerArray>("/ped_pt",2,true);
   
   max_dist = 10000;
   
@@ -483,16 +484,17 @@ void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){
 }
 
 void MapLoader::PedCallback(const autoware_msgs::DetectedObjectArray &msg){
-  ped_array.objects.clear();
-  ROS_INFO("pedestrian");
+ped_array.objects.clear();
+  // ROS_INFO("pedestrian");
   for(int i=0; i<msg.objects.size(); i++){
     if(msg.objects[i].label == "pedestrian"){
-      ROS_INFO("pedestrian");
+      // ROS_INFO("pedestrian");
       ped_array.objects.push_back(msg.objects[i]);
     }
   }
   if(ped_array.objects.size() > 0){
     ped_available = true;
+    ped_state(ped_array);
   }
 }
 
@@ -513,7 +515,7 @@ void MapLoader::lane_in_range(){
   if (previous_id == -1){
     previous_id = cl_lane_idx;
   }
-  else if(abs(cl_lane_idx - previous_id) > 5){
+  else if(abs(cl_lane_idx - previous_id) >3 ){
     return;
   } 
 
@@ -816,26 +818,87 @@ void MapLoader::wp_inArea(){
     }
   }  
 }
+void MapLoader::ped_state(const autoware_msgs::DetectedObjectArray& pobjects)
+{
+  // ROS_INFO(">>>>>>>>>>>>>>>>>"  );
+  ped_marker_array.markers.clear();
+  if (pobjects.objects.size()> 0 && pose_init){
+    for (int i = 0; i < pobjects.objects.size(); i++)
+    { 
+      visualization_msgs::Marker marker_tmp;
+      marker_tmp.header.stamp = ros::Time::now();
+      marker_tmp.header.frame_id = "map" ;
+      marker_tmp.id = 10000+i;
+      marker_tmp.ns = "pedd";
+      marker_tmp.type = visualization_msgs::Marker::CUBE;
+      marker_tmp.action = visualization_msgs::Marker::ADD;
+
+      float x,y;
+      double ped_x = pobjects.objects[i].pose.position.x;
+      double ped_y = pobjects.objects[i].pose.position.y;
+      geometry_msgs::Pose egoPose = cur_pose;
+      float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
+      double xx =egoPose.position.x + ped_x*cos(yaw) - ped_y*sin(yaw);
+      double yy =egoPose.position.y + ped_x*sin(yaw) + ped_y*cos(yaw);
+    
+      marker_tmp.pose.position.x = xx; 
+      marker_tmp.pose.position.y = yy;   
+      // marker_tmp.pose.position.x = pobjects.objects[i].pose.position.x;
+      // marker_tmp.pose.position.y = pobjects.objects[i].pose.position.y;        
+      marker_tmp.pose.position.z = 0.2;
+      marker_tmp.pose.orientation.w = 1.0;
+      // marker_tmp.points[0].x = ped_x; 
+      // marker_tmp.points[0].y = ped_y;        
+      // marker_tmp.points[0].z = 0.2;
+      marker_tmp.color.r = 0.0;
+      marker_tmp.color.g = 1.0;
+      marker_tmp.color.b = 1.0;
+      marker_tmp.scale.x = 2.0;
+      marker_tmp.scale.y = 2.0;
+      marker_tmp.scale.z = 2.0;
+
+      marker_tmp.color.a = 1.0;
+      // marker_tmp.scale.z = 1.0;
+      // marker_tmp.lifetime = ros::Duration(1.0);
+      ped_marker_array.markers.push_back(marker_tmp);
+
+    }
+  }
+  ped_pts_pub.publish(ped_marker_array);
+}
 
 void MapLoader::ped_inCw(){
   if(ped_available && pose_init){
     for(int i=0; i < ped_array.objects.size(); i++){
+      // ROS_INFO("HERE:::::::::::oject size is %d", ped_array.objects.size());
       float x,y;
       double ped_x = ped_array.objects[i].pose.position.x;
       double ped_y = ped_array.objects[i].pose.position.y;
       geometry_msgs::Pose egoPose = cur_pose;
       float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
       x=egoPose.position.x + ped_x*cos(yaw) - ped_y*sin(yaw);
-      y=egoPose.position.y + ped_y*sin(yaw) + ped_y*cos(yaw);
-      for(int j=0; crosswalk.size(); j++){
+      y=egoPose.position.y + ped_x*sin(yaw) + ped_y*cos(yaw);
+
+
+      double dis2ego = sqrt(pow(x-odom_x,2)+pow(y-odom_y,2));
+      ROS_INFO("Distance to Ego is:::::  %f", dis2ego);
+      if (dis2ego >= 30){
+        continue;
+      }
+    
+
+      for(int j=0; j<crosswalk.size(); j++){
         lanelet::Area cross_tmp = crosswalk[j];
         if(lanelet::geometry::inside(cross_tmp,lanelet::BasicPoint2d(x,y))){
           ped_in = true;
-          ROS_INFO("pedestrain is in");
+          ROS_INFO("HERE:::::::::::pedestrain is in");
           break;
         }
         else{
           ped_in = false;
+          if (dis2ego <= 5){
+            ped_in = true;
+          }
         }
       }
       if(ped_in){
@@ -850,23 +913,23 @@ void MapLoader::ped_inCw(){
 }
 
 void MapLoader::ped_inCw_handler(const ros::TimerEvent& time){
-  bool ped_tmp = false;
   ped_inCw();
   if(ped_in){
-    ped_tmp = ped_in;
+    ped_tmp = true;
     ped_count = 0;
     ped_cw.data = true;
   }
-  if(!ped_in && ped_tmp){
+  else if(ped_tmp){
     ped_count++;
     if(ped_count > 30){
       ped_cw.data=false;
+      ped_tmp = false;
     }
     else{
       ped_cw.data=true;
     }
   }
-  if(!ped_in && !ped_tmp){
+  else{
     ped_cw.data = false;
   }
   ped_cw_pub.publish(ped_cw);
@@ -1088,17 +1151,17 @@ void MapLoader::v2x_goal_nodes(){
   std::vector<std::pair<double,double>> lla;
   
   std::pair<double, double> n;
-  // for (int i=0; i < MissionStates.States.size(); i++){
-  //   n = {MissionStates.States[i].route_node_pos_lon, MissionStates.States[i].route_node_pos_lat};
-  //   lla.push_back(n);
+  for (int i=0; i < MissionStates.States.size(); i++){
+    n = {MissionStates.States[i].route_node_pos_lon, MissionStates.States[i].route_node_pos_lat};
+    lla.push_back(n);
 
-  //   if (MissionStates.States[i].route_node_type == 1){
-  //     start_idx = i;
-  //   }
-  //   else if (MissionStates.States[i].route_node_type == 2){
-  //     end_idx = i;
-  //   }
-  // }
+    if (MissionStates.States[i].route_node_type == 1){
+      start_idx = i;
+    }
+    else if (MissionStates.States[i].route_node_type == 2){
+      end_idx = i;
+    }
+  }
   //TEST1
   // std::pair<double, double> n1 = {128.4007912, 35.6473269};
   // std::pair<double, double> n2 = {128.4004897, 35.6475503};
@@ -1131,26 +1194,26 @@ void MapLoader::v2x_goal_nodes(){
   // lla.push_back(n21); lla.push_back(n22);
 
   //Rehearsal 1
-  std::pair<double, double> n1 = {128.4007912, 35.6473269};
-  std::pair<double, double> n2 = {128.4004897, 35.6475503};
-  std::pair<double, double> n3 = {128.400041, 35.6476327};
-  std::pair<double, double> n4 = {128.3994251, 35.6479669};
-  std::pair<double, double> n5 = {128.3991161, 35.6484246};
-  std::pair<double, double> n6 = {128.3994841, 35.6483555};
-  std::pair<double, double> n7 = {128.3998964, 35.6479855};
-  std::pair<double, double> n8 = {128.4000641, 35.6476466};
-  std::pair<double, double> n9 = {128.3994474, 35.6479488};
-  std::pair<double, double> n10 = {128.3984803, 35.6487352};
-  std::pair<double, double> n11 = {128.398201, 35.6492639};
-  std::pair<double, double> n12 = {128.3984808, 35.6492473};
-  std::pair<double, double> n13 = {128.3990016, 35.6487824};
-  std::pair<double, double> n14 = {128.3995602, 35.648287};
+  // std::pair<double, double> n1 = {128.4007912, 35.6473269};
+  // std::pair<double, double> n2 = {128.4004897, 35.6475503};
+  // std::pair<double, double> n3 = {128.400041, 35.6476327};
+  // std::pair<double, double> n4 = {128.3994251, 35.6479669};
+  // std::pair<double, double> n5 = {128.3991161, 35.6484246};
+  // std::pair<double, double> n6 = {128.3994841, 35.6483555};
+  // std::pair<double, double> n7 = {128.3998964, 35.6479855};
+  // std::pair<double, double> n8 = {128.4000641, 35.6476466};
+  // std::pair<double, double> n9 = {128.3994474, 35.6479488};
+  // std::pair<double, double> n10 = {128.3984803, 35.6487352};
+  // std::pair<double, double> n11 = {128.398201, 35.6492639};
+  // std::pair<double, double> n12 = {128.3984808, 35.6492473};
+  // std::pair<double, double> n13 = {128.3990016, 35.6487824};
+  // std::pair<double, double> n14 = {128.3995602, 35.648287};
 
 
-  lla.push_back(n1); lla.push_back(n2); lla.push_back(n3); lla.push_back(n4);
-  lla.push_back(n5); lla.push_back(n6); lla.push_back(n7); lla.push_back(n8);
-  lla.push_back(n9); lla.push_back(n10); lla.push_back(n11); lla.push_back(n12);
-  lla.push_back(n13); lla.push_back(n14);
+  // lla.push_back(n1); lla.push_back(n2); lla.push_back(n3); lla.push_back(n4);
+  // lla.push_back(n5); lla.push_back(n6); lla.push_back(n7); lla.push_back(n8);
+  // lla.push_back(n9); lla.push_back(n10); lla.push_back(n11); lla.push_back(n12);
+  // lla.push_back(n13); lla.push_back(n14);
 
   GeographicLib::UTMUPS::Forward(origin_lat, origin_lon, zone, north, origin_x, origin_y, setzone, mgrs);
   if(mission_status <= 1){
@@ -1158,8 +1221,8 @@ void MapLoader::v2x_goal_nodes(){
     xyz.push_back(xy);
   }
 
-  start_idx = 1;
-  end_idx = 13;
+  // start_idx = 0;
+  // end_idx = 13;
   std::vector<std::pair<double,double>> mission_positions;
   for(int i=0; i<lla.size(); i++){
     double x, y;

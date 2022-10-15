@@ -3,7 +3,8 @@
 #include <time.h>
 #include "std_msgs/String.h"
 #include "std_msgs/Int32.h"
-
+#include <thread> 
+#include <boost/thread/thread.hpp>
 #include <time.h>
 #include <iostream>
 #include <string>
@@ -13,6 +14,7 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <std_msgs/Float64.h>
 
 // #include "j2735.h"
 
@@ -99,7 +101,7 @@ class V2XInfo
 private:
     ros::NodeHandle nh_;
     ros::Publisher pub_spat;
-    ros::Subscriber sub_pvd;
+    ros::Subscriber sub_pvd, sub_dir;
 
     // OBU와 연결할 차량시스템의 기본 정보
     unsigned char packetSeq = 0; // TCP 전송 Header 내 Sequence Number value
@@ -132,7 +134,7 @@ private:
     unsigned long long txPvd, txBsm;
 
 public:
-    V2XInfo(ros::NodeHandle& nh_);
+    V2XInfo(ros::NodeHandle& nh);
     ~V2XInfo();
 
     unsigned long long get_clock_time();
@@ -145,12 +147,15 @@ public:
 
     void parse_wave_msg();
 
+    void dir_callback(const std_msgs::Float64::ConstPtr& msg);
+
     int encode_j2735_uper(char *dst,unsigned short dstLen,MessageFrame_t *src);
     int decode_j2735_uper(MessageFrame_t *dst, char *src, int size);
     void parse_decoded_j2735(MessageFrame_t *msg);
     void parse_map(MapData_t *map);
     void parse_spat(SPAT_t *spat);
+    void whilecallback();
 
-    void car_info_callback(const v2x_msgs::PVD& msg);
+    void car_info_callback(const v2x_msgs::PVDConstPtr& msg);
 
 };

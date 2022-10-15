@@ -36,7 +36,7 @@ using std::to_string;
 enum struct BehaviorState {Init = 0, Forward = 1, Follow = 2, StopAtStartPos=3,
                             StartArrival=4, TrafficLightStop=5, LeftTurn=6, RightTurn=7,
                             Crosswalk=8, Pedestrian=9, FrontLuggage=10, FrontCarStop=11, 
-                            LaneChange=12, SpeedBump=13, StopAtGoalPos=14, StopArrival=15}; 
+                            LaneChange=12, SpeedBump=13, StopAtGoalPos=14, GoalArrival=15, ObstacleLaneChange=16}; 
 
 inline const char* stateToStringBehavior(BehaviorState v)
 {
@@ -56,8 +56,9 @@ inline const char* stateToStringBehavior(BehaviorState v)
         case BehaviorState::LaneChange:   return "LaneChange";
         case BehaviorState::SpeedBump:   return "SpeedBump";
         case BehaviorState::StopAtGoalPos:   return "StopAtGoalPos";
-        case BehaviorState::StopArrival:   return "StopArrival";
+        case BehaviorState::GoalArrival:   return "GoalArrival";
         case BehaviorState::TrafficLightStop:   return "TrafficLightStop";
+         case BehaviorState::ObstacleLaneChange: return "ObstacleLaneChange";
         default:      return "[Unknown BehaviorState]";
     }
 }
@@ -123,6 +124,7 @@ private:
     short LeadVehicleInd;
     double MaxVel;
     int signal_id;
+    double rel_vel;
 
     BehaviorState CurrentMode, PreviousMode;
     MotionState MotionMode;

@@ -14,7 +14,6 @@ int fill_j2735_pvd(MessageFrame_t *dst, float cur_lat, float cur_lon, float cur_
                                         struct tm *cur_pTimeInfo, struct tm *prev_pTimeInfo)
 {   
     int cur_Y  =  cur_pTimeInfo->tm_year + 1900;
-    
     int cur_M  =  cur_pTimeInfo->tm_mon + 1;
     int cur_D  =  cur_pTimeInfo->tm_mday;
     int cur_H  =  cur_pTimeInfo->tm_hour;
@@ -28,7 +27,8 @@ int fill_j2735_pvd(MessageFrame_t *dst, float cur_lat, float cur_lon, float cur_
     int prev_m = prev_pTimeInfo->tm_min;
     int prev_s = prev_pTimeInfo->tm_sec;
     
-    printf("time is : %dyear %dmonth %ddate %dhour %dmin %dsec \n", cur_Y, cur_M, cur_D, cur_H, cur_m, cur_s);
+    // printf("time is : %dyear %dmonth %ddate %dhour %dmin %dsec \n", cur_Y, cur_M, cur_D, cur_H, cur_m, cur_s);
+    // printf("long : %f , laT :  %f , alt : %f ,dir : %f , vel %f, gear %d sec \n", cur_lat, cur_lon, cur_alt, cur_dir, cur_vel, cur_gear);
     
     //ASN_STRUCT_RESET(asn_DEF_MessageFrame, dst);
 
