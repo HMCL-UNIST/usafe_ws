@@ -26,6 +26,7 @@ Usafe::Usafe(const ros::NodeHandle& nh, const ros::NodeHandle& nh_local,const ro
   v2xSub = nh_local_.subscribe("/Mission2", 2, &Usafe::callbackV2X, this); 
    
   missionStatePub = nh_local_.advertise<std_msgs::Float64>("/MissionFSMState", 2, true);      
+  lowlevelMissionPub = nh_local_.advertise<hmcl_msgs::BehaviorFactor>("/behavior_factor", 2, true);      
   v2x_received = false;
   
   
@@ -59,8 +60,11 @@ void Usafe::missionFSM(){
       missionStatePub.publish(missionFSMState_);
       // InitialSetup = 0, WaitforCue = 1, Driving = 2
       int tmp_val;
+      hmcl_msgs::BehaviorFactor behav_msgs;
       switch(mission_state){
         case MissionState::InitialSetup:
+            behav_msgs.transition_condition.missionStart = false;
+            lowlevelMissionPub.publish(behav_msgs);
             if(race_planner_->waypoint_received && v2x_received){
               ROS_INFO("Initial Setup Completed");              
               mission_state = MissionState::WaitforCue;                            
@@ -71,6 +75,11 @@ void Usafe::missionFSM(){
 
         case MissionState::WaitforCue:
             mtx.lock();
+            
+            
+            behav_msgs.transition_condition.missionStart = false;
+            lowlevelMissionPub.publish(behav_msgs);
+
             if (v2x_msg.mission_status == 1){              
                if(race_planner_->global_path_wps.size() > 0){                
                 race_planner_->Mission_start = true;                
@@ -92,6 +101,11 @@ void Usafe::missionFSM(){
 
         case MissionState::Driving:     
             mtx.lock();
+            // Publish mission status; 
+            
+            behav_msgs.transition_condition.missionStart = true;
+            lowlevelMissionPub.publish(behav_msgs);
+
             if(v2x_msg.mission_status == 2)
             { 
               race_planner_->Mission_start = false;    

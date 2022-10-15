@@ -94,6 +94,7 @@ void callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr &msg);
 void dyn_callback(v2x_simulation::testConfig& config, uint32_t level);
 void simulationCallback();
 void constructViz();
+void add_mission_waypoints();
 void insertWaypoint(const geometry_msgs::PoseStamped &msg);
 void deleteWaypoint(const geometry_msgs::PoseStamped &msg);
 

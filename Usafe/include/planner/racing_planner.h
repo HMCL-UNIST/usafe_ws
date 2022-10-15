@@ -47,7 +47,8 @@
 #include <hmcl_msgs/VehicleStatus.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/Waypoint.h>
-
+#include <hmcl_msgs/BehaviorFactor.h>
+#include <hmcl_msgs/TransitionCondition.h>
 
 #include <vector>
 
@@ -243,6 +244,9 @@ std::vector<lanelet::Point3d> LaneFollowPathGen(double path_length, geometry_msg
 visualization_msgs::Marker LaneLetPointsToMarker(std::vector<lanelet::Point3d> &point3d_vector);
 void compute_edge_cost();
 void construct_lanelets_with_viz();
+
+bool waypoint_s_same(Waypoint wp1, Waypoint wp2);
+
 
 void currentposeCallback(const nav_msgs::OdometryConstPtr &msg);
 void odomCallback(const nav_msgs::OdometryConstPtr& msg);

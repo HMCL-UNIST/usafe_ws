@@ -63,6 +63,8 @@ LowlevelCtrl::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros:
   emergency_stopSub = nh_acc.subscribe("/volt", 2, &LowlevelCtrl::emergencyRemoteCallback, this);
   setpointSub = nh_acc.subscribe("/setpoint", 2, &LowlevelCtrl::TargetVelocityCallback, this);
   gnssPoseSub = nh_acc.subscribe("/gnss_pose_world", 2, &LowlevelCtrl::gnssPoseCallback, this);
+
+  missionStatisSub = nh_light_.subscribe("/behavior_factor", 2, &LowlevelCtrl::missionCallback, this);
   
   
   ROS_INFO("Init A-CAN Handler");
@@ -108,6 +110,17 @@ void LowlevelCtrl::InitCanmsg(){
   ROS_INFO("Init complete");
 }
 
+void LowlevelCtrl::missionCallback(hmcl_msgs::BehaviorFactorConstPtr msg){
+  bool missions_statue = msg->transition_condition.missionStart;
+  if(missions_statue){
+    mtx_.lock();
+    drivingState = DrivingState::Driving;
+    mtx_.unlock();
+  }else{
+    drivingState = DrivingState::Parking;
+  }
+}
+
 void LowlevelCtrl::AcanSender()
 {
   ros::Rate loop_rate(50); // rate of cmd   
@@ -130,6 +143,12 @@ void LowlevelCtrl::AcanSender()
         int SCC_mode_ready = 1;
         scc_frame.data[0] = (unsigned int)SCC_mode_ready & 0b11111111;                
         ROS_INFO("SCC takeover");
+      }
+      if(scc_info_.scc_mode == 1 ){
+        short zero_dcel = (0*100);       
+        setScc(zero_dcel);           
+        scc_frame.data[0] = (unsigned int)2 & 0b11111111;                
+        ROS_INFO("SCC On");
       }
      
       

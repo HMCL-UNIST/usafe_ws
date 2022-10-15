@@ -39,6 +39,7 @@ V2xSimulation::V2xSimulation(const ros::NodeHandle& nh,const ros::NodeHandle& nh
 
   boost::thread simulation_loop(&V2xSimulation::simulationCallback,this); 
    
+  add_mission_waypoints();
   
 
   f = boost::bind(&V2xSimulation::dyn_callback,this, _1, _2);
@@ -47,6 +48,99 @@ V2xSimulation::V2xSimulation(const ros::NodeHandle& nh,const ros::NodeHandle& nh
 
 V2xSimulation::~V2xSimulation()
 {}
+
+
+void V2xSimulation::add_mission_waypoints(){
+ 
+
+  std::vector<double> wp_lat, wp_lon, score;
+
+  wp_lon.push_back(128.4013386);
+  wp_lon.push_back(128.4001426);
+  wp_lon.push_back(128.3938531);
+  wp_lon.push_back(128.3919018);
+  wp_lon.push_back(128.3948077);
+  wp_lon.push_back(128.3970079);
+  wp_lon.push_back(128.3970374);
+  wp_lon.push_back(128.3970722);
+  wp_lon.push_back(128.3989831);
+  wp_lon.push_back(128.3979354);
+  wp_lon.push_back(128.3959423);
+  wp_lon.push_back(128.3958819);
+  wp_lon.push_back(128.3981997);
+
+
+
+  wp_lat.push_back(35.6491704);
+  wp_lat.push_back(35.6501853);
+  wp_lat.push_back(35.6549743);
+  wp_lat.push_back(35.6564015);
+  wp_lat.push_back(35.6552222);
+  wp_lat.push_back(35.6531639);
+  wp_lat.push_back(35.6531859);
+  wp_lat.push_back(35.6532066);
+  wp_lat.push_back(35.6512138);
+  wp_lat.push_back(35.6522498);
+  wp_lat.push_back(35.6542104);
+  wp_lat.push_back(35.6541667);
+  wp_lat.push_back(35.6522011);
+  
+  score.push_back(5.0);
+  score.push_back(5.0);
+  score.push_back(5.0);
+  score.push_back(10.0);
+  score.push_back(5.0);
+  score.push_back(10.0);
+  score.push_back(8.0);
+  score.push_back(5.0);
+  score.push_back(-5.0);
+  score.push_back(-5.0);
+  score.push_back(-5.0);
+  score.push_back(-10.0);
+  score.push_back(0.0);
+
+
+
+  mission_wp_viz.markers.clear();    
+  for(int i=0; i< wp_lon.size(); i++){
+        visualization_msgs::Marker marker;
+        marker.header.frame_id = "map";
+        marker.header.stamp = ros::Time();
+        marker.ns = "waypoint";
+        marker.id = i;
+        marker.type = visualization_msgs::Marker::CUBE;
+        marker.action = visualization_msgs::Marker::ADD;
+          lanelet::GPSPoint tmp_gnss{wp_lat[i], wp_lon[i], 0.};
+        lanelet::BasicPoint3d converted_point = projector->forward(tmp_gnss);        
+        marker.pose.position.x = converted_point.x();
+        marker.pose.position.y = converted_point.y();
+        marker.pose.position.z = 0.0;        
+        marker.pose.orientation.w = 1.0;        
+        marker.scale.x = 2;
+        marker.scale.y = 2;
+        marker.scale.z = 2;
+        marker.color.a = 0.5; // Don't forget to set the alpha!        
+        if (score[i] > 0){
+            marker.color.r = 0.0;
+            marker.color.g = 1;
+            marker.color.b = 0.0;
+        }else if(score[i] < 0){
+            marker.color.r = 1.0;
+            marker.color.g = 0.0;
+            marker.color.b = 0.0;
+        }
+        else{
+            marker.color.r = 0.0;
+            marker.color.g = 0.0;
+            marker.color.b = 1.0;
+        }                    
+        mission_wp_viz.markers.push_back(marker);        
+    }
+  
+        
+
+
+}
 
 void V2xSimulation::constructViz(){
   mission_wp_viz.markers.clear();    
@@ -86,6 +180,7 @@ void V2xSimulation::constructViz(){
     }
 }
 
+
 void V2xSimulation::insertWaypoint(const geometry_msgs::PoseStamped &msg){
 
     v2x_msgs::Mission2data tmp_data;    
@@ -93,14 +188,14 @@ void V2xSimulation::insertWaypoint(const geometry_msgs::PoseStamped &msg){
       // Good item         
         tmp_data.item_type = 1;
         tmp_data.speed = 80;
-        tmp_data.score = -20;
+        tmp_data.score = 20;
         tmp_data.duration = 0.0;
       
     }else if(waypoint_select == 1){
       // Bad item
         tmp_data.item_type = 2;
         tmp_data.speed = 80;
-        tmp_data.score = 20;
+        tmp_data.score = -20;
         tmp_data.duration = 0.0;
     }
     else if(waypoint_select == 2){
@@ -167,7 +262,7 @@ void V2xSimulation::simulationCallback(){
                }
                v2xPub.publish(v2x_msgs_);
                
-               constructViz();
+              //  constructViz();
                v2xVizPub.publish(mission_wp_viz);
             loop_rate.sleep();
       }

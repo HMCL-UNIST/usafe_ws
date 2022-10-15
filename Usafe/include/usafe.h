@@ -44,6 +44,10 @@
 #include <hmcl_msgs/LaneArray.h>
 #include <hmcl_msgs/Waypoint.h>
 #include <hmcl_msgs/Trafficlight.h>
+
+#include <hmcl_msgs/BehaviorFactor.h>
+#include <hmcl_msgs/TransitionCondition.h>
+
 #include <v2x_msgs/Mission2.h>
 #include <v2x_msgs/Mission2data.h>
 
@@ -142,7 +146,7 @@ private:
 ros::NodeHandle nh_, nh_local_, nh_p_;
 std::mutex mtx;
 ros::Subscriber v2xSub;
-ros::Publisher velPub, missionStatePub;
+ros::Publisher velPub, missionStatePub, lowlevelMissionPub;
 MissionState mission_state;
 bool v2x_received;
 std::vector<double> boost_enable_idx;

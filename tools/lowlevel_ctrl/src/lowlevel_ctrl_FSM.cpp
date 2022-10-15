@@ -125,7 +125,7 @@ void LowlevelCtrl::Test(){
   int lc = 0;
   while(ros::ok())
   {
-    //ROS_INFO("test time = %d",lc);
+    // ROS_INFO("test time = %d",lc);
     
     if(lc == 0) {      
       drivingState = DrivingState::Parking;      
@@ -135,17 +135,17 @@ void LowlevelCtrl::Test(){
       drivingState = DrivingState::Parking;      
     }
 
-    if(lc  > 50 && lc < 100) {
-      drivingState = DrivingState::Driving;      
-    }
+    // if(lc  > 50 && lc < 100) {
+    //   drivingState = DrivingState::Driving;      
+    // }
 
-     if(lc  > 100 && lc < 200) {
-      drivingState = DrivingState::Driving;      
-    }
+    //  if(lc  > 100 && lc < 200) {
+    //   drivingState = DrivingState::Driving;      
+    // }
 
-     if(lc  > 200) {
-      drivingState = DrivingState::Driving;      
-    }
+    //  if(lc  > 200) {
+    //   drivingState = DrivingState::Driving;      
+    // }
 
   //  if(lc  > 200 && lc < 250) {
   //     drivingState = DrivingState::Driving;      

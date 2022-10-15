@@ -943,7 +943,27 @@ void RacingLinePlanner::construct_lanelets_with_viz(){
  
 }
 
+bool RacingLinePlanner::waypoint_s_same(Waypoint wp1, Waypoint wp2){
+    geometry_msgs::Pose wp1_pose, wp2_pose;
+        wp1_pose.position.x=wp1.x_pose;
+        wp1_pose.position.y=wp1.y_pose;
+        wp2_pose.position.x=wp2.x_pose;
+        wp2_pose.position.y=wp2.y_pose;
 
+    int target_lane_idx = get_closest_lanelet(road_lanelets_const,wp1_pose);  
+    auto centerline_ = road_lanelets_const[target_lane_idx].centerline();
+    lanelet::ArcCoordinates wp1_to_cord = get_ArcCoordinate(centerline_,wp1_pose);                                
+    lanelet::ArcCoordinates wp2_to_cord = get_ArcCoordinate(centerline_,wp2_pose);                                
+
+    bool result = false;
+    if(abs(wp1_to_cord.length  - wp1_to_cord.length) < 5.0){
+        result= true;
+    }else{
+        result= false;
+    }
+    return result;               
+                  
+}
 
 void RacingLinePlanner::convert_v2x_data(){
 // int64 mission_status
@@ -968,7 +988,7 @@ if ( v2x_data.States.size()  < 1){
 // Cost re-scaling for graph optimization 
 std::vector<double> standarded_score;
 for(int i=0; i< v2x_data.States.size(); i++){
-    standarded_score.push_back(v2x_data.States[i].score);    
+    standarded_score.push_back(-1*v2x_data.States[i].score);    
 }
 standarded_score.push_back(0.0);
 amathutils::standardization_(standarded_score);
@@ -1053,6 +1073,13 @@ for(int i = 0; i < v2x_data.States.size(); i++){
     /////////////////////////// Below Waypoints are dummy avoidance waypoints with the same id corresponds to the given waypoints    
     ///  add neighboring points
     for(int i=0; i< before_avoidance_wp_size; i++){
+        // bool add_avoidance = true;
+        // for(int p=0; p < before_avoidance_wp_size; p++){
+        //     if(waypoint_s_same(waypoints[p],waypoints[i]))
+        //        add_avoidance = false;
+        // }
+        // if(!add_avoidance)
+        //         continue;
         
         planner::Waypoint waypoint_tmp = planner::Waypoint(waypoints[i].x_pose, waypoints[i].y_pose, neutral_cost);
         if(waypoints[i].cost <= neutral_cost){ // negative score -> good item
@@ -1064,7 +1091,8 @@ for(int i = 0; i < v2x_data.States.size(); i++){
                     geometry_msgs::Pose tmp_pose; 
                     tmp_pose.position.x = avoidance_wps[j].x_pose;
                     tmp_pose.position.y = avoidance_wps[j].y_pose;
-                    waypoints_pose.push_back(tmp_pose);
+                    
+                        waypoints_pose.push_back(tmp_pose);                                                    
                     }
             }
         }else if(waypoints[i].cost > neutral_cost) // Positive score -> bad item
