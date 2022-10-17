@@ -168,14 +168,15 @@ void PreviewCtrl::reschedule_weight(double speed){
       tmp_r = std::min(std::max(tmp_r,1000.0),4000.0);
       Qweight[0] = tmp_q;
       R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
       }else{
-        // For Low speed 
-        20 30 2 1 500
+        // For Low speed         
       std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
       R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
       }
       
-      VehicleModel_.setWeight( Qweight, R_weight);
+      
   
 
 }
@@ -262,7 +263,7 @@ void PreviewCtrl::ControlLoop()
         }
         VehicleModel_.setState(Xk,Cr);
         // double current_speed = max(vehicle_status_.twist.linear.x ,1.0); // less than 1m/s takes too much time for riccati solver
-        current_speed = max(wheel_speed,1.0); // less than 1m/s takes too much time for riccati solver
+        double current_speed = max(wheel_speed,1.0); // less than 1m/s takes too much time for riccati solver
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
          
         // Computes control gains 
@@ -493,7 +494,7 @@ void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
   // VehicleModel_.setWeight( Qweight_, R_weight);
   // VehicleModel_.setDelayStep(delay_step);  
   // VehicleModel_.setLagTau(lag_tau);
-  }
+  // }
 
   
 }
