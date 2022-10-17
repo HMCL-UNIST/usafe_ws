@@ -30,9 +30,9 @@ void V2XMission::connect_handler(const ros::TimerEvent& time){
     }
 
     unsigned char recvbuf[MAX_READ_LEN] = {0,};
-    cout <<"sock_coonect_state "<<sock_connect_state<<endl;
-    cout << "clnt_sock" << clnt_sock<<endl;
-    cout << "recvbuf" << clnt_sock<<endl;
+    cout <<"sock_coonect_state :: "<<sock_connect_state<<endl;
+    cout << "clnt_sock :: " << clnt_sock<<endl;
+    cout << "recvbuf :: " << clnt_sock<<endl;
     int len = recv(clnt_sock, recvbuf, sizeof(recvbuf), 0); //blocking function!
     cout <<"len "<<len<<endl;
     if(len <= 0)
@@ -63,6 +63,7 @@ void V2XMission::connect_handler(const ros::TimerEvent& time){
         return;
     }
 
+    cout << "Message select :: "<< endl;
     switch (header->message_type)
     {
     case MessageType::MISSION_LIST_STAGE1 :

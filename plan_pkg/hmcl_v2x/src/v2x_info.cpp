@@ -8,14 +8,13 @@ V2XInfo::V2XInfo(ros::NodeHandle& nh):
 {  
     pub_spat = nh_.advertise<v2x_msgs::SPAT>("SPAT", 10);
     sub_pvd = nh_.subscribe("/pvd", 1, &V2XInfo::car_info_callback,this);
-    sub_dir = nh_.subscribe("/heading_ned", 1, &V2XInfo::dir_callback, this);
 
     txPvd = get_clock_time();
     txBsm = get_clock_time();
+    ros::Rate loop_rate(10);
 
     ROS_INFO("V2X Info Publisher Initialization");
     boost::thread while_loop(&V2XInfo::whilecallback,this); 
-    
 }
 
 
@@ -23,18 +22,13 @@ V2XInfo::V2XInfo(ros::NodeHandle& nh):
 V2XInfo::~V2XInfo()
 {}
 
-void V2XInfo::dir_callback(const std_msgs::Float64::ConstPtr& msg){
-    ROS_INFO("direction call back");
-}
-
-
 void V2XInfo::whilecallback(){
 ros::Rate loop_rate(10);
     while(ros::ok())
     {    
         // std::cout << "Debugging \n" <<std::endl;
         // 소켓이 연결되지 않은 경우(sockFd == -1) , OBU TCP 소켓 연결 시도
-
+        // cout << "hello" <<endl;
         if(sockFd < 0)
         {
             sockFd = connect_obu_uper_tcp("192.168.10.10",23000); // OBU
@@ -201,6 +195,7 @@ int V2XInfo::request_tx_wave_obu(int sockFd, char *uper,unsigned short uperLengt
             return -1;
         }else
         {
+            // cout << "res return ::" <<res << endl;
             return res;
         }
     }
@@ -221,10 +216,8 @@ int V2XInfo::tx_v2i_pvd(int sockFd, unsigned long long *time)
     cur_pTimeInfo = localtime(&rawTime);
     cout << "PVD:::: ::::: ::: :: ::: :: "<<endl;
 
-    fill_j2735_pvd(&msg, cur_lat,  cur_lon,  cur_alt,  cur_dir,  cur_vel , cur_gear,
-                        prev_lat, prev_lon, prev_alt, prev_dir, prev_vel, prev_gear,
-                        cur_pTimeInfo, prev_pTimeInfo);
-   
+    fill_j2735_pvd(&msg, cur_lat, cur_lon,  cur_alt,  cur_dir,  cur_vel,  cur_gear, prev_lat,  prev_lon,  prev_alt,  prev_dir,  prev_vel, prev_gear, cur_pTimeInfo, prev_pTimeInfo);
+    cout << "PVD Debug ::::: ::: :: ::: :: "<<endl;
     int encodedBits = encode_j2735_uper(uper,MAX_UPER_SIZE,&msg);
  
     if(encodedBits < 0) // 인코딩 실패로 전송이 불가능한 상태
@@ -262,13 +255,12 @@ int V2XInfo::tx_v2v_bsm(int sockFd, unsigned long long *time){
 
 void V2XInfo::parse_wave_msg()
 {
-    // cout<<"uperSize "<< uperSize << " rxUperBuffer " << rxUperBuffer[0]<< "::: asmdk " << "\n "<< endl;
     if (uperSize > 0)
     {
         printf("[INFO]  WAVE Message Received\n");
         MessageFrame_t *msgFrame = NULL;
         std_msgs::String msg;
-// 
+ 
         decode_j2735_uper(msgFrame, rxUperBuffer, uperSize);
         ASN_STRUCT_FREE(asn_DEF_MessageFrame, msgFrame);
     }
@@ -285,7 +277,7 @@ int V2XInfo::decode_j2735_uper(MessageFrame_t *dst, char *src, int size)
         return res;    
     res = ret.consumed;
 
-    asn_fprint(stdout,&asn_DEF_MessageFrame,dst);
+    // asn_fprint(stdout,&asn_DEF_MessageFrame,dst);
     parse_decoded_j2735(dst);
 
     return res;
@@ -296,14 +288,14 @@ void V2XInfo::parse_decoded_j2735(MessageFrame_t *msg)
     cout << msg->messageId <<endl; 
     switch(msg->messageId){
         case DSRC_ID_BSM:
-            cout << ">> Parse J2735 : BSM\n"<< endl;
+            // cout << ">> Parse J2735 : BSM\n"<< endl;
             break;
         case DSRC_ID_SPAT:
             cout << ">> Parse J2735 : SPAT\n"<< endl;
             parse_spat(&msg->value.choice.SPAT);
             break;  
         case DSRC_ID_MAP:
-            cout << ">> Parse J2735 : MAP\n"<< endl;
+            // cout << ">> Parse J2735 : MAP\n"<< endl;
             break;
     }
 }
@@ -379,7 +371,7 @@ void V2XInfo::car_info_callback(const v2x_msgs::PVDConstPtr& msg)
     cur_vel = msg->vel;
     cur_gear = msg->gear;
 
-    printf("v2x_info :::; long : %f , laT :  %f , alt : %f ,dir : %f , vel %f, gear %d sec \n", cur_lat, cur_lon, cur_alt, cur_dir, cur_vel, cur_gear);
+    printf("v2x_info :::; long : %f , laT :  %f , alt : %f ,dir : %f , vel %f, gear %f sec \n", cur_lat, cur_lon, cur_alt, cur_dir, cur_vel, cur_gear);
 
     prev_pTimeInfo = cur_pTimeInfo;
     cur_pTimeInfo = localtime(&rawTime);
@@ -390,6 +382,8 @@ int main (int argc, char** argv)
     ros::init(argc, argv, "spat_pub");
     ros::NodeHandle nh_;
     V2XInfo V2XInfo(nh_);
+    ros::spin();
+
 
     return 0;
 }

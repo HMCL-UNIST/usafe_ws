@@ -63,9 +63,10 @@ struct TxWaveUperResultPayload
  * @param dst  MessageFrame Pointer
  * @return int 
  */
+// int fill_j2735_pvd(MessageFrame_t *dst);
 int fill_j2735_pvd(MessageFrame_t *dst, float cur_lat, float cur_lon, float cur_alt, float cur_dir, float cur_vel, float cur_gear,
                                         float prev_lat, float prev_lon, float prev_alt, float prev_dir, float prev_vel, float prev_gear,
-                                        struct tm *cur_pTimeInfo, struct tm *prev_pTimeInfo);
+                                        tm *cur_pTimeInfo, tm *prev_pTimeInfo);
 
 /**
  * @brief  BSM 메시지 생성 
@@ -101,7 +102,7 @@ class V2XInfo
 private:
     ros::NodeHandle nh_;
     ros::Publisher pub_spat;
-    ros::Subscriber sub_pvd, sub_dir;
+    ros::Subscriber sub_pvd;
 
     // OBU와 연결할 차량시스템의 기본 정보
     unsigned char packetSeq = 0; // TCP 전송 Header 내 Sequence Number value
@@ -147,7 +148,7 @@ public:
 
     void parse_wave_msg();
 
-    void dir_callback(const std_msgs::Float64::ConstPtr& msg);
+    // void dir_callback(const std_msgs::Float64::ConstPtr& msg);
 
     int encode_j2735_uper(char *dst,unsigned short dstLen,MessageFrame_t *src);
     int decode_j2735_uper(MessageFrame_t *dst, char *src, int size);
