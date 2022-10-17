@@ -84,7 +84,16 @@ LowlevelCtrl::~LowlevelCtrl()
 
 void LowlevelCtrl::InitCanmsg(){
   short steer_value = (short)(0.0+steering_offset) ; // input  in radian, convert into degree
-  setSteering(steer_value);  
+  // setSteering(steer_value);  
+  steering_frame.header.stamp = ros::Time::now();
+  steering_frame.id = 0x300;
+  steering_frame.dlc = 3;
+  steering_frame.is_error = false;
+  steering_frame.is_extended = false;
+  steering_frame.is_rtr = false;  
+  steering_frame.data[0] = (steer_value & 0b11111111);
+	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+  steering_frame.data[2] = (unsigned int)0 & 0b11111111;
       
   setToParking();
   short zero_dcel = (0*100);       
@@ -136,6 +145,10 @@ void LowlevelCtrl::AcanSender()
         short zero_dcel = (0*100);       
         setScc(zero_dcel);                           
         ROS_INFO("Driving Stop activated");
+      }else if(target_vel <= 0.0 && abs(wheel_info_.wheel_speed) <= 2.0){
+          short hard_dcel = (-2*100);       
+        setScc(hard_dcel);                   
+        ROS_INFO("hard stop");
       }
       if(scc_info_.scc_mode == 0 ){
         short zero_dcel = (0*100);       
@@ -152,9 +165,9 @@ void LowlevelCtrl::AcanSender()
       }
      
       
-      AcanPub.publish(scc_frame);
+      // AcanPub.publish(scc_frame);
       usleep(1000);
-      AcanPub.publish(gear_frame);
+      // AcanPub.publish(gear_frame);
       usleep(1000);
       AcanPub.publish(steering_frame);
       // usleep(1000);     

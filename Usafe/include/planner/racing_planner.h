@@ -205,7 +205,7 @@ RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p);
 ~RacingLinePlanner();
 
 
-
+double vel_constant;
 bool Mission_start;
 bool waypoint_received;
 v2x_msgs::Mission2  v2x_data;

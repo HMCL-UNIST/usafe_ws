@@ -49,7 +49,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     shift_speed_ratio = min_shift_speed_ratio;
     
     local_path_length = 30.0;
-     
+     vel_constant = 18;
     // Graph reset
     g.clearEdges();
     waypoint_received = false;
@@ -372,13 +372,26 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
     if(dist_to_goalline < 6.5)
             target_speed = 0.0;
             
-    vel_msg.data = target_speed;
+    vel_msg.data = target_speed/3.6;
 
     if(!Mission_start){
         vel_msg.data = 0.0;
-    }    
-    /////////////// test 
-    // vel_msg.data = 15;
+    }   
+     
+    if(vel_msg.data > vel_constant){
+        vel_msg.data = vel_constant;    
+    }   /////////////// test 
+
+    double dist_tmp = sqrt(pow((-485.423706055-cur_pose.pose.position.x),2)+pow((720.293151855-cur_pose.pose.position.y),2));
+    if(dist_tmp < 5){
+        vel_constant = 12;
+    }
+    double dist_tmp2 = sqrt(pow((-772.731323242-cur_pose.pose.position.x),2)+pow((873.287597656-cur_pose.pose.position.y),2));
+    
+    if(dist_tmp2 < 5){
+        vel_constant = 18;
+    }
+    
     ////////////test 
     velPub.publish(vel_msg);
     
