@@ -148,9 +148,10 @@ private:
     std::mutex mu_mtx;
     int tmp;
     ros::NodeHandle nh_, nh_p_;
+
     ros::Publisher  local_traj_pub, l_traj_viz_pub, target_path_pub, global_path_pub, shortest_path_pub, g_map_pub, waypoints_pub, edges_pub;
     ros::Publisher velPub, local_lane_statePub;    
-    ros::Publisher boost_duration_pub;
+    ros::Publisher boost_duration_pub, light_pub;
     // ros::Subscriber point_sub;
     ros::Subscriber curpose_sub, curodom_sub, vehicle_status_sub;    
     ros::Timer viz_timer;
@@ -173,6 +174,7 @@ private:
     double distance_cost_weight = 2;
     double point_projection_ignore_threshold = 3.0;
     double lane_overwrite_distance;
+    double shift_distance_amount;
     
     double map_road_resolution;
     hmcl_msgs::Lane local_lane_msg;

@@ -98,6 +98,34 @@ void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort
   
 }
 
+void LowlevelCtrl::LightCallback(std_msgs::Float64ConstPtr msg){  
+  light_frame.header.stamp = ros::Time::now();
+  light_frame.id = 0x306;
+  light_frame.dlc = 3;
+  light_frame.is_error = false;
+  light_frame.is_extended = false;
+  light_frame.is_rtr = false;
+  if(msg->data >= 1){
+    light_frame.data[0] = (unsigned int)0 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)1 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)0 & 0b11111111;  
+  }else if(msg->data == 0.0 ){
+    light_frame.data[0] = (unsigned int)0 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)0 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)0 & 0b11111111;  
+  }else if(msg->data <= -1){
+    light_frame.data[0] = (unsigned int)1 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)0 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)0 & 0b11111111;    
+  }else{
+    light_frame.data[0] = (unsigned int)0 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)0 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)1 & 0b11111111;    
+  }
+  
+  
+}
+
 void LowlevelCtrl::emergencyRemoteCallback(std_msgs::Float64ConstPtr msg){
     int thres = 5;
     if(msg->data > 0.5){

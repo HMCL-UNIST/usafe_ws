@@ -60,6 +60,8 @@
 
       <param name="lane_change_in_sec" value="5.0"/> 
       <param name="lanechange_fsm_period" value="0.1"/> 
+      <param name="shift_distance_amount" value="0.7"/> 
+      
       
       
 

@@ -47,6 +47,7 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/base/timing.h>
 #include <GeographicLib/LocalCartesian.hpp>
+#include <GeographicLib/UTMUPS.hpp>
 #include <gtsam/nonlinear/ISAM2.h>
 #include <gtsam/navigation/GPSFactor.h>
 
@@ -64,8 +65,8 @@
 #include "state_estimator/Diagnostics.h"
 #include "BlockingQueue.h"
 
-#include <lanelet2_io/Io.h>
-#include <lanelet2_projection/UTM.h>
+// #include <lanelet2_io/Io.h>
+// #include <lanelet2_projection/UTM.h>
 
 #include <autorally_msgs/wheelSpeeds.h>
 #include <autorally_msgs/imageMask.h>
@@ -96,6 +97,10 @@ namespace localization_core
     ros::Publisher gpsPosPub_;
 
     tf::TransformBroadcaster tf_br;
+    
+    int zone_;
+    bool northp;
+    double utm_ori_x, utm_ori_y, utm_ori_z;
 
     double lastImuT_, lastImuTgps_;
     unsigned char status_;
@@ -126,8 +131,9 @@ namespace localization_core
     gtsam::Pose3 imuPgps_;
 
     bool fixedOrigin_;
+    
     GeographicLib::LocalCartesian enu_;   /// Object to put lat/lon coordinates into local cartesian
-    lanelet::projection::UtmProjector* projector;    
+    // lanelet::projection::UtmProjector* projector;    
     bool gotFirstFix_, gotFirstLocalPose_;
     bool invertx_, inverty_, invertz_;
     bool usingOdom_, usingLocalPose_;

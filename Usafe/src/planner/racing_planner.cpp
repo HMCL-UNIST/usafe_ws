@@ -40,6 +40,10 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
 
     nh_p_.param<double>("max_shift_speed_ratio", max_shift_speed_ratio, 0.95);
     nh_p_.param<double>("min_shift_speed_ratio", min_shift_speed_ratio, 0.987);
+
+    nh_p_.param<double>("shift_distance_amount", shift_distance_amount, 0.5);
+
+    
     nh_p_.param<double>("lane_overwrite_distance", lane_overwrite_distance, 0.4);
 
     nh_p_.param<double>("Goal_line_pose_lat", Goal_line_pose_lat, 35.65084331202714);
@@ -65,6 +69,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     target_path_pub = nh_.advertise<visualization_msgs::Marker>("/target_path", 2, true);          
     l_traj_viz_pub = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1, true);
     local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);  
+    light_pub = nh_.advertise<std_msgs::Float64>("/light_cmd", 2, true);  
     velPub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);      
     boost_duration_pub = nh_.advertise<std_msgs::Float64>("/boost_duration", 2, true);      
     local_lane_statePub = nh_.advertise<std_msgs::Float64>("/local_lane_state", 2, true);      
@@ -232,7 +237,8 @@ void RacingLinePlanner::localPathGenCallback() {
   ros::Rate loop_rate(local_path_loop_hz); 
   ROS_INFO("Init local path generation thread");  
   while (ros::ok())
-  {     
+  {    
+    std_msgs::Float64 light_data;
     auto start_time=  std::chrono::high_resolution_clock::now();                    
     std::vector<lanelet::Point3d> local_lane_points;
     
@@ -271,25 +277,46 @@ void RacingLinePlanner::localPathGenCallback() {
         cur_projected_pose.position.y = cur_projected_point.y();        
         ///////////////////////////
         
-        if(cur_pose_cord.length == 0.0){            
+        if(cur_pose_cord.length == 0.0){         
+            //Lane Follow, Target lane is too far   
+            light_data.data = 0.0;
             local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
             local_lane_state.data = 0.0;
         }
         else{
-            if(fabs(cur_pose_cord.distance) > 9.0){                
+            if(fabs(cur_pose_cord.distance) > 9.0){       
+                // Something weird happen,.. just follow the current lane        
+                light_data.data = 0.0;
                 local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
                 local_lane_state.data = 1.0;
-            }else if(fabs(cur_pose_cord.distance) < lane_overwrite_distance){                           
+            }else if(fabs(cur_pose_cord.distance) < lane_overwrite_distance){       
+                // close to target lane -> follow centerline of targetlane
+                light_data.data = 0.0;                    
                 local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose, speed_limits);     
                 local_lane_state.data = 2.0;
             }else{                            
+                //Lane Change (offset shift)
                 local_lane_points = LaneFollowPathGen(local_path_length, cur_projected_pose, speed_limits);
                 local_lane_state.data = 3.0;
                 lanelet::LineString2d target_linstring2d;
                 for(int k=0; k < local_lane_points.size(); k++){
                     target_linstring2d.push_back(lanelet::utils::to2D(local_lane_points[k]));                    
                 }
-                double shift_distance = cur_pose_cord.distance*shift_speed_ratio;                
+
+                double shift_distance = 0.0;
+                if(cur_pose_cord.distance > 0){
+                    light_data.data = 1.0;
+                     shift_distance = cur_pose_cord.distance - shift_distance_amount;
+                     shift_distance = std::max(shift_distance,0.0);                    
+                }else{
+                    light_data.data = -1.0;
+                    shift_distance = cur_pose_cord.distance + shift_distance_amount;
+                    shift_distance = std::min(shift_distance,0.0);                                        
+                }  
+                              
+                
+                
+                // double shift_distance = cur_pose_cord.distance*shift_speed_ratio;                
                 auto shifted_target_linstring2d = lanelet::geometry::offset(target_linstring2d, shift_distance);
                 for(int k=0; k < local_lane_points.size(); k++){
                     local_lane_points[k].x() = shifted_target_linstring2d[k].x();                    
@@ -298,12 +325,14 @@ void RacingLinePlanner::localPathGenCallback() {
             }
 
         }                 
-    }else{
+    }else{        
         // No waypoints available --> just laneFollow        
+        light_data.data = 0.0;
         local_lane_state.data = 4.0;
         local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
     }
     local_lane_statePub.publish(local_lane_state);
+    light_pub.publish(light_data);
     // If lane with end point--> skip local path computation 
     if(local_lane_points.size()<2){
         loop_rate.sleep(); 
@@ -361,7 +390,8 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
         ros::Time cur_time = ros::Time::now();
         ros::Duration diff_time = cur_time - boost_init_time;
         if( diff_time.toSec() < boost_duration){
-            target_speed = 100.0;            
+            target_speed = 100.0/3.6; 
+            ROS_INFO("BOOST!!!!!!");           
         }
         double boost_left_time = boost_duration - diff_time.toSec();
         boost_left_time = std::max(boost_left_time,0.0);
@@ -369,8 +399,8 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
         boost_duration_pub.publish(boost_duration_left);
      }
 
-    if(dist_to_goalline < 6.5)
-            target_speed = 0.0;
+    // if(dist_to_goalline < 6.5)
+    //         target_speed = 0.0;
             
     vel_msg.data = target_speed/3.6;
 
@@ -378,19 +408,21 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
         vel_msg.data = 0.0;
     }   
      
-    if(vel_msg.data > vel_constant){
-        vel_msg.data = vel_constant;    
-    }   /////////////// test 
+    // if(vel_msg.data > vel_constant){
+    //     vel_msg.data = vel_constant;    
+    // }   /////////////// test 
 
-    double dist_tmp = sqrt(pow((-485.423706055-cur_pose.pose.position.x),2)+pow((720.293151855-cur_pose.pose.position.y),2));
-    if(dist_tmp < 5){
-        vel_constant = 12;
+    // reduce speed for hybrid road
+
+    double dist_tmp = sqrt(pow((-569.103881836-cur_pose.pose.position.x),2)+pow((806.690185547-cur_pose.pose.position.y),2));
+    if(dist_tmp < 6.0){
+        vel_msg.data = 15;
     }
-    double dist_tmp2 = sqrt(pow((-772.731323242-cur_pose.pose.position.x),2)+pow((873.287597656-cur_pose.pose.position.y),2));
+    // double dist_tmp2 = sqrt(pow((-772.731323242-cur_pose.pose.position.x),2)+pow((873.287597656-cur_pose.pose.position.y),2));
     
-    if(dist_tmp2 < 5){
-        vel_constant = 18;
-    }
+    // if(dist_tmp2 < 5){
+    //     vel_constant = 18;
+    // }
     
     ////////////test 
     velPub.publish(vel_msg);
@@ -579,8 +611,8 @@ void RacingLinePlanner::insertDefaultWaypoints(int scenario_num){
     lanelet::GPSPoint start_gnss_point{35.6451557, 128.4031224, 0.};
     lanelet::BasicPoint3d start_point = projector->forward(start_gnss_point);        
 
-    double goal_x = goal_point.x(); // -205.89;
-    double goal_y = goal_point.y(); //426.2;  
+    double goal_x = -72.7966308594; // goal_point.x(); // -205.89;
+    double goal_y = 273.854370117; // goal_point.y(); //426.2;  
     inserWaypoints(waypoint_max_id+1,goal_x, goal_y, 0, true);    
     double start_x = start_point.x();
     double start_y = start_point.y();

@@ -1,5 +1,6 @@
 find_package(Eigen3 REQUIRED)
 find_package(GeographicLib REQUIRED)
+
 find_package (Boost REQUIRED COMPONENTS system filesystem thread chrono date_time atomic serialization regex timer)
 include_directories(SYSTEM ${Boost_LIBRARY_DIRS})
 

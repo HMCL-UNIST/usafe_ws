@@ -137,6 +137,12 @@ namespace localization_core
     nh_.param<double>("lonOrigin", lonOrigin, 0);
     nh_.param<double>("altOrigin", altOrigin, 0);
 
+    
+            // enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+    utm_ori_z = 0.0;
+    GeographicLib::UTMUPS::Forward(latOrigin, lonOrigin,zone_,northp,utm_ori_x,utm_ori_y);
+
+
     nh_.param<bool>("UseOdom", usingOdom_, false);
     nh_.param<bool>("UseLocalPose", usingLocalPose_, false);
     nh_.param<double>("MaxGPSError", maxGPSError_, 10.0);
@@ -145,9 +151,9 @@ namespace localization_core
     if (fixedOrigin_)
       enu_.Reset(latOrigin, lonOrigin, altOrigin);
 
-    lanelet::ErrorMessages errors;  
-    lanelet::GPSPoint originGps{latOrigin, lonOrigin, altOrigin};    
-    projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});    
+    // lanelet::ErrorMessages errors;  
+    // lanelet::GPSPoint originGps{latOrigin, lonOrigin, altOrigin};    
+    // projector = new lanelet::projection::UtmProjector(lanelet::Origin{originGps});    
 
     std::cout << "InitialRotationNoise " << initialRotationNoise << "\n"
     << "InitialVelocityNoise " << initialVelNoise << "\n"
@@ -368,11 +374,15 @@ namespace localization_core
         {
           // we are given an origin
           // enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
-          lanelet::GPSPoint gnssPoint{fix->latitude,  fix->longitude, fix->altitude};
-          lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
-          E = converted_point.x();
-          N = converted_point.y();
-          U = converted_point.z();
+          // lanelet::GPSPoint gnssPoint{fix->latitude,  fix->longitude, fix->altitude};
+          // lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
+          // E = converted_point.x();
+          // N = converted_point.y();
+          // U = converted_point.z();
+          GeographicLib::UTMUPS::Forward(fix->latitude, fix->longitude, zone_, northp, E, N);
+          E -= utm_ori_x;
+          N -= utm_ori_y;
+          U = fix->altitude - utm_ori_z;
         }
 
         // Add prior factors on pose, vel and bias
@@ -472,12 +482,16 @@ namespace localization_core
             // this is a gps message for a factor
             latestGPSKey = key;
             double E,N,U;
-            // enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
-            lanelet::GPSPoint gnssPoint{fix->latitude,  fix->longitude, fix->altitude};
-            lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
-            E = converted_point.x();
-            N = converted_point.y();
-            U = converted_point.z();
+            enu_.Forward(fix->latitude, fix->longitude, fix->altitude, E, N, U);
+            // lanelet::GPSPoint gnssPoint{fix->latitude,  fix->longitude, fix->altitude};
+            // lanelet::BasicPoint3d converted_point = projector->forward(gnssPoint);
+            // E = converted_point.x();
+            // N = converted_point.y();
+            // U = converted_point.z();
+            GeographicLib::UTMUPS::Forward(fix->latitude, fix->longitude, zone_, northp, E, N);
+          E -= utm_ori_x;
+          N -= utm_ori_y;
+          U = fix->altitude - utm_ori_z;
             
             // check if the GPS message is close to our expected position
             Pose3 expectedState;

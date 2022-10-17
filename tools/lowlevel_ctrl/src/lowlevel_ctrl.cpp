@@ -59,6 +59,7 @@ LowlevelCtrl::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros:
   AcanSub = nh_light_.subscribe("/a_can_l2h", 100, &LowlevelCtrl::AcanCallback, this);
   CcanSub = nh_light_.subscribe("/c_can_l2h", 100, &LowlevelCtrl::CcanCallback, this);
   SteeringCmdSub = nh_can.subscribe("/usafe_steer_cmd", 10, &LowlevelCtrl::SteeringCmdCallback, this);  
+  lightSub = nh_light_.subscribe("/light_cmd", 10, &LowlevelCtrl::LightCallback, this);  
   VelSub = nh_acc.subscribe("/control_effort", 2, &LowlevelCtrl::controlEffortCallback, this);  
   emergency_stopSub = nh_acc.subscribe("/volt", 2, &LowlevelCtrl::emergencyRemoteCallback, this);
   setpointSub = nh_acc.subscribe("/setpoint", 2, &LowlevelCtrl::TargetVelocityCallback, this);
@@ -139,7 +140,7 @@ void LowlevelCtrl::AcanSender()
     if(!Acan_recv_status){  ROS_WARN("ACAN is not available"); continue;}
     if(!Ccan_recv_status){ ROS_WARN("CCAN is not available"); continue;}
       mtx_.lock();
-      usleep(1000);
+      
 
       if(target_vel <= 0.0 && abs(wheel_info_.wheel_speed) <= 0.05){        
         short zero_dcel = (0*100);       
@@ -164,14 +165,14 @@ void LowlevelCtrl::AcanSender()
         ROS_INFO("SCC On");
       }
      
-      
-      // AcanPub.publish(scc_frame);
       usleep(1000);
-      // AcanPub.publish(gear_frame);
+      AcanPub.publish(scc_frame);
       usleep(1000);
-      // AcanPub.publish(steering_frame);
-      // usleep(1000);     
-      // AcanPub.publish(light_frame);  
+      AcanPub.publish(gear_frame);
+      usleep(1000);
+      AcanPub.publish(steering_frame);
+      usleep(1000);     
+      AcanPub.publish(light_frame);  
       usleep(1000);     
             // publish vehicle info 
       steerPub.publish(steering_info_);
