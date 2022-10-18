@@ -138,7 +138,7 @@ void LowlevelCtrl::AcanSender()
   while (ros::ok())
   {   
     if(!Acan_recv_status){  ROS_WARN("ACAN is not available"); continue;}
-    if(!Ccan_recv_status){ ROS_WARN("CCAN is not available"); continue;}
+    // if(!Ccan_recv_status){ ROS_WARN("CCAN is not available"); continue;}
       mtx_.lock();
       
 
@@ -166,11 +166,11 @@ void LowlevelCtrl::AcanSender()
       }
      
       usleep(1000);
-      AcanPub.publish(scc_frame);
+      // AcanPub.publish(scc_frame);
       usleep(1000);
-      AcanPub.publish(gear_frame);
+      // AcanPub.publish(gear_frame);
       usleep(1000);
-      AcanPub.publish(steering_frame);
+      // AcanPub.publish(steering_frame);
       usleep(1000);     
       AcanPub.publish(light_frame);  
       usleep(1000);     

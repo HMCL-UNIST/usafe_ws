@@ -1,0 +1,19 @@
+
+alias new_b='xdotool key ctrl+shift+e'
+alias new_r='xdotool key ctrl+shift+o'
+alias move_u='xdotool key alt+up'
+alias move_b='xdotool key alt+down'
+alias move_l='xdotool key alt+left'
+alias move_r='xdotool key alt+right'
+
+alias lowlevel="source ~/hj_ws/usafe_integrated_ws/devel/setup.bash && roslaunch lowlevel_ctrl lowlevel_ctrl.launch"
+alias velpid="source ~/hj_ws/usafe_integrated_ws/devel/setup.bash && roslaunch pid servo_sim.launch"
+alias imurelay="rosrun topic_tools throttle messages /imu/data 200 /imu/data2"
+alias hjusafe="source ~/hj_ws/usafe_integrated_ws/devel/setup.bash && roslaunch usafe usafe.launch"
+
+alias tdr="source ~/usafe/install/setup.bash && roslaunch /home/hmcl/usafe/src/tools/tdr3000_driver/launch/main.launch"
+alias microstrain='source ~/usafe/src/tools/configs/microstrain_init.sh'
+
+alias ndt="source /home/hmcl/Desktop/ndt_ws/devel/setup.bash && roslaunch ndt_tf ndt_tf.launch"
+alias camera='/home/hmcl/xavier2_ssh '
+alias lidar='new_b && move_u && /home/hmcl/xavier3_ssh && ouster && move_b && /home/hmcl/xavier3_ssh && hesai && new_r && move_r && /home/hmcl/xavier3_ssh && preprocess'
