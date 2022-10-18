@@ -53,13 +53,6 @@ message("${SRC}")
 
 INCLUDE_DIRECTORIES(v2x include)
 
-add_executable(spat_pub 
-${SRC}
-src/v2x_info.cpp
-src/pvd.cpp
-)
-target_link_libraries(spat_pub ${catkin_LIBRARIES})
-
 add_executable(spat_pubs
 ${SRC}
 src/v2x_spat.cpp
@@ -68,16 +61,12 @@ target_link_libraries(spat_pubs ${catkin_LIBRARIES})
 
 add_executable(pvd_pubs
 ${SRC}
-src/v2x_pvd_test.cpp
+src/v2x_pvd.cpp
 src/pvd.cpp
 )
 target_link_libraries(pvd_pubs ${catkin_LIBRARIES})
 
-add_executable(pvd_pub 
-${SRC}
-src/v2x_pvd.cpp
-)
-target_link_libraries(pvd_pub ${catkin_LIBRARIES})
+
 
 add_executable(mission_pub 
 ${SRC}
@@ -96,8 +85,6 @@ target_link_libraries(viz_pub ${catkin_LIBRARIES})
 install(
   TARGETS    
   mission_pub
-  spat_pub
-  pvd_pub
   spat_pubs
   pvd_pubs
   viz_pub

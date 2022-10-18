@@ -18,7 +18,7 @@ V2XSPAT::~V2XSPAT()
 {}
 
 void V2XSPAT::whilecallback(){
-ros::Rate loop_rate(10);
+ros::Rate loop_rate(50);
     while(ros::ok())
     {    
         // 소켓이 연결되지 않은 경우(sockFd == -1) , OBU TCP 소켓 연결 시도
