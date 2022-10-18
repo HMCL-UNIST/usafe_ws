@@ -69,12 +69,12 @@ int fill_j2735_pvd(MessageFrame_t *dst, float cur_lat, float cur_lon, float cur_
     ptrPvd->startVector.utcTime->offset = NULL; // OPTIONAL, not to use
 
     // fill out (current)
-    *ptrPvd->startVector.utcTime->year = 0;//cur_Y; // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
-    *ptrPvd->startVector.utcTime->month = 0;//cur_M;   // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
-    *ptrPvd->startVector.utcTime->day = 0;//cur_D;     // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
-    *ptrPvd->startVector.utcTime->hour = 0;//cur_H;    // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
-    *ptrPvd->startVector.utcTime->minute = 0;//cur_m;  // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
-    *ptrPvd->startVector.utcTime->second = 0;//cur_s;  // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
+    *ptrPvd->startVector.utcTime->year = cur_Y; // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
+    *ptrPvd->startVector.utcTime->month = cur_M;   // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
+    *ptrPvd->startVector.utcTime->day = cur_D;     // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
+    *ptrPvd->startVector.utcTime->hour = cur_H;    // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
+    *ptrPvd->startVector.utcTime->minute = cur_m;  // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
+    *ptrPvd->startVector.utcTime->second = cur_s;  // (INPUT) <--------------- 현재 UTC 시간 입력 (년도)
 
     ptrPvd->startVector.elevation =(DSRC_Elevation_t *)malloc(sizeof(DSRC_Elevation_t));
     ptrPvd->startVector.heading = (Heading_t *)malloc(sizeof(Heading_t));
@@ -127,12 +127,12 @@ int fill_j2735_pvd(MessageFrame_t *dst, float cur_lat, float cur_lon, float cur_
     ptrSnapshot->thePosition.speedConfidence = NULL; // OPTIONAL, not to use
 
     // fill out (previous)
-    *ptrSnapshot->thePosition.utcTime->year = 0;//prev_Y;       // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (년도)
-    *ptrSnapshot->thePosition.utcTime->month =0;// prev_M;         // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (월)
-    *ptrSnapshot->thePosition.utcTime->day = 0;//prev_D;           // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (일)
-    *ptrSnapshot->thePosition.utcTime->hour = 0;//prev_H;          // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (시)
-    *ptrSnapshot->thePosition.utcTime->minute = 0;//prev_m;        // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (분)
-    *ptrSnapshot->thePosition.utcTime->second = 0;//prev_s;        // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (초)
+    *ptrSnapshot->thePosition.utcTime->year = prev_Y;       // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (년도)
+    *ptrSnapshot->thePosition.utcTime->month = prev_M;         // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (월)
+    *ptrSnapshot->thePosition.utcTime->day =  prev_D;           // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (일)
+    *ptrSnapshot->thePosition.utcTime->hour = prev_H;          // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (시)
+    *ptrSnapshot->thePosition.utcTime->minute = prev_m;        // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (분)
+    *ptrSnapshot->thePosition.utcTime->second = prev_s;        // (INPUT) <--------------- 직전 전송한 PVD의 UTC 시간 입력 (초)
     
     // fill out (previous)
     ptrSnapshot->thePosition.lat = prev_lat;                // (INPUT) <--------------- 직전 차량의 위치 (위도) (Longitude, DD 좌표계)

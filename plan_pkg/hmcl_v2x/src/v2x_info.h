@@ -23,6 +23,10 @@
 #include "v2x_msgs/PVD.h"
 #include "j2735/MessageFrame.h"
 
+#include <ros/spinner.h>
+#include <ros/callback_queue.h>
+
+
 #define DEBUG_OPTION
  
 #define OBU_RECEIVE_BUFFER_SIZE 1500
@@ -74,7 +78,6 @@ int fill_j2735_pvd(MessageFrame_t *dst, float cur_lat, float cur_lon, float cur_
  * @param dst   MessageFrame Pointer
  * @return int  
  */
-int fill_j2735_bsm(MessageFrame_t *dst);
 
 /**
  * int encode_j2735_uper(char *dst,unsigned short dstLen,MessageFrame_t *src);
@@ -100,7 +103,7 @@ int fill_j2735_bsm(MessageFrame_t *dst);
 class V2XInfo
 {
 private:
-    ros::NodeHandle nh_;
+    ros::NodeHandle nh_, nh_local_;
     ros::Publisher pub_spat;
     ros::Subscriber sub_pvd;
 
@@ -111,8 +114,8 @@ private:
 
 
     time_t rawTime= time(NULL);
-    struct tm* cur_pTimeInfo= localtime(&rawTime);
-    struct tm* prev_pTimeInfo= localtime(&rawTime);
+    tm* cur_pTimeInfo= localtime(&rawTime);
+    tm* prev_pTimeInfo= localtime(&rawTime);
 
     float cur_lat=0;
     float cur_lon=0;
@@ -135,7 +138,7 @@ private:
     unsigned long long txPvd, txBsm;
 
 public:
-    V2XInfo(ros::NodeHandle& nh);
+    V2XInfo(ros::NodeHandle& nh, ros::NodeHandle& nh_local_);
     ~V2XInfo();
 
     unsigned long long get_clock_time();
@@ -144,11 +147,8 @@ public:
                             char *uperBuffer, unsigned short uperBufferSize, int *uperRes);
     int request_tx_wave_obu(int sockFd, char *uper, unsigned short uperLength);
     int tx_v2i_pvd(int sockFd, unsigned long long *time);
-    int tx_v2v_bsm(int sockFd, unsigned long long *time);
 
     void parse_wave_msg();
-
-    // void dir_callback(const std_msgs::Float64::ConstPtr& msg);
 
     int encode_j2735_uper(char *dst,unsigned short dstLen,MessageFrame_t *src);
     int decode_j2735_uper(MessageFrame_t *dst, char *src, int size);

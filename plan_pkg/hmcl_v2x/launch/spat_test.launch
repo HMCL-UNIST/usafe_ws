@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <launch>
-    <node pkg="hmcl_v2x" type="spat_pub" name="spat_pub" output="screen">
+    <node pkg="hmcl_v2x" type="spat_pubs" name="spat_pubs" output="screen">
     </node>
     
 </launch>

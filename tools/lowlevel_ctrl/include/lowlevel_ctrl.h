@@ -45,6 +45,10 @@
 #include <hmcl_msgs/VehicleSCC.h>
 #include <hmcl_msgs/VehicleSteering.h>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
+
+#include <hmcl_msgs/BehaviorFactor.h>
+#include <hmcl_msgs/TransitionCondition.h>
+
 #include <dynamic_reconfigure/server.h>
 #include <lowlevel_ctrl/testConfig.h>
 #include <std_msgs/UInt8MultiArray.h>
@@ -75,10 +79,11 @@ class LowlevelCtrl
 private:
 ros::NodeHandle nh_can_, nh_acc_, nh_steer_, nh_light_;
 std::mutex mtx_;
-ros::Subscriber AcanSub, CcanSub, emergency_stopSub, gnssPoseSub;
+ros::Subscriber AcanSub, CcanSub, emergency_stopSub, gnssPoseSub, missionStatisSub, lightSub;
 ros::Subscriber SteeringCmdSub, AccCmdSub, ShiftCmdSub, LightCmdSub, VelSub, SCCmdSub, setpointSub;
 ros::Publisher  driving_pub, AcanPub, CcanPub, statusPub, sccPub, steerPub, wheelPub ;
 
+hmcl_msgs::BehaviorFactor behav_msg;
 
 dynamic_reconfigure::Server<lowlevel_ctrl::testConfig> srv;
 dynamic_reconfigure::Server<lowlevel_ctrl::testConfig>::CallbackType f;
@@ -129,6 +134,9 @@ void setToDrive();
 void setScc(short acc_vel);
 void setSteering(short steer_value);
 
+void missionCallback(hmcl_msgs::BehaviorFactorConstPtr msg);
+
+void LightCallback(std_msgs::Float64ConstPtr msg);
 void AcanCallback(can_msgs::FrameConstPtr acan_data);
 void CcanCallback(can_msgs::FrameConstPtr ccan_data);
 void gnssPoseCallback(geometry_msgs::PoseStampedConstPtr msg);

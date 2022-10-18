@@ -78,9 +78,9 @@ void LowlevelCtrl::DrivingStateMachine() {
           setToDrive();        
         }else{
           if(abs(wheel_info_.wheel_speed) > 0.0){
-            short target_dcel = (-3*100);       
+            short target_dcel = (-2*100);       
             setScc(target_dcel);                        
-            ROS_WARN("set -300");  
+            ROS_WARN("set -200");  
           }else{
             short zero_dcel = (0*100);       
             setScc(zero_dcel);                                               
@@ -90,10 +90,9 @@ void LowlevelCtrl::DrivingStateMachine() {
       
       case DrivingState::Driving:
         scc_overwrite = false;
-          if(gear_info_.gear == 0 ){
-           setToDrive(); 
-           setScc(-100);     
-          }        
+         if(gear_info_.gear == 0 ){
+          setToDrive();        
+        }        
       break;  
 
       case DrivingState::EmergencyStop:
@@ -126,7 +125,7 @@ void LowlevelCtrl::Test(){
   int lc = 0;
   while(ros::ok())
   {
-    ROS_INFO("test time = %d",lc);
+    // ROS_INFO("test time = %d",lc);
     
     if(lc == 0) {      
       drivingState = DrivingState::Parking;      
@@ -136,16 +135,16 @@ void LowlevelCtrl::Test(){
       drivingState = DrivingState::Parking;      
     }
 
-    if(lc  > 50 && lc < 100) {
-      drivingState = DrivingState::Driving;      
-    }
+    // if(lc  > 50 && lc < 100) {
+    //   drivingState = DrivingState::Driving;      
+    // }
 
-    if(lc  > 100 && lc < 200) {
-      drivingState = DrivingState::Driving;      
-    }
+    //  if(lc  > 100 && lc < 200) {
+    //   drivingState = DrivingState::Driving;      
+    // }
 
-    // if(lc  > 200) {
-    //   drivingState = DrivingState::DrivingStop;      
+    //  if(lc  > 200) {
+    //   drivingState = DrivingState::Driving;      
     // }
 
   //  if(lc  > 200 && lc < 250) {

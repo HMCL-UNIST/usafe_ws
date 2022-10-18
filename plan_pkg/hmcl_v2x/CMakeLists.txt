@@ -57,9 +57,21 @@ add_executable(spat_pub
 ${SRC}
 src/v2x_info.cpp
 src/pvd.cpp
-src/bsm.cpp
 )
 target_link_libraries(spat_pub ${catkin_LIBRARIES})
+
+add_executable(spat_pubs
+${SRC}
+src/v2x_spat.cpp
+)
+target_link_libraries(spat_pubs ${catkin_LIBRARIES})
+
+add_executable(pvd_pubs
+${SRC}
+src/v2x_pvd_test.cpp
+src/pvd.cpp
+)
+target_link_libraries(pvd_pubs ${catkin_LIBRARIES})
 
 add_executable(pvd_pub 
 ${SRC}
@@ -74,11 +86,20 @@ src/v2x_mission.cpp
 target_link_libraries(mission_pub ${catkin_LIBRARIES})
 
 
+add_executable(viz_pub 
+${SRC}
+src/v2x_viz.cpp
+)
+target_link_libraries(mission_pub ${catkin_LIBRARIES})
+
+
 install(
   TARGETS    
   mission_pub
   spat_pub
   pvd_pub
+  spat_pubs
+  pvd_pubs
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

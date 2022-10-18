@@ -87,11 +87,7 @@ void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort
       ctrl_effort = round(control_effort_input.data *100)/100;      
       short target_accel = (ctrl_effort*100);       
       setScc(target_accel);
-      // if (wheel_info_.wheel_speed > 0 && control_effort_input.data < 0 && target_vel == 0.0) {
-      //   setScc(-300);
-      //   ROS_INFO("Target vel 0 auto stop");
-      // }
-      // ROS_INFO("control effort callback");
+      ROS_INFO("control effort callback");
       }      
       mtx_.unlock();
   }   
@@ -99,6 +95,34 @@ void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort
   }else{
     ROS_WARN("Invalid control effort");
   }
+  
+}
+
+void LowlevelCtrl::LightCallback(std_msgs::Float64ConstPtr msg){  
+  light_frame.header.stamp = ros::Time::now();
+  light_frame.id = 0x306;
+  light_frame.dlc = 3;
+  light_frame.is_error = false;
+  light_frame.is_extended = false;
+  light_frame.is_rtr = false;
+  if(msg->data >= 1){
+    light_frame.data[0] = (unsigned int)0 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)1 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)0 & 0b11111111;  
+  }else if(msg->data == 0.0 ){
+    light_frame.data[0] = (unsigned int)0 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)0 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)0 & 0b11111111;  
+  }else if(msg->data <= -1){
+    light_frame.data[0] = (unsigned int)1 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)0 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)0 & 0b11111111;    
+  }else{
+    light_frame.data[0] = (unsigned int)0 & 0b11111111;  
+    light_frame.data[1] = (unsigned int)0 & 0b11111111;    
+    light_frame.data[2] = (unsigned int)1 & 0b11111111;    
+  }
+  
   
 }
 
@@ -133,7 +157,8 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
   int msg_id = acan_data->id;  
   int a;  
   Acan_callback_time = ros::Time::now();
-  double steer_d;
+  double steer_d;  
+  float lat_acc, long_acc, yaw_rate;
   switch(msg_id) {    
     case 0x600:      
       // receive AD_STR_INFO      
@@ -197,6 +222,43 @@ void LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr acan_data)
       a = acan_data->data[2]; //AD_WIRELESS_REMOTE_BTN_STAT_3      
       // receive AD_RTE_INFO
       break;
+
+      //////////////////////  C can pass
+
+       case 0x220:
+      // mtx_.lock();
+      // receive AD_ACCEL & YAW RATE 
+      lat_acc = ((unsigned int)(acan_data->data[0] + ((acan_data->data[1] & 0b00000111) << 8)))*0.01-10.03;
+      long_acc = ((unsigned int)(((acan_data->data[1] & 0b11100000) >> 5) + (acan_data->data[2] << 3)))*0.01-10.40;
+      yaw_rate = ((unsigned int)(acan_data->data[5] + ((acan_data->data[6] & 0b00011111) << 8)))*0.01 - 41.55;           
+      // vehicle_status_.y_acceleration = clamp(lat_acc, -10.23, 10.24);
+      // vehicle_status_.x_acceleration = clamp(long_acc, -10.23, 10.24);
+      // vehicle_status_.yaw_rate = clamp(yaw_rate, -40.95, 40.96);
+      vehicle_status_.y_acceleration = lat_acc;
+      vehicle_status_.x_acceleration =long_acc;
+      vehicle_status_.yaw_rate = yaw_rate;
+      // mtx_.unlock();
+      break;
+
+    case 0x386:
+      // mtx_.lock();
+      // receive WHL_SPEED      
+      wheel_info_.header = acan_data->header;
+      fl = ((unsigned int)(acan_data->data[0] + ((acan_data->data[1] & 0b00111111) << 8)))*0.03125; // whl speed front left
+      fr = ((unsigned int)(acan_data->data[2] + ((acan_data->data[3] & 0b00111111) << 8)))*0.03125; // whl speed front right
+      rl = ((unsigned int)(acan_data->data[4] + ((acan_data->data[5] & 0b00111111) << 8)))*0.03125; // whl speed rear left
+      rr = ((unsigned int)(acan_data->data[6] + ((acan_data->data[7] & 0b00111111) << 8)))*0.03125; // whl speed rear right
+      
+      wheel_info_.wheel_speed = ((fl+fr+rl+rr)/4)/3.6; // m/s
+      wheel_info_.fl = fl;
+      wheel_info_.fr = fr;
+      wheel_info_.rr = rr;
+      wheel_info_.rl = rl;
+      vehicle_status_.wheelspeed = wheel_info_;
+      
+      // mtx_.unlock();
+      break;
+
       
     default:        
       return;        

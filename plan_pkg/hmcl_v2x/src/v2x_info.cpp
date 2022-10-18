@@ -3,21 +3,19 @@
 using namespace std;
 
 
-V2XInfo::V2XInfo(ros::NodeHandle& nh): 
-    nh_(nh)
+V2XInfo::V2XInfo(ros::NodeHandle& nh, ros::NodeHandle& nh_local): 
+    nh_(nh), nh_local_(nh_local)
 {  
     pub_spat = nh_.advertise<v2x_msgs::SPAT>("SPAT", 10);
-    sub_pvd = nh_.subscribe("/pvd", 1, &V2XInfo::car_info_callback,this);
+    sub_pvd = nh_local_.subscribe("/pvd", 1, &V2XInfo::car_info_callback,this);
 
     txPvd = get_clock_time();
     txBsm = get_clock_time();
-    ros::Rate loop_rate(10);
+    // ros::Rate loop_rate(1);
 
     ROS_INFO("V2X Info Publisher Initialization");
     boost::thread while_loop(&V2XInfo::whilecallback,this); 
 }
-
-
 
 V2XInfo::~V2XInfo()
 {}
@@ -26,24 +24,22 @@ void V2XInfo::whilecallback(){
 ros::Rate loop_rate(10);
     while(ros::ok())
     {    
-        // std::cout << "Debugging \n" <<std::endl;
         // 소켓이 연결되지 않은 경우(sockFd == -1) , OBU TCP 소켓 연결 시도
-        // cout << "hello" <<endl;
         if(sockFd < 0)
         {
-            sockFd = connect_obu_uper_tcp("192.168.10.10",23000); // OBU
-            // sockFd = connect_obu_uper_tcp("118.45.183.36",23000); // Test Server
+            // sockFd = connect_obu_uper_tcp("192.168.10.10",23000); // OBU
+            sockFd = connect_obu_uper_tcp("118.45.183.36",23000); // Test Server
 
             storedSize = 0;
             
-            // printf("main function sockFd is : [%d] \n", sockFd);
             if(sockFd < 0){
                 std::cout <<"DEBUG : connect failed, retry \n"<< std::endl;
                 sleep(1);
                 continue;
             } 
         }
-        if (((storedSize = receive_from_obu(sockFd, rxBuffer, OBU_RECEIVE_BUFFER_SIZE, storedSize, rxUperBuffer, MAX_UPER_SIZE, &uperSize)) < 0) || (tx_v2i_pvd(sockFd,&txPvd) < 0))
+        if (((storedSize = receive_from_obu(sockFd, rxBuffer, OBU_RECEIVE_BUFFER_SIZE, storedSize, rxUperBuffer, MAX_UPER_SIZE, &uperSize)) < 0)
+                || (tx_v2i_pvd(sockFd,&txPvd) < 0))
         {
             // OBU와 TCP 연결이 끊어진 경우, 연결 재시도
             close(sockFd);
@@ -52,8 +48,18 @@ ros::Rate loop_rate(10);
             continue;
         }
         
-        std::cout <<"Now, It's working :: Parsing  \n"<< std::endl;
-        parse_wave_msg();
+        if (uperSize > 0)
+        {
+            printf("[HMCL] UPER Decoding...\n");
+            // OBU로부터 수신된 WAVE 메시지가 존재할 경우, UPER 디코딩 -> J2735 메시지 파싱
+            MessageFrame_t *msgFrame = NULL;
+            decode_j2735_uper(msgFrame, rxUperBuffer, uperSize);
+            // ASN_STRUCT_FREE(asn_DEF_MessageFrame, msgFrame);
+            loop_rate.sleep();
+        }
+
+        // std::cout <<"Now, It's working :: Parsing  \n"<< std::endl;
+        // parse_wave_msg();
         loop_rate.sleep();
     }
 }
@@ -195,7 +201,7 @@ int V2XInfo::request_tx_wave_obu(int sockFd, char *uper,unsigned short uperLengt
             return -1;
         }else
         {
-            // cout << "res return ::" <<res << endl;
+            cout << "res return ::" <<res << endl;
             return res;
         }
     }
@@ -210,47 +216,26 @@ int V2XInfo::tx_v2i_pvd(int sockFd, unsigned long long *time)
         return 0;
     
     *time += (interval - interval%PVD_INTERVAL); 
+    // cout << "time " << time <<endl;
  
     MessageFrame_t msg;
     char uper[MAX_UPER_SIZE]; 
     cur_pTimeInfo = localtime(&rawTime);
-    cout << "PVD:::: ::::: ::: :: ::: :: "<<endl;
+    cout << "PVD :::: ::::: ::: :: ::: :: "<<endl;
 
     fill_j2735_pvd(&msg, cur_lat, cur_lon,  cur_alt,  cur_dir,  cur_vel,  cur_gear, prev_lat,  prev_lon,  prev_alt,  prev_dir,  prev_vel, prev_gear, cur_pTimeInfo, prev_pTimeInfo);
     cout << "PVD Debug ::::: ::: :: ::: :: "<<endl;
     int encodedBits = encode_j2735_uper(uper,MAX_UPER_SIZE,&msg);
- 
+    cout << "PVD Debug ::::: ::: :: ::: :: "<< encodedBits << endl;
+
     if(encodedBits < 0) // 인코딩 실패로 전송이 불가능한 상태
         return 0;
      
     int byteLen = encodedBits / 8 + ((encodedBits % 8)? 1:0);
-
+    cout <<"What the hell !!!"<<endl; 
     return request_tx_wave_obu(sockFd,uper,byteLen);
 }
 
-int V2XInfo::tx_v2v_bsm(int sockFd, unsigned long long *time){
-
-    unsigned long long interval = get_clock_time() - *time;
- 
-    if(interval < BSM_INTERVAL)
-        return 0; 
-    
-    *time += (interval - interval%BSM_INTERVAL);
-
-    MessageFrame_t *msg = (MessageFrame_t *)malloc(sizeof(MessageFrame_t)); 
-    char uper[MAX_UPER_SIZE]; 
-
-    fill_j2735_bsm(msg);
-
-    int encodedBits = encode_j2735_uper(uper,MAX_UPER_SIZE,msg);
-    
-    if (encodedBits < 0) 
-        return 0;
-
-    int byteLen = encodedBits / 8 + ((encodedBits % 8)? 1:0);
-
-    return request_tx_wave_obu(sockFd, uper, byteLen);
-}
 
 
 void V2XInfo::parse_wave_msg()
@@ -312,38 +297,46 @@ void V2XInfo::parse_map(MapData_t *map)
 void V2XInfo::parse_spat(SPAT_t *spat)
 {
     ROS_INFO(" parse spat");
+
+    cout << "count " <<spat -> intersections.list.count << endl;
     for (int i = 0; i < spat->intersections.list.count; i++)
     {
-        struct IntersectionState *ptr = spat->intersections.list.array[i]; 
-        v2x_msgs::SPAT msg;
+        ROS_INFO("intersection %d :: ",i );
+        cout << spat->intersections.list.array << endl;
+        IntersectionState *ptr = spat->intersections.list.array[i];
+        // spat->intersection.list.array
+        // v2x_msgs::SPAT msg;
 
-        msg.name = "KIAPI SPAT";
-        msg.id = ptr->id.id;
-        for (int k = 0; k <ptr->states.list.count; k++)
-        {              
-            v2x_msgs::SPATdata msg_state;  
-            std::stringstream ss;
-            ss<< ptr->states.list.array[k]->movementName->buf[0]<<ptr->states.list.array[k]->movementName->buf[1]<<ptr->states.list.array[k]->movementName->buf[2];
+        // msg.name = "KIAPI SPAT";
+        // msg.id = ptr->id.id;
+        // cout << "  id   ::  " << msg.id << endl;
+        // for (int k = 0; k <ptr->states.list.count; k++)
+        // {              
+            // v2x_msgs::SPATdata msg_state;  
+    //         // std::stringstream ss;
+    //         // ss<< ptr->states.list.array[k]->movementName->buf[0]<<ptr->states.list.array[k]->movementName->buf[1]<<ptr->states.list.array[k]->movementName->buf[2];
 
-            msg_state.states= k;
-            msg_state.movementName=ss.str();
-            msg_state.signalGroup= ptr->states.list.array[k]->signalGroup;
-            msg_state.eventState= ptr->states.list.array[k]->state_time_speed.list.array[0]->eventState;
-            msg_state.timing_min_End_Time= ptr->states.list.array[k]->state_time_speed.list.array[0]->timing->minEndTime/10;
-            msg_state.connectionID=ptr->states.list.array[k]->maneuverAssistList->list.array[0]->connectionID;
-            msg_state.pedBicycleDetect=ptr->states.list.array[k]->maneuverAssistList->list.array[0]->pedBicycleDetect[0];
-            msg.States.push_back(msg_state);
-        }            
-        pub_spat.publish(msg);
+    //         // msg_state.states= k;
+    //         // msg_state.movementName=ss.str();
+    //         // msg_state.signalGroup= ptr->states.list.array[k]->signalGroup;
+    //         // msg_state.eventState= ptr->states.list.array[k]->state_time_speed.list.array[0]->eventState;
+    //         // msg_state.timing_min_End_Time= ptr->states.list.array[k]->state_time_speed.list.array[0]->timing->minEndTime/10;
+    //         // msg_state.connectionID=ptr->states.list.array[k]->maneuverAssistList->list.array[0]->connectionID;
+    //         // msg_state.pedBicycleDetect=ptr->states.list.array[k]->maneuverAssistList->list.array[0]->pedBicycleDetect[0];
+    //         // msg.States.push_back(msg_state);
+    //     // }            
+    //     // pub_spat.publish(msg);
     }    
 }
 
 int V2XInfo::encode_j2735_uper(char *dst, unsigned short dstLen, MessageFrame_t *src)
 {
     int res = -1;
-    
+
+    //error
     asn_enc_rval_t ret = uper_encode_to_buffer(&asn_DEF_MessageFrame, NULL, src, dst, dstLen);
-    
+
+    cout << "ret :: " <<ret.encoded <<endl;
     if (ret.encoded > 0)
         return ret.encoded; //  UPER Encoding Success
     else
@@ -371,8 +364,6 @@ void V2XInfo::car_info_callback(const v2x_msgs::PVDConstPtr& msg)
     cur_vel = msg->vel;
     cur_gear = msg->gear;
 
-    printf("v2x_info :::; long : %f , laT :  %f , alt : %f ,dir : %f , vel %f, gear %f sec \n", cur_lat, cur_lon, cur_alt, cur_dir, cur_vel, cur_gear);
-
     prev_pTimeInfo = cur_pTimeInfo;
     cur_pTimeInfo = localtime(&rawTime);
 }
@@ -380,9 +371,27 @@ void V2XInfo::car_info_callback(const v2x_msgs::PVDConstPtr& msg)
 int main (int argc, char** argv)
 {
     ros::init(argc, argv, "spat_pub");
-    ros::NodeHandle nh_;
-    V2XInfo V2XInfo(nh_);
+    ros::NodeHandle nh, nhlocal;
+    V2XInfo V2XInfo(nh, nhlocal);
+
+    ros::CallbackQueue callback_queue_nh, callback_queue_nh_local_path;
+    nh.setCallbackQueue(&callback_queue_nh);
+    nhlocal.setCallbackQueue(&callback_queue_nh_local_path);
+
+    std::thread spinner_thread_nh([&callback_queue_nh]()
+    {
+    ros::SingleThreadedSpinner spinner_nh;
+    spinner_nh.spin(&callback_queue_nh);
+    });
+
+    std::thread spinner_thread_nh_local_path([&callback_queue_nh_local_path]() {
+    ros::SingleThreadedSpinner spinner_nh_local_path;
+    spinner_nh_local_path.spin(&callback_queue_nh_local_path);
+    });
+
     ros::spin();
+    spinner_thread_nh.join();
+    spinner_thread_nh_local_path.join();
 
 
     return 0;

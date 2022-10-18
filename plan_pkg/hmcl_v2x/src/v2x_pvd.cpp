@@ -3,10 +3,9 @@
 V2XPvd::V2XPvd(ros::NodeHandle& nh, ros::NodeHandle& nh_local): 
     nh_(nh), nh_local_(nh_local)
 {
-    pub_pvd = nh_.advertise<v2x_msgs::PVD>("/pvd", 10);
     sub_pos = nh_local_.subscribe("/fix", 1, &V2XPvd::pos_callback, this);
     sub_dir = nh_.subscribe("/heading_ned", 1, &V2XPvd::dir_callback, this);
-    sub_veh = nh_.subscribe("/vehcle_status", 1, &V2XPvd::veh_callback,this);
+    sub_veh = nh_.subscribe("/vehicle_status", 1, &V2XPvd::veh_callback,this);
     timer_ = nh_.createTimer(ros::Duration(0.1), &V2XPvd::connect_handler,this);    
 
     ROS_INFO("V2X PVD Publisher Node Initialize");
@@ -19,20 +18,24 @@ void V2XPvd::connect_handler(const ros::TimerEvent& time){
     V2XPvd::publisher();
 }
 
-
 void V2XPvd::pos_callback(const sensor_msgs::NavSatFix::ConstPtr& nav_data){
     lat_c = nav_data -> latitude;
     lon_c = nav_data -> longitude;
     alt_c = nav_data -> altitude;
-    lat_c = lat_c;
-    lon_c = lon_c;
-    alt_c = alt_c;
+    lat_c = 321.31314;
+    lon_c = 12.1231412;
+    alt_c = 12391.3123131;
 }
 
 void V2XPvd::dir_callback(const std_msgs::Float64::ConstPtr& dir_data){
-    dir_c = 90-(dir_data-> data - 0.3*180/M_PI);
+    // Todo : heading 확인하기
+    // pose 끊기는 것 확인 
+    // dir_c = 90-(dir_data->data);
+    // cout << "dddd-------: ::: " <<   (90-(dir_data->data))/0.0125 <<endl;
+    dir_c = dir_data->data +180;    
     dir_c = dir_c/0.0125;
-    // ROS_INFO("dir data %.2f", dir_c);
+    cout << "direction   :::   0~28800 :::   " << dir_c <<endl;
+
 }
 
 void V2XPvd::veh_callback(const hmcl_msgs::VehicleStatus::ConstPtr& veh_data){
@@ -51,14 +54,13 @@ void V2XPvd::publisher(){
     V2X_pvd.vel = vel_c;
     V2X_pvd.gear = gear_c;
 
-    // printf("pvd ::: lat : %f , lon : %f , alt : %f , dir %f, vel : %f , gear %d \n", lat_c,lon_c,alt_c,dir_c,vel_c,gear_c);
     pub_pvd.publish(V2X_pvd);
 }
 
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "pvd_pub");
+    ros::init(argc, argv, "pvd_pubs");
     ros::NodeHandle nh, nhlocal;
     V2XPvd V2XPvd(nh, nhlocal);
     

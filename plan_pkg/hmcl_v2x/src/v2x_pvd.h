@@ -20,8 +20,6 @@
 #include <hmcl_msgs/VehicleGear.h>
 #include <hmcl_msgs/VehicleWheelSpeed.h>
 #include "v2x_msgs/PVD.h"
-#include "v2x_msgs/Reply.h"
-
 using namespace std;
 
 class V2XPvd
