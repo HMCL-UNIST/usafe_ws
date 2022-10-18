@@ -51,7 +51,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     
     
     shift_speed_ratio = min_shift_speed_ratio;
-    
+    prev_wp_closest_lane_idx = -1;
     local_path_length = 30.0;
      vel_constant = 18;
     // Graph reset
@@ -178,6 +178,20 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
     lane_speed_limits.clear();
     pose_.position.z = 0.0;
     int wp_closest_lane_idx = get_closest_lanelet(road_lanelets_const_for_driving,pose_);      
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
+    // check if we are following the previous lanelet
+    if(prev_wp_closest_lane_idx < 0){
+        prev_wp_closest_lane_idx = wp_closest_lane_idx;
+    }
+    lanelet::ConstLineString3d prev_centerline = road_lanelets_const_for_driving.at(wp_closest_lane_idx).centerline();
+    lanelet::ArcCoordinates prev_centerline_cord = get_ArcCoordinate(prev_centerline,cur_pose.pose);  
+    if(fabs(prev_centerline_cord.distance) < 1.5){
+        ROS_WARN("Follow Previous lane");
+        wp_closest_lane_idx = prev_wp_closest_lane_idx;
+    }
+    ////////////////////////////////////////////////////////////////////////
+    ////////////////////////////////////////////////////////////////////////
     double lane_speed_limit = road_lanelets_const_for_driving.at(wp_closest_lane_idx).attributeOr("speed_limit",0.0);    
     lanelet::ConstLineString3d target_centerline = road_lanelets_const_for_driving.at(wp_closest_lane_idx).centerline();
       // gets the projecion of point on ls
@@ -226,10 +240,9 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
         }        
     }
     
+    prev_wp_closest_lane_idx = wp_closest_lane_idx;
     return target_points;    
 }
-
-
 
 
 void RacingLinePlanner::localPathGenCallback() {
@@ -238,6 +251,7 @@ void RacingLinePlanner::localPathGenCallback() {
   ROS_INFO("Init local path generation thread");  
   while (ros::ok())
   {    
+      
     std_msgs::Float64 light_data;
     auto start_time=  std::chrono::high_resolution_clock::now();                    
     std::vector<lanelet::Point3d> local_lane_points;
@@ -248,6 +262,8 @@ void RacingLinePlanner::localPathGenCallback() {
         loop_rate.sleep();        
         continue;
     }
+
+    
     ////////////////////////////////////////////////////////////////
     std::vector<double> speed_limits;
     ////////////////////////////////////////////////////////////////

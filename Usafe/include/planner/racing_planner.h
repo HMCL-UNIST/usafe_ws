@@ -184,6 +184,7 @@ private:
     double boost_duration;
 
     
+    int prev_wp_closest_lane_idx;
     bool polyfit_error;
     double poly_error;
 
