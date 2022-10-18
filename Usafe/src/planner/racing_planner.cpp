@@ -181,15 +181,15 @@ std::vector<lanelet::Point3d> RacingLinePlanner::LaneFollowPathGen(double path_l
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     // check if we are following the previous lanelet
-    if(prev_wp_closest_lane_idx < 0){
-        prev_wp_closest_lane_idx = wp_closest_lane_idx;
-    }
-    lanelet::ConstLineString3d prev_centerline = road_lanelets_const_for_driving.at(wp_closest_lane_idx).centerline();
-    lanelet::ArcCoordinates prev_centerline_cord = get_ArcCoordinate(prev_centerline,cur_pose.pose);  
-    if(fabs(prev_centerline_cord.distance) < 1.5){
-        ROS_WARN("Follow Previous lane");
-        wp_closest_lane_idx = prev_wp_closest_lane_idx;
-    }
+    // if(prev_wp_closest_lane_idx < 0){
+    //     prev_wp_closest_lane_idx = wp_closest_lane_idx;
+    // }
+    // lanelet::ConstLineString3d prev_centerline = road_lanelets_const_for_driving.at(wp_closest_lane_idx).centerline();
+    // lanelet::ArcCoordinates prev_centerline_cord = get_ArcCoordinate(prev_centerline,cur_pose.pose);  
+    // if(fabs(prev_centerline_cord.distance) < 1.5){
+    //     ROS_WARN("Follow Previous lane");
+    //     wp_closest_lane_idx = prev_wp_closest_lane_idx;
+    // }
     ////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////
     double lane_speed_limit = road_lanelets_const_for_driving.at(wp_closest_lane_idx).attributeOr("speed_limit",0.0);    
@@ -430,10 +430,11 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
 
     // reduce speed for hybrid road
 
-    double dist_tmp = sqrt(pow((-569.103881836-cur_pose.pose.position.x),2)+pow((806.690185547-cur_pose.pose.position.y),2));
-    if(dist_tmp < 6.0){
-        vel_msg.data = 15;
-    }
+    // double dist_tmp = sqrt(pow((-569.103881836-cur_pose.pose.position.x),2)+pow((806.690185547-cur_pose.pose.position.y),2));
+    // if(dist_tmp < 6.0){
+    //     vel_msg.data = 15;
+    // }
+    
     // double dist_tmp2 = sqrt(pow((-772.731323242-cur_pose.pose.position.x),2)+pow((873.287597656-cur_pose.pose.position.y),2));
     
     // if(dist_tmp2 < 5){

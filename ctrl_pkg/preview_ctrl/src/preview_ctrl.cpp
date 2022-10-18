@@ -64,7 +64,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 1);
   nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
   nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
-  nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 0.5); // rad/s 
+  nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 6.28); // rad/s 
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
   nh_traj.param<double>("lf", lf, 1.35);
   nh_traj.param<double>("lr", lr, 1.25);
@@ -75,9 +75,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<int>("preview_step", preview_step, 50); 
 
   nh_traj.param<double>("Q_ey", Q_ey, 3.0); 
-  nh_traj.param<double>("Q_eydot", Q_eydot, 3.0); 
+  nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
-  nh_traj.param<double>("Q_epsidot", Q_epsidot, 7.0); 
+  nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
   nh_traj.param<double>("R_weight", R_weight, 3000); 
   
   
@@ -97,7 +97,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
-  steer_filter.initialize(dt, 10.0);
+  steer_filter.initialize(dt, 3.0);
 
 
   std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
@@ -158,39 +158,26 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
 
 void PreviewCtrl::reschedule_weight(double speed){
 
-  std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
-  // if (speed *3.6 >= 0 && speed *3.6 < 10) {
-  //     Qweight[0] = 7;
-  //     R_weight = 1000;
-  //   }
-
-  //   if (speed *3.6 >= 10 && speed *3.6 < 20) {
-  //     Qweight[0] = 4;      
-  //     R_weight = 2500;
-  //   }
-
-  //   if (speed *3.6 >= 20 && speed *3.6 < 30) {
-  //     Qweight[0] = 3.5;     
-  //     R_weight = 3000;
-  //   }
-
-  //   if (speed *3.6 >= 30 && speed *3.6 < 40) {
-  //     Qweight[0] = 3.5;
-  //     R_weight = 3000;      
-  //   }
-
-  //   if (speed *3.6 >= 40) {
-  //     Qweight[0] = 3;
-  //     R_weight = 3500;
-  //   }
+  
+      if(speed > 25/3.6){
+        // For high speed
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
       double tmp_q = -0.1*speed*3.6 + 7;
       tmp_q = std::min(std::max(tmp_q,3.0),7.0);
       double tmp_r = 80*speed*3.6 + 500;
       tmp_r = std::min(std::max(tmp_r,1000.0),4000.0);
-
       Qweight[0] = tmp_q;
       R_weight = tmp_r;
       VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // For Low speed  
+        // ROS_WARN("low speed tune");       
+      std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
+      R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      
+      
   
 
 }
@@ -217,9 +204,14 @@ void PreviewCtrl::steering_rate_reset(double speed){
     // }
 
     // angle_rate_limit = -0.01*speed*3.6 +0.6;
-    // angle_rate_limit = -0.0131*speed*3.6 +0.647;
-    angle_rate_limit = 1.0;
-
+    if(speed > 30/3.6){
+      angle_rate_limit = -0.0131*speed*3.6 +0.647;
+      angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
+    }else{
+        angle_rate_limit = 20;
+    }
+    
+    
 }
 // void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
 //   vehicle_status_.header = msg->header;
@@ -229,9 +221,12 @@ void PreviewCtrl::steering_rate_reset(double speed){
 void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
   // recieve longitudinal velocity and steering 
    
-   double wheel_speed = msg->wheelspeed.wheel_speed;
+    wheel_speed = msg->wheelspeed.wheel_speed;
     reschedule_weight(wheel_speed);
-    steering_rate_reset(wheel_speed);
+    
+        steering_rate_reset(wheel_speed);
+   
+    
   
       // if(wheel_speed > 0){
         // vehicle_status_.twist.linear.x = wheel_speed;
@@ -268,7 +263,8 @@ void PreviewCtrl::ControlLoop()
           continue;
         }
         VehicleModel_.setState(Xk,Cr);
-        double current_speed = max(vehicle_status_.twist.linear.x ,3.0); // less than 1m/s takes too much time for riccati solver
+        double current_speed = max(vehicle_status_.twist.linear.x ,1.0); // less than 1m/s takes too much time for riccati solver
+        // double current_speed = max(wheel_speed,1.0); // less than 1m/s takes too much time for riccati solver
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
          
         // Computes control gains 
@@ -286,14 +282,19 @@ void PreviewCtrl::ControlLoop()
         }
         double delta_cmd = VehicleModel_.computeGain(); 
         
-        if(fabs(delta_cmd) > 0.5){
-           loop_rate.sleep();
-          continue;
-        }                  
+        
+        // if(fabs(delta_cmd) > 0.5){
+        //    loop_rate.sleep();
+        //   continue;
+        // }                  
+
+
         // concatenate via angular limit
         double diff_delta = delta_cmd-prev_delta_cmd;
         debug_msg.pose.position.z = fabs(diff_delta)/dt;    
+        
         if( fabs(diff_delta)/dt > angle_rate_limit ){
+          ROS_WARN("rate limit reached!!!");
           if(diff_delta>0){
               delta_cmd = prev_delta_cmd + angle_rate_limit*dt;
           }else{
@@ -443,8 +444,10 @@ bool PreviewCtrl::stateSetup(){
       }
 
       debug_msg.header.stamp = ros::Time::now();    
-      debug_msg.pose.position.x = err_lat;  
-      debug_msg.pose.position.y = yaw_err;    
+      debug_msg.pose.orientation.x = err_lat;  
+      debug_msg.pose.orientation.y = eydot;  
+      debug_msg.pose.orientation.z = yaw_err;    
+      debug_msg.pose.orientation.w = epsidot; 
       // debug_msg.pose.position.z = debug_yaw*180/PI;
       // debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
       // debug_msg.pose.orientation.y = Xk(0); // ;        
@@ -466,22 +469,35 @@ bool PreviewCtrl::stateSetup(){
 
 void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 {
-  config_switch = config.config_switch;
-  if(config_switch){
-  Q_ey = config.Q_ey;
-  Q_eydot = config.Q_eydot;
-  Q_epsi = config.Q_epsi ;
-  Q_epsidot = config.Q_epsidot;
-  R_weight = config.R_weight;  
-  lag_tau = config.lag_tau;
-  delay_in_sec = config.delay_in_sec;
-  delay_step = (int)(delay_in_sec/dt);
+  return ;
+  ROS_INFO("Dynamiconfigure updated");
+  // config_switch = config.config_switch;
+  // if(config_switch){
+  // Q_ey = config.Q_ey;
+  // Q_eydot = config.Q_eydot;
+  // Q_epsi = config.Q_epsi ;
+  // Q_epsidot = config.Q_epsidot;
+  // R_weight = config.R_weight;  
+  // lag_tau = config.lag_tau;
+  // delay_in_sec = config.delay_in_sec;
+  // delay_step = (int)(delay_in_sec/dt);
+  // std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.1*speed*3.6 + 7;
+      // tmp_q = std::min(std::max(tmp_q,3.0),7.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4000.0);
+
+      // Qweight[0] = tmp_q;
+      // R_weight = tmp_r;
+      // VehicleModel_.setWeight( Qweight, R_weight);
+
+
   
-  std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
-  VehicleModel_.setWeight( Qweight, R_weight);
-  VehicleModel_.setDelayStep(delay_step);  
-  VehicleModel_.setLagTau(lag_tau);
-  }
+  // std::vector<double> Qweight_ = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  // VehicleModel_.setWeight( Qweight_, R_weight);
+  // VehicleModel_.setDelayStep(delay_step);  
+  // VehicleModel_.setLagTau(lag_tau);
+  // }
 
   
 }

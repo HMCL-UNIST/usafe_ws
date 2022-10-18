@@ -6,10 +6,8 @@
 //
 // author: Horibe Takamasa
 */
-#include <iostream>
-#include <riccati_solver.h>
 
-using namespace std;
+#include <riccati_solver.h>
 
 bool solveRiccatiIterationC(const Eigen::MatrixXd &A, const Eigen::MatrixXd &B,
                             const Eigen::MatrixXd &Q, const Eigen::MatrixXd &R,
@@ -49,7 +47,7 @@ bool solveRiccatiIterationD(const Eigen::MatrixXd &Ad,
   Eigen::MatrixXd AdT = Ad.transpose();
   Eigen::MatrixXd BdT = Bd.transpose();
   Eigen::MatrixXd Rinv = R.inverse();
-  cout << "here1" << endl;
+
   double diff;
   for (uint i = 0; i < iter_max; ++i) {
     // -- discrete solver --

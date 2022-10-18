@@ -126,7 +126,7 @@ void LowlevelCtrl::Test(){
   while(ros::ok())
   {
     // ROS_INFO("test time = %d",lc);
-    
+    mtx_.lock();
     if(lc == 0) {      
       drivingState = DrivingState::Parking;      
     }
@@ -154,7 +154,7 @@ void LowlevelCtrl::Test(){
   //   if(lc  > 250 && lc < 251) {
   //     drivingState = DrivingState::EmergencyStop;      
   //   }
-    
+    mtx_.unlock();
     lc++; 
     test_loop_rate.sleep();
   }
