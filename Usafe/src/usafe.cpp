@@ -209,6 +209,7 @@ void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)
 {
   Sum_compute_shortest_path_ = config.Sum_compute_shortest_path;
   positive_cost_assign_ = config.positive_cost_assign;
+
   race_planner_->positive_cost_assign_ = positive_cost_assign_; 
   if(Sum_compute_shortest_path_){
     if(race_planner_->compute_global_path()){

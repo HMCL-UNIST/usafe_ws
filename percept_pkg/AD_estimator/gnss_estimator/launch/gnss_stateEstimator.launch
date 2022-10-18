@@ -85,8 +85,8 @@
 
       <!-- if a GPS measurement is more than this threshold from the expected reading given
            the previous estimate, it will be disgarded (in meters) -->
-      <param name="MaxGPSError" value="5"/>
-      <param name="maxLocalPoseError" value="5"/>
+      <param name="MaxGPSError" value="20"/>
+      <param name="maxLocalPoseError" value="20"/>
       
 
   </node>

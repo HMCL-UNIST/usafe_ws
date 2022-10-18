@@ -175,7 +175,7 @@ private:
     double point_projection_ignore_threshold = 3.0;
     double lane_overwrite_distance;
     double shift_distance_amount;
-    
+    double current_speed;
     double map_road_resolution;
     hmcl_msgs::Lane local_lane_msg;
 

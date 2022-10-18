@@ -81,7 +81,7 @@ VehicleStatus vehicle_status_; //< @brief vehicle status
 bool my_steering_ok_,my_position_ok_, my_odom_ok_;
 double angle_rate_limit, prev_delta_cmd;   
 std::mutex mtx_;
-ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub;
+ros::Subscriber poseSub, waypointSub, vehicleStatesSub, odomSub, StatusSub, simStatusSub, odomSub_test;
 ros::Publisher  velPub, ackmanPub, steerPub, pub_debug_filtered_traj_, debugPub, AcanPub;
 
 Trajectory traj_;
@@ -113,7 +113,8 @@ Butterworth2dFilter lpf_yaw_error_;
 Butterworth2dFilter lpf_ey; 
 Butterworth2dFilter lpf_epsi; 
 Butterworth2dFilter steer_filter; 
-
+Butterworth2dFilter yaw_filter; 
+double current_yaw;
 int steering_offset = 8;
 bool state_received;
 ros::Time state_time, prev_state_time;
@@ -133,6 +134,7 @@ void ControlLoop();
 void simstatusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr& msg);
 void statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg);
 void odomCallback(const nav_msgs::OdometryConstPtr& msg);
+void test_odomCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg);
 bool stateSetup();
 

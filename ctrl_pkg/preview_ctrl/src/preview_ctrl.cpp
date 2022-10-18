@@ -64,11 +64,11 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 1);
   nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
   nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
-  nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 6.28); // rad/s 
+  nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 0.5); // rad/s 
   nh_traj.param<double>("wheelbase", wheelbase, 2.6);
   nh_traj.param<double>("lf", lf, 1.35);
   nh_traj.param<double>("lr", lr, 1.25);
-  nh_traj.param<double>("mass", mass, 1750);    
+  nh_traj.param<double>("mass", mass, 1800);    
   nh_traj.param<double>("dt", dt, 0.04); 
   nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.14); 
   nh_traj.param<double>("lag_tau", lag_tau, 0.14); 
@@ -78,9 +78,8 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<double>("Q_eydot", Q_eydot, 5.0); 
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
   nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
-  nh_traj.param<double>("R_weight", R_weight, 3000); 
-  
-  
+  nh_traj.param<double>("R_weight", R_weight, 4500); 
+
 
   nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 5); 
   
@@ -97,7 +96,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
-  steer_filter.initialize(dt, 3.0);
+  steer_filter.initialize(dt, 5.0);
+
+  yaw_filter.initialize(dt, 1.0);
 
 
   std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
@@ -143,9 +144,17 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
     
     vehicle_status_.header = msg->header;
     vehicle_status_.pose = msg->pose.pose;
+    
+    // Shift position 
+    double yaw_ = normalizeRadian(tf2::getYaw(msg->pose.pose.orientation));
+    // double shift_local_x = -1.35;
+    // vehicle_status_.pose.position.x += shift_local_x*cos(yaw_);
+    // vehicle_status_.pose.position.y += shift_local_x*sin(yaw_);
+    
+    
     my_position_ok_ = true;
 
-    double yaw_ = tf2::getYaw(msg->pose.pose.orientation);         
+            
     double global_x = msg->twist.twist.linear.x;
     double global_y = msg->twist.twist.linear.y;
          
@@ -161,13 +170,21 @@ void PreviewCtrl::reschedule_weight(double speed){
   
       if(speed > 25/3.6){
         // For high speed
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 25.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0;
         std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
-      double tmp_q = -0.1*speed*3.6 + 7;
-      tmp_q = std::min(std::max(tmp_q,3.0),7.0);
-      double tmp_r = 80*speed*3.6 + 500;
-      tmp_r = std::min(std::max(tmp_r,1000.0),4000.0);
-      Qweight[0] = tmp_q;
-      R_weight = tmp_r;
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
       VehicleModel_.setWeight( Qweight, R_weight);
       }else{
         // For Low speed  
@@ -206,6 +223,7 @@ void PreviewCtrl::steering_rate_reset(double speed){
     // angle_rate_limit = -0.01*speed*3.6 +0.6;
     if(speed > 30/3.6){
       angle_rate_limit = -0.0131*speed*3.6 +0.647;
+      
       angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
     }else{
         angle_rate_limit = 20;
@@ -223,8 +241,8 @@ void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
    
     wheel_speed = msg->wheelspeed.wheel_speed;
     reschedule_weight(wheel_speed);
+    // steering_rate_reset(wheel_speed);
     
-        steering_rate_reset(wheel_speed);
    
     
   
@@ -291,7 +309,8 @@ void PreviewCtrl::ControlLoop()
 
         // concatenate via angular limit
         double diff_delta = delta_cmd-prev_delta_cmd;
-        debug_msg.pose.position.z = fabs(diff_delta)/dt;    
+        
+        
         
         if( fabs(diff_delta)/dt > angle_rate_limit ){
           ROS_WARN("rate limit reached!!!");
@@ -322,12 +341,13 @@ void PreviewCtrl::ControlLoop()
         // filter_ratio = std::max(l_lim,std::min(filter_ratio,1.0));
         // target_speed = target_speed*filter_ratio;
       //////////////////////////////////////////////////
-        ROS_INFO("target_speed = %f", target_speed);
+        // ROS_INFO("target_speed = %f", target_speed);
         std_msgs::Float64 vel_msg;
         vel_msg.data = target_speed;
         // velPub.publish(vel_msg);
-
+        debug_msg.pose.position.x = delta_cmd;    
         delta_cmd = steer_filter.filter(delta_cmd);            
+        debug_msg.pose.position.y = delta_cmd;    
         
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
         ackermann_msgs::AckermannDrive ctrl_msg;
@@ -347,12 +367,12 @@ void PreviewCtrl::ControlLoop()
         steering_frame.is_extended = false;
         steering_frame.is_rtr = false;        
         short steer_value = (short)(delta_cmd*15.0*180/PI*10+steering_offset);
-        ROS_INFO("delta_cmd = %f", delta_cmd);
+        // ROS_INFO("delta_cmd = %f", delta_cmd);
         prev_delta_cmd = delta_cmd;
         steering_frame.data[0] = (steer_value & 0b11111111);
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
-        // AcanPub.publish(steering_frame);
+        AcanPub.publish(steering_frame);
           
 
         ///////////
@@ -387,7 +407,10 @@ void PreviewCtrl::ControlLoop()
 
 bool PreviewCtrl::stateSetup(){
 
-  const double current_yaw = tf2::getYaw(vehicle_status_.pose.orientation);
+  current_yaw = tf2::getYaw(vehicle_status_.pose.orientation);
+  debug_msg.pose.orientation.x = current_yaw;        
+  yaw_filter.filter(current_yaw);
+  debug_msg.pose.orientation.y = current_yaw; 
   debug_yaw = current_yaw;
   /* calculate nearest point on reference trajectory (used as initial state) */
   unsigned int nearest_index = 0;
@@ -444,10 +467,10 @@ bool PreviewCtrl::stateSetup(){
       }
 
       debug_msg.header.stamp = ros::Time::now();    
-      debug_msg.pose.orientation.x = err_lat;  
-      debug_msg.pose.orientation.y = eydot;  
-      debug_msg.pose.orientation.z = yaw_err;    
-      debug_msg.pose.orientation.w = epsidot; 
+      // debug_msg.pose.orientation.x = err_lat;  
+      // debug_msg.pose.orientation.y = eydot;  
+      // debug_msg.pose.orientation.z = yaw_err*180.0/3.14195;    
+      // debug_msg.pose.orientation.w = epsidot; 
       // debug_msg.pose.position.z = debug_yaw*180/PI;
       // debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
       // debug_msg.pose.orientation.y = Xk(0); // ;        
@@ -469,15 +492,16 @@ bool PreviewCtrl::stateSetup(){
 
 void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 {
-  return ;
+  // return ;
   ROS_INFO("Dynamiconfigure updated");
-  // config_switch = config.config_switch;
-  // if(config_switch){
-  // Q_ey = config.Q_ey;
-  // Q_eydot = config.Q_eydot;
-  // Q_epsi = config.Q_epsi ;
-  // Q_epsidot = config.Q_epsidot;
-  // R_weight = config.R_weight;  
+  config_switch = config.config_switch;
+  if(config_switch){
+  Q_ey = config.Q_ey;
+  Q_eydot = config.Q_eydot;
+  Q_epsi = config.Q_epsi ;
+  Q_epsidot = config.Q_epsidot;
+  R_weight = config.R_weight;  
+  angle_rate_limit = config.angle_rate_limit;
   // lag_tau = config.lag_tau;
   // delay_in_sec = config.delay_in_sec;
   // delay_step = (int)(delay_in_sec/dt);
@@ -493,11 +517,11 @@ void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 
 
   
-  // std::vector<double> Qweight_ = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
-  // VehicleModel_.setWeight( Qweight_, R_weight);
+  std::vector<double> Qweight_ = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  VehicleModel_.setWeight( Qweight_, R_weight);
   // VehicleModel_.setDelayStep(delay_step);  
   // VehicleModel_.setLagTau(lag_tau);
-  // }
+  }
 
   
 }

@@ -146,7 +146,6 @@ int V2XPVD::request_tx_wave_obu(int sockFd, char *uper,unsigned short uperLength
             return -1;
         }else
         {
-            cout << "res return ::" <<res << endl;
             return res;
         }
     }
@@ -166,11 +165,16 @@ int V2XPVD::tx_v2i_pvd(int sockFd, unsigned long long *time)
     char uper[MAX_UPER_SIZE]; 
     prev_pTimeInfo = cur_pTimeInfo;
     cur_pTimeInfo = localtime(&rawTime);
-    cout << "PVD :::: ::::: ::: :: ::: :: "<<endl;
+    // cout << "PVD :::: ::::: ::: :: ::: :: "<<endl;
     int res_=fill_j2735_pvd(&msg, cur_lat, cur_lon,  cur_alt,  cur_dir,  cur_vel,  cur_gear, prev_lat,  prev_lon,  prev_alt,  prev_dir,  prev_vel, prev_gear, cur_pTimeInfo, prev_pTimeInfo);
-    cout << "PVD Debug ::::: ::: :: ::: :: "<<endl;
+    // cout << "PVD Debug ::::: ::: :: ::: :: "<<endl;
     int encodedBits = encode_j2735_uper(uper,MAX_UPER_SIZE,&msg);
-    cout << "PVD Debug ::::: ::: :: ::: :: "<< encodedBits << endl;
+    if (encodedBits >0){
+        ROS_INFO("Send PVD Message success with data size :: %d", encodedBits);
+    }
+    else{
+        ROS_WARN("Send PVD Message Error  :: %d", encodedBits);
+    }
 
     if(encodedBits < 0) // 인코딩 실패로 전송이 불가능한 상태
         return 0;
@@ -186,7 +190,6 @@ int V2XPVD::encode_j2735_uper(char *dst, unsigned short dstLen, MessageFrame_t *
     //error
     asn_enc_rval_t ret = uper_encode_to_buffer(&asn_DEF_MessageFrame, NULL, src, dst, dstLen);
 
-    cout << "ret :: " <<ret.encoded <<endl;
     if (ret.encoded > 0)
         return ret.encoded; //  UPER Encoding Success
     else

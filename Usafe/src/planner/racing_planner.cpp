@@ -35,16 +35,16 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
 
     nh_p_.param<double>("map_road_resolution", map_road_resolution, 1.0);
 
-    nh_p_.param<double>("min_local_path_length", min_local_path_length, 20.0);
-    nh_p_.param<double>("max_local_path_length", max_local_path_length, 30.0);
+    nh_p_.param<double>("min_local_path_length", min_local_path_length, 30.0);
+    nh_p_.param<double>("max_local_path_length", max_local_path_length, 60.0);
 
     nh_p_.param<double>("max_shift_speed_ratio", max_shift_speed_ratio, 0.95);
     nh_p_.param<double>("min_shift_speed_ratio", min_shift_speed_ratio, 0.987);
 
-    nh_p_.param<double>("shift_distance_amount", shift_distance_amount, 0.5);
+    nh_p_.param<double>("shift_distance_amount", shift_distance_amount, 1.2);
 
     
-    nh_p_.param<double>("lane_overwrite_distance", lane_overwrite_distance, 0.4);
+    nh_p_.param<double>("lane_overwrite_distance", lane_overwrite_distance, 0.8);
 
     nh_p_.param<double>("Goal_line_pose_lat", Goal_line_pose_lat, 35.65084331202714);
     nh_p_.param<double>("Goal_line_pose_lon", Goal_line_pose_lon, 128.3997533490543);
@@ -76,6 +76,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     
     
     curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
+    
     vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &RacingLinePlanner::callbackVehicleStatus, this);
     
     // Set timer callbacks
@@ -113,7 +114,7 @@ RacingLinePlanner::~RacingLinePlanner()
 
 void RacingLinePlanner::callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg){
   double local_path_scale = 1.0;
-  double current_speed = msg->wheelspeed.wheel_speed; // in m/s
+   current_speed = msg->wheelspeed.wheel_speed; // in m/s
   if (current_speed > 0){
     double tmp_add_path_length = current_speed*local_path_scale;
     local_path_length = std::min(min_local_path_length + tmp_add_path_length,max_local_path_length);
@@ -121,7 +122,7 @@ void RacingLinePlanner::callbackVehicleStatus(const hmcl_msgs::VehicleStatusCons
     double tmp_shift_speed_ratio = 0.00666*current_speed + 0.839;
     shift_speed_ratio = std::min(tmp_shift_speed_ratio,max_shift_speed_ratio);
     shift_speed_ratio = std::max(min_shift_speed_ratio,shift_speed_ratio);
-    shift_speed_ratio = 0.73;
+    shift_speed_ratio = 0.78;
     ROS_INFO("shift_speed_ratio = %f", shift_speed_ratio);
   }else{
     local_path_length = min_local_path_length;
@@ -318,21 +319,37 @@ void RacingLinePlanner::localPathGenCallback() {
                 for(int k=0; k < local_lane_points.size(); k++){
                     target_linstring2d.push_back(lanelet::utils::to2D(local_lane_points[k]));                    
                 }
-
-                double shift_distance = 0.0;
-                if(cur_pose_cord.distance > 0){
-                    light_data.data = 1.0;
-                     shift_distance = cur_pose_cord.distance - shift_distance_amount;
-                     shift_distance = std::max(shift_distance,0.0);                    
-                }else{
+                // Light signal publish
+                 if(cur_pose_cord.distance > 0){
+                     light_data.data = 1.0;
+                 }else{
                     light_data.data = -1.0;
-                    shift_distance = cur_pose_cord.distance + shift_distance_amount;
-                    shift_distance = std::min(shift_distance,0.0);                                        
-                }  
+                 }
+
+                // lane change offset computing //////////////
+                 double shift_distance = 0.0;
+                //  shift_distance = cur_pose_cord.distance*shift_speed_ratio;                
+                 ROS_WARN("cur_pose_cord.distance = %f", cur_pose_cord.distance);
+                //  ROS_WARN("shift_distance_amount = %f", shift_distance_amount);
+                 
+                    // if(fabs(cur_pose_cord.distance) > 1.0){
+                    //     shift_distance = cur_pose_cord.distance*shift_speed_ratio;                
+                    //     ROS_INFO("Ratio change");
+                    // }else{        
+                        // ROS_INFO("Amount change");            
+                        if(cur_pose_cord.distance > 0){                            
+                            shift_distance = cur_pose_cord.distance - shift_distance_amount;
+                            shift_distance = std::max(shift_distance,0.0);                    
+                        }else{                           
+                            shift_distance = cur_pose_cord.distance + shift_distance_amount;
+                            shift_distance = std::min(shift_distance,0.0);                                        
+                        } 
+                    //  }
+                 
                               
                 
                 
-                // double shift_distance = cur_pose_cord.distance*shift_speed_ratio;                
+                
                 auto shifted_target_linstring2d = lanelet::geometry::offset(target_linstring2d, shift_distance);
                 for(int k=0; k < local_lane_points.size(); k++){
                     local_lane_points[k].x() = shifted_target_linstring2d[k].x();                    
@@ -434,7 +451,6 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
     // if(dist_tmp < 6.0){
     //     vel_msg.data = 15;
     // }
-    
     // double dist_tmp2 = sqrt(pow((-772.731323242-cur_pose.pose.position.x),2)+pow((873.287597656-cur_pose.pose.position.y),2));
     
     // if(dist_tmp2 < 5){
@@ -442,6 +458,7 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
     // }
     
     ////////////test 
+    // vel_msg.data = 56/3.6;
     velPub.publish(vel_msg);
     
 }

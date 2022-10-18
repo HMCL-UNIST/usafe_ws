@@ -153,7 +153,12 @@ if __name__ == '__main__':
             activity_status, gnss_health, latitude, longitude, altitude, heading , valid_heading= MyTcpCommunicator.getGNSSData()                        
             fix_msg.header = Header()
             fix_msg.header.stamp = rospy.Time.now()
-            fix_msg.header.frame_id = "gnss_link"            
+            fix_msg.header.frame_id = "gnss_link"   
+            if latitude > 90.0 or latitude < -90:
+                continue
+            if longitude > 180.0 or longitude < -180:
+                continue
+            
             fix_msg.latitude = latitude
             fix_msg.longitude = longitude
             fix_msg.altitude = altitude
@@ -170,6 +175,7 @@ if __name__ == '__main__':
             
             if activity_status !='A':
                 fix_msg.position_covariance = [1000] * 9
+                continue
             
 
             fix_pub.publish(fix_msg)
