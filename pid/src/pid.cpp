@@ -1,8 +1,6 @@
 
 #include <pid/pid.h>
-#include <iostream>
 
-using namespace std;
 using namespace pid_ns;
 
 PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0), filtered_error_deriv_(3, 0)
@@ -21,6 +19,9 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
   node_priv.param<double>("Kp", Kp_, 1.0);
   node_priv.param<double>("Ki", Ki_, 0.0);
   node_priv.param<double>("Kd", Kd_, 0.0);
+    Kp_launch = Kp_;
+  Ki_launch = Ki_;
+  Kd_launch = Kd_;
   node_priv.param<double>("upper_limit", upper_limit_, 1000.0);
   node_priv.param<double>("lower_limit", lower_limit_, -1000.0);
   node_priv.param<double>("windup_limit", windup_limit_, 1000.0);
@@ -47,7 +48,7 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
 
   // instantiate publishers & subscribers
   control_effort_pub_ = node.advertise<std_msgs::Float64>(topic_from_controller_, 1);
-  pid_debug_pub_ = node.advertise<control_msgs::PidState>(pid_debug_pub_name_, 1);
+  pid_debug_pub_ = node.advertise<std_msgs::Float64MultiArray>(pid_debug_pub_name_, 1);
 
   ros::Subscriber plant_sub_ = node.subscribe(topic_from_plant_, 1, &PidObject::plantStateCallback, this);
   ros::Subscriber setpoint_sub_ = node.subscribe(setpoint_topic_, 1, &PidObject::setpointCallback, this);
@@ -60,7 +61,7 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
     exit(EXIT_FAILURE);
   }
 
-  // // dynamic reconfiguration
+  // dynamic reconfiguration
   dynamic_reconfigure::Server<pid::PidConfig> config_server;
   dynamic_reconfigure::Server<pid::PidConfig>::CallbackType f;
   f = boost::bind(&PidObject::reconfigureCallback, this, _1, _2);
@@ -87,16 +88,17 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
 void PidObject::setpointCallback(const std_msgs::Float64& setpoint_msg)
 {
   setpoint_ = setpoint_msg.data;
-  if (setpoint_ < 2.0 && setpoint_ != 0) {
-    setpoint_ = 2;
-  }
   last_setpoint_msg_time_ = ros::Time::now();
   new_state_or_setpt_ = true;
 }
 
 void PidObject::plantStateCallback(const hmcl_msgs::VehicleWheelSpeed& state_msg)
 {
-  plant_state_ = state_msg.wheel_speed;
+  
+    plant_state_ = state_msg.wheel_speed ;
+  
+  
+  
 
   new_state_or_setpt_ = true;
 }
@@ -331,19 +333,18 @@ void PidObject::doCalcs()
     if (pid_enabled_ && (setpoint_timeout_ == -1 || 
                          (ros::Time::now() - last_setpoint_msg_time_).toSec() <= setpoint_timeout_))
     {
-      // cout << control_effort_ << endl;
+      if( plant_state_ < 0.0 ||  plant_state_ > 45){
+        control_effort_ = 0.0;
+        ROS_WARN("current state is outside of working range");
+      }
       control_msg_.data = control_effort_;
-
-      pid_msgs_.header.stamp = ros::Time::now();
-      pid_msgs_.error = error_.at(0); 
-      pid_msgs_.output = control_effort_;
-      pid_msgs_.error_dot = setpoint_;
+      
       control_effort_pub_.publish(control_msg_);
       // Publish topic with
-      // std::vector<double> pid_debug_vect { plant_state_, control_effort_, proportional_, integral_, derivative_};
-      // std_msgs::Float64MultiArray pidDebugMsg;
-      // pidDebugMsg.data = pid_debug_vect;
-      pid_debug_pub_.publish(pid_msgs_);
+      std::vector<double> pid_debug_vect { plant_state_, control_effort_, proportional_, integral_, derivative_};
+      std_msgs::Float64MultiArray pidDebugMsg;
+      pidDebugMsg.data = pid_debug_vect;
+      pid_debug_pub_.publish(pidDebugMsg);
     }
     else if (setpoint_timeout_ > 0 && (ros::Time::now() - last_setpoint_msg_time_).toSec() > setpoint_timeout_)
     {

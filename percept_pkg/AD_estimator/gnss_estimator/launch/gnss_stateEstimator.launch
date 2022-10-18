@@ -5,21 +5,21 @@
 
   <node name="gnss_estimator" pkg="gnss_estimator" type="StateEstimator" output="screen">      
       <!-- subscribe topics  -->
-      <remap from="state_estimator/gps" to="/fix"/>
+      <remap from="gnss_estimator/gps" to="/fix"/>
       <!-- <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/> -->
-      <remap from="state_estimator/imu" to="/imu/data"/>
+      <remap from="gnss_estimator/imu" to="/imu/data"/>
       
-      <remap from="state_estimator/local_pose" to="/gnss_pose_world"/>      
-      <remap from="state_estimator/wheel_odom" to="/wheel_odom"/>
+      <remap from="gnss_estimator/local_pose" to="/gnss_pose_world"/>      
+      <remap from="gnss_estimator/wheel_odom" to="/wheel_odom"/>
 
       <!-- publish topics-->
-      <remap from="state_estimator/pose" to="/pose_estimate"/>
-      <remap from="state_estimator/estimated_pose" to="/geo_pose_estimate"/>
-      <remap from="state_estimator/filter" to="imu/filter"/>
-      <remap from="state_estimator/bias_acc" to="bias_acc"/>
-      <remap from="state_estimator/bias_gyro" to="bias_gyro"/>
+      <remap from="gnss_estimator/pose" to="/pose_estimate"/>
+      <remap from="gnss_estimator/estimated_pose" to="/geo_pose_estimate"/>
+      <remap from="gnss_estimator/filter" to="imu/filter"/>
+      <remap from="gnss_estimator/bias_acc" to="bias_acc"/>
+      <remap from="gnss_estimator/bias_gyro" to="bias_gyro"/>
       
-      <remap from="state_estimator/status" to="pose_estimate/status"/>
+      <remap from="gnss_estimator/status" to="pose_estimate/status"/>
 
       <param name="InitialRotationNoise" value="0.25"/>
       <param name="InitialTranslationNoise" value="0.1"/>

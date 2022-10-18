@@ -22,7 +22,6 @@ using namespace std;
 
 class V2X_viz
 {
-
 private:
     ros::NodeHandle nh_;
     ros::Publisher viz_spat, viz_mission1, viz_mission2;

@@ -1,0 +1,5 @@
+<?xml version="1.0"?>
+<launch>
+    <node pkg="hmcl_v2x" type="viz_pub" name="viz_pub" output="screen">
+    </node>
+</launch>

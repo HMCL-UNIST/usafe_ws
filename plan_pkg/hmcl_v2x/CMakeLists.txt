@@ -90,7 +90,7 @@ add_executable(viz_pub
 ${SRC}
 src/v2x_viz.cpp
 )
-target_link_libraries(mission_pub ${catkin_LIBRARIES})
+target_link_libraries(viz_pub ${catkin_LIBRARIES})
 
 
 install(
@@ -100,6 +100,7 @@ install(
   pvd_pub
   spat_pubs
   pvd_pubs
+  viz_pub
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

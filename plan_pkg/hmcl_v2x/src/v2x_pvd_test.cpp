@@ -23,14 +23,17 @@ void V2XPVD::pos_callback(const sensor_msgs::NavSatFix::ConstPtr& nav_data){
     prev_alt = cur_alt;
     prev_lat = cur_lat;
     prev_lon = cur_lon;
-    cur_alt =nav_data -> altitude;
-    cur_lat = nav_data -> latitude;
-    cur_lon = nav_data -> longitude;
+    cur_alt = (nav_data -> altitude)*10;
+    cur_lat = (nav_data -> latitude)*1e7;
+    cur_lon = (nav_data -> longitude)*1e7;
 }
 
 void V2XPVD::dir_callback(const std_msgs::Float64::ConstPtr& dir_data){
     prev_dir = cur_dir;
-    cur_dir = dir_data->data +180;    
+    cur_dir = -(dir_data->data -90);    
+    if (cur_dir <0){
+        cur_dir +=360;
+    }
     cur_dir = cur_dir/0.0125;
 }
 
@@ -50,8 +53,6 @@ ros::Rate loop_rate(10);
         if(sockFd < 0)
         {
             sockFd = connect_obu_uper_tcp("192.168.10.10",23000); // OBU
-            // sockFd = connect_obu_uper_tcp("118.45.183.36",23000); // Test Server
-
             storedSize = 0;
             
             if(sockFd < 0){

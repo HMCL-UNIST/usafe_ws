@@ -65,60 +65,65 @@ void V2X_viz::spatCallback(const v2x_msgs::SPAT& msg){
         marker_tmp.pose.position.z = 10;
 
         if (msg.States[i].signalGroup == 16){
-            marker_tmp.pose.position.x += a;
+            marker_tmp.pose.position.x -= a;
             marker_tmp.pose.position.y += a;
+
         }
         else if (msg.States[i].signalGroup == 17 ){
-            marker_tmp.pose.position.x += a;
+            marker_tmp.pose.position.x -= a;
             marker_tmp.pose.position.y += a;
             marker_tmp.pose.position.z -= 1;
+            
         }        
         else if (msg.States[i].signalGroup == 18 ){
-            marker_tmp.pose.position.x += a;
+            marker_tmp.pose.position.x -= a;
             marker_tmp.pose.position.y += a;
             marker_tmp.pose.position.z -= 2;
         }
         
         else if (msg.States[i].signalGroup == 19 ){
-            marker_tmp.pose.position.x -= a;
-            marker_tmp.pose.position.y -= a;
+            marker_tmp.pose.position.x += a;
+            marker_tmp.pose.position.y += a;
+
         }
         else if (msg.States[i].signalGroup == 20 ){
-            marker_tmp.pose.position.x -= a;
-            marker_tmp.pose.position.y -= a;
+            marker_tmp.pose.position.x += a;
+            marker_tmp.pose.position.y += a;
             marker_tmp.pose.position.z -= 1;
         }
         else if (msg.States[i].signalGroup == 21 ){
-            marker_tmp.pose.position.x -= a;
-            marker_tmp.pose.position.y -= a;
+            marker_tmp.pose.position.x += a;
+            marker_tmp.pose.position.y += a;
             marker_tmp.pose.position.z -= 2;
         }
         
         else if (msg.States[i].signalGroup == 22 ){
-            marker_tmp.pose.position.x -= a;
-            marker_tmp.pose.position.y += a;
-        }
-        else if (msg.States[i].signalGroup == 23 ){
-            marker_tmp.pose.position.x -= a;
-            marker_tmp.pose.position.y += a;
-            marker_tmp.pose.position.z -= 1;
-        }
-        else if (msg.States[i].signalGroup == 24 ){
-            marker_tmp.pose.position.x -= a;
-            marker_tmp.pose.position.y += a;
-            marker_tmp.pose.position.z -= 2;
-        }
-        else if (msg.States[i].signalGroup == 13 ){
-            marker_tmp.pose.position.x += a; 
+            marker_tmp.pose.position.x += a;
             marker_tmp.pose.position.y -= a;
         }
-        else if (msg.States[i].signalGroup == 14){
+        else if (msg.States[i].signalGroup == 23 ){
             marker_tmp.pose.position.x += a;
             marker_tmp.pose.position.y -= a;
             marker_tmp.pose.position.z -= 1;
         }
+        else if (msg.States[i].signalGroup == 24 ){
+            marker_tmp.pose.position.x += a;
+            marker_tmp.pose.position.y -= a;
+            marker_tmp.pose.position.z -= 2;
+        }
+
+        else if (msg.States[i].signalGroup == 13 ){
+            marker_tmp.pose.position.x -= a; 
+            marker_tmp.pose.position.y -= a;
+        }
+        else if (msg.States[i].signalGroup == 14){
+            marker_tmp.pose.position.x -= a;
+            marker_tmp.pose.position.y -= a;
+            marker_tmp.pose.position.z -= 1;
+            
+        }
         else if (msg.States[i].signalGroup == 15 ){
-            marker_tmp.pose.position.x += a; 
+            marker_tmp.pose.position.x -= a; 
             marker_tmp.pose.position.y -= a;
             marker_tmp.pose.position.z -= 2;
         }
