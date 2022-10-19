@@ -96,9 +96,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
-  steer_filter.initialize(dt, 1.5); // 5 
+  steer_filter.initialize(dt, 5); // 5 for high speed , 1.5 for low speed
 
-  yaw_filter.initialize(dt, 1.0);
+  yaw_filter.initialize(dt, 5.0);
 
 
   std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
@@ -170,7 +170,7 @@ void PreviewCtrl::reschedule_weight(double speed){
   
       if(speed > 30/3.6){
         // For high speed
-        Q_ey = 3.0;
+        Q_ey = 3.5;
         Q_eydot = 5.0;
         Q_epsi = 25.0;
         Q_epsidot = 1.0;
@@ -386,7 +386,7 @@ void PreviewCtrl::ControlLoop()
         steering_frame.data[0] = (steer_value & 0b11111111);
 	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
         steering_frame.data[2] = (unsigned int)1 & 0b11111111;
-        AcanPub.publish(steering_frame);
+        // AcanPub.publish(steering_frame);
           
 
         ///////////

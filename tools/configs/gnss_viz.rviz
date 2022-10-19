@@ -11,10 +11,6 @@ Panels:
         - /localization1/pose_est1/Shape1
         - /Perception1
         - /MarkerArray4
-        - /MarkerArray5
-        - /MarkerArray6
-        - /MarkerArray7
-        - /MarkerArray8
       Splitter Ratio: 0.27941176295280457
     Tree Height: 726
   - Class: rviz/Selection
@@ -370,41 +366,47 @@ Visualization Manager:
       Marker Topic: /mission_pt
       Name: Marker
       Namespaces:
-        {}
+        mission_state: true
       Queue Size: 1
       Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /ped_pt
       Name: MarkerArray
       Namespaces:
         {}
       Queue Size: 1
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /tracking_car/objects_markers
       Name: MarkerArray
       Namespaces:
-        {}
+        /tracking_car/box_markers: true
+        /tracking_car/centroid_markers: true
+        /tracking_car/label_markers: true
       Queue Size: 1
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /tracking_unknown/objects_markers
       Name: MarkerArray
       Namespaces:
-        {}
+        /tracking_unknown/arrow_markers: true
+        /tracking_unknown/box_markers: true
+        /tracking_unknown/centroid_markers: true
+        /tracking_unknown/hull_markers: true
+        /tracking_unknown/label_markers: true
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
-      Enabled: false
+      Enabled: true
       Marker Topic: /tracking_pedestrian/objects_markers
       Name: MarkerArray
       Namespaces:
         {}
       Queue Size: 100
-      Value: false
+      Value: true
     - Class: rviz/MarkerArray
       Enabled: true
       Marker Topic: /tracking_traffic_sign/objects_markers
@@ -449,7 +451,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 53.384307861328125
+      Distance: 53.871620178222656
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
@@ -464,10 +466,10 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.1347967386245728
+      Pitch: 0.29479748010635376
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.232222557067871
+      Yaw: 3.1472244262695312
     Saved: ~
 Window Geometry:
   Displays:
