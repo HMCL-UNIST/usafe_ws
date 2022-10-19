@@ -17,6 +17,11 @@ find_package(catkin REQUIRED COMPONENTS
   v2x_msgs
 )
 
+generate_dynamic_reconfigure_options(
+  cfg/test.cfg
+  cfg/test_sim.cfg
+)
+
 catkin_package(
   CATKIN_DEPENDS 
   nav_msgs 
@@ -41,20 +46,37 @@ include_directories(
 
 
 
-#add_executable(dynamic_reconfigure_node src/acc_node.cpp)
-#add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
-#target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
-#SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
+add_executable(dynamic_reconfigure_node src/acc_test.cpp)
+add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
+target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
+SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
 add_executable(velocity_planner src/velocity_planner.cpp)
 target_link_libraries(velocity_planner ${catkin_LIBRARIES})
 add_dependencies(velocity_planner ${catkin_EXPORTED_TARGETS})
 
+add_executable(acc_test src src/acc_test.cpp)
+target_link_libraries(acc_test ${catkin_LIBRARIES})
+add_dependencies(acc_test ${catkin_EXPORTED_TARGETS})
+
+
+include_directories(
+  include
+  ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
+  ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
+)
+
+add_executable(obj_simulation src/obj_simulation.cpp src/Amathutils.cpp)
+target_link_libraries(obj_simulation ${catkin_LIBRARIES})
+add_dependencies(obj_simulation ${catkin_EXPORTED_TARGETS})
 
 
 install(
   TARGETS    
   velocity_planner
+  obj_simulation
+  acc_test
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

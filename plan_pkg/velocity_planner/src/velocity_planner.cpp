@@ -88,9 +88,6 @@ void VelocityPlanner::PlanVel()
     return;
   }
   CheckMotionState();
-  if (targetVel <= 2){
-    targetVel = 2.0;
-  }
   VelocitySmoother();
 
   std_msgs::Float64 vel_msg;
@@ -1051,6 +1048,9 @@ void VelocityPlanner::VelocitySmoother()
   ref_speed = v0;
   if (MotionMode == MotionState::GO){
     SF0 = 12;
+    if (targetVel <= 2){
+      targetVel = 2.0;
+    }
     ref_speed = targetVel;
     return;
     // if (abs(current_vel-targetVel) <= 2.5) {
@@ -1063,10 +1063,16 @@ void VelocityPlanner::VelocitySmoother()
     return;
   }
   else if (MotionMode == MotionState::ACC){
+    if (targetVel <= 1.8){
+      targetVel = 0;
+    }
     ref_speed = targetVel;
     return;
   }
   else{
+    if (targetVel <= 2){
+      targetVel = 2.0;
+    }
     ref_speed = targetVel;
     return;
   }

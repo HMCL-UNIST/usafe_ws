@@ -87,7 +87,21 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
 
 void PidObject::setpointCallback(const std_msgs::Float64& setpoint_msg)
 {
+  
   setpoint_ = setpoint_msg.data;
+  if(setpoint_ < 2.0 && setpoint_ > 0.0){
+    setpoint_ = 2.0;
+    ROS_WARN("setpoint reach minimum");
+  }else if(setpoint_ > 110/3.6 && setpoint_ < 160/3.6){
+    setpoint_ = 110/3.6;
+    ROS_WARN("setpoint reach maximum");
+  }
+  if(setpoint_ > 160.0 || setpoint_ < 0.0){
+    ROS_WARN("invalid setpoint");
+    setpoint_ = 0.0;
+  }
+
+
   last_setpoint_msg_time_ = ros::Time::now();
   new_state_or_setpt_ = true;
 }

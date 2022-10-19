@@ -6,10 +6,10 @@
         <param name = "delay_in_sec" value ="1" />
         <param name = "dt" value ="0.1"/>
         <param name = "lag_tau" value = "0.6"/>
-        <param name = "Q_vel" value = "1.0"/> 
-        <param name = "Q_dis" value =" 4.0"/>
+        <param name = "Q_vel" value = "2.0"/> 
+        <param name = "Q_dis" value =" 20.0"/>
         <param name = "R_weight" value = "0.5"/>
-        <param name = "d_time" value ="5.0"/>
-        <param name = "d_safe" value ="10.0"/>
+        <param name = "d_time" value ="3.0"/>
+        <param name = "d_safe" value ="12.0"/>
     </node>
 </launch>
