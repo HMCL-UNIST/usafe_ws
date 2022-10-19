@@ -1,0 +1,109 @@
+<?xml version="1.0"?>
+
+<launch>
+
+  <node name="state_estimator" pkg="state_estimator" type="StateEstimator" output="screen">      
+      <!-- subscribe topics  -->
+      <remap from="state_estimator/gps" to="/fix"/>
+      <!-- <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/> -->
+      <remap from="state_estimator/imu" to="/imu/data"/>
+      
+      <remap from="state_estimator/local_pose" to="/gnss_pose_world"/>      
+      <remap from="state_estimator/wheel_odom" to="/wheel_odom"/>
+
+      <!-- publish topics-->
+      <remap from="state_estimator/pose" to="/pose_estimate"/>
+      <remap from="state_estimator/estimated_pose" to="/geo_pose_estimate"/>
+      <remap from="state_estimator/filter" to="imu/filter"/>
+      <remap from="state_estimator/bias_acc" to="bias_acc"/>
+      <remap from="state_estimator/bias_gyro" to="bias_gyro"/>
+      
+      <remap from="state_estimator/status" to="pose_estimate/status"/>
+
+      <param name="InitialRotationNoise" value="0.25"/>
+      <param name="InitialTranslationNoise" value="0.1"/>
+      <param name="InitialBiasNoiseAcc" value="2e-1"/>
+      <param name="InitialBiasNoiseGyro" value="2e-1"/>
+      <param name="AccelerometerSigma" value="1.0e-3"/>
+      <param name="GyroSigma" value="8.73e-4"/>
+      <!-- <param name="GyroSigma" value="1.0e-3"/> -->
+      <param name="AccelBiasSigma" value="3.9e-4"/>
+      <!--<param name="GyroBiasSigma" value="1.8e-5"/> -->
+      <param name="GyroBiasSigma" value="1.8e-5"/>
+      <!-- <param name="AccelBiasSigma" value="3.9e-4"/>
+      <param name="GyroBiasSigma" value="4.8e-5"/> -->
+      <param name="GPSSigma" value="0.05"/>
+      <param name="localPoseSigma" value="0.005"/>      
+       <!--<param name="SensorTransformX" value="0.076"/>
+      <param name="SensorTransformY" value="-0.0246"/>
+      <param name="SensorTransformZ" value="-0.020"/>-->
+      <param name="SensorXAngle" value="0.0"/>
+      <!-- <param name="SensorYAngle" value="3.14159265359"/>
+      <param name="SensorZAngle" value="1.57079632679"/> -->
+      <param name="SensorYAngle" value="0.0"/>
+      <param name="SensorZAngle" value="0.0"/>
+      <param name="CarXAngle" value="0.0"/>
+      <param name="CarYAngle" value="0.0"/>
+      <param name="CarZAngle" value="0.0"/>
+
+      <!-- To use in sumulation set "rosparam set /gps_imu/FixedInitialPose true" -->
+      <!-- and <param name="InvertY" value="false"/> -->
+      <!-- and <param name="InvertZ" value="false"/> -->
+      <param name="FixedInitialPose" value="false"/>
+      <param name="initialRoll" value="0"/>
+      <param name="intialPitch" value="0"/>
+      <param name="initialYaw" value="0"/>
+      <param name="InvertX" value="false"/>
+      <param name="InvertY" value="true"/>
+      <param name="InvertZ" value="true"/>
+      <param name="GPSX" value="0.0"/>
+      <param name="GPSY" value="0.0"/>
+      <param name="GPSZ" value="0.0"/>
+
+      <!-- set the lat/lon/alt origin for GPS UTM to local frame transform -->
+      <param name="FixedOrigin" value="true"/>
+      <!-- currently using approximate marietta location -->
+      <!--<param name="latOrigin" value="33.7744980893"/>-->
+      <!--<param name="lonOrigin" value="-84.4050941205"/>-->
+      <!--<param name="altOrigin" value="277.752"/>-->
+      <!-- currently using approximate ccrf location -->    
+
+
+      <!-- UNIST MAP  -->
+      <!-- <param name="latOrigin" value="35.57083743"/> 
+      <param name="lonOrigin" value="129.188112768"/>  
+      <param name="altOrigin" value="55.494"/>  -->
+
+      <!-- KIAPI MAP  -->
+      <param name="latOrigin" value="35.6470671983"/> 
+      <param name="lonOrigin" value="128.401913578"/>  
+      <param name="altOrigin" value="25.797"/> 
+
+      <param name="utm_x_origin" value="445785.133970"/> 
+      <param name="utm_y_origin" value="3944960.359526"/>  
+      <param name="utm_z_origin" value="26.126000"/> 
+
+      <!-- <param name="utm_x_origin" value="445379.474442"/> 
+      <param name="utm_y_origin" value="3945658.985503"/>  
+      <param name="utm_z_origin" value="26.200000"/> -->
+
+
+      
+      <!-- flag for whether to use the wheel odometry messages -->
+      <param name="UseOdom" value="false"/>
+      <param name="usingWheelAsOdom" value="false"/>
+      <param name="UseLocalPose" value="true"/>
+
+      <!-- if a GPS measurement is more than this threshold from the expected reading given
+           the previous estimate, it will be disgarded (in meters) -->
+      <param name="MaxGPSError" value="20"/>
+      <param name="maxLocalPoseError" value="20"/>
+
+      <remap from="base_link" to="os_sensor" />
+      
+
+  </node>
+
+  <!-- tf baselink to os_sensor -->
+  <!-- <node pkg="tf" type="static_transform_publisher" name="base_link_to_os_sensor" args="0 0 0 0 0 0 base_link os_sensor 1" /> -->
+</launch>

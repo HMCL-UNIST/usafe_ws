@@ -1,0 +1,5 @@
+<launch>
+  <node name="tdr3000" pkg="tdr3000_driver" type="main.py" output="screen">      
+      <!-- <remap from="state_estimator/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/> -->     
+  </node>
+</launch>
