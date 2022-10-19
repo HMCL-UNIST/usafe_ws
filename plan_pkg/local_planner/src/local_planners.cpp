@@ -16,7 +16,7 @@ localplanners::localplanners(ros::NodeHandle& nh):
 
     //parameter
     nh_.param<double>("minimum_lane_change_length", min_lc_len, 5.0);
-    nh_.param<double>("lane_change_prepare_duration", lc_prepare_dur, 0.5);
+    nh_.param<double>("lane_change_prepare_duration", lc_prepare_dur, 1.5);
     nh_.param<double>("lane_changing_duration", lc_duration, 3.0);
     nh_.param<double>("minimum_lane_change_velocity", min_lc_vel, 3.0);
     nh_.param<double>("lane_width", lane_width, 1.75);
@@ -82,6 +82,9 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
     if(range_index.size() == 0){
         ROS_INFO("Error");
         std::cout <<" no waypoints here with size " << range_index.size() << std::endl;
+        return;
+    }
+    else if(range_lane.lanes[0].lane_id ==1000 && range_lane.lanes.size()==1){
         return;
     }
     else if (lc_flag ==false || range_lane.lanes.size()<2 || range_lane.lanes[1].lane_id == 1000){

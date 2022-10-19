@@ -88,6 +88,9 @@ void VelocityPlanner::PlanVel()
     return;
   }
   CheckMotionState();
+  if (targetVel <= 2){
+    targetVel = 2.0;
+  }
   VelocitySmoother();
 
   std_msgs::Float64 vel_msg;
@@ -295,7 +298,7 @@ void VelocityPlanner::CheckMotionState()
   else if (CurrentMode ==  BehaviorState::Follow){
     //Adaptive Cruise Control
     double DesiredDis = current_vel*d_time + d_safe;
-    Dis = sqrt( pow(current_x-object_x,2) + pow(current_y-object_y,2)) - stopline_margin;
+    Dis = LeadVehicleDist;
     Dis = std::min(Dis, 150.0); 
     
     double DesiredVel = object_vel; //- current_vel;    
@@ -318,7 +321,7 @@ void VelocityPlanner::CheckMotionState()
      //3) Check the lead vehicle existence
     
     checkTrafficSignal(0);
-    double vel = 5.5/3.6;
+    double vel = 6/3.6;
     // double vel = Curvature();
     
     // if ((7)/3.6 <= vel || isnan(vel)){
@@ -440,12 +443,13 @@ void VelocityPlanner::CheckMotionState()
             motionstate_debug = "Before the stop line: Distance is" + to_string(Dis)
             +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
           }
-          if (targetVel1 >= 9/3.6)
-          {
-            targetVel1 = 9/3.6;
-          }
+          
         }
       }
+    }
+    if (targetVel1 >= speedbump_velocity/3.6)
+    {
+      targetVel1 = speedbump_velocity/3.6;
     }
     if (LeadVehicle){
       targetVel2 = CheckLeadVehicle();
@@ -469,7 +473,7 @@ void VelocityPlanner::CheckMotionState()
     // timing_min_End_Time = junc1Signal.States[0].timing_min_End_Time;
 
     checkTrafficSignal(1);
-    double vel = 5.5/3.6;
+    double vel = 6/3.6;
     // double vel = Curvature();
     // ROS_INFO ("desired velocity is %f", vel);
 
@@ -548,10 +552,6 @@ void VelocityPlanner::CheckMotionState()
             motionstate_debug = "Before the stop line: Distance is" + to_string(Dis) +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
             targetVel1 = ACC();
           }
-          if (targetVel1 >= 9/3.6)
-          {
-            targetVel1 = 9/3.6;
-          }
         }
       }
       else{
@@ -562,7 +562,10 @@ void VelocityPlanner::CheckMotionState()
       }
 
     }
-
+    if (targetVel1 >= speedbump_velocity/3.6)
+    {
+      targetVel1 = speedbump_velocity/3.6;
+    }
     if (LeadVehicle){
       targetVel2 = CheckLeadVehicle();
       targetVel = std::min(targetVel1, targetVel2);
@@ -649,7 +652,7 @@ void VelocityPlanner::CheckMotionState()
     }
   }
   else if (CurrentMode ==  BehaviorState::LaneChange|| CurrentMode== BehaviorState::ObstacleLaneChange){
-    targetVel = 10/3.6;
+    targetVel = speedbump_velocity/3.6;
     MotionMode = MotionState::GO;   
   }
   else{
@@ -1289,7 +1292,7 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
       return;
   }
   getLocalTraj = true;
-  MaxVel = 20/3.6;
+  MaxVel = 22/3.6;
 
   double dis = 0;
   double old_dis = 150;

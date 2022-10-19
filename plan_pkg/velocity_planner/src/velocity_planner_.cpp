@@ -262,10 +262,10 @@ void VelocityPlanner::CheckMotionState()
 
     // velocity difference is not greater than the speed limit ... 
     if(DesiredVel > 0){
-      DesiredVel = std::min(DesiredVel, MaxVel/3.6);
+      DesiredVel = std::min(DesiredVel, MaxVel);
     }    
     if(DesiredVel < 0){
-      DesiredVel = std::max(DesiredVel, -MaxVel/3.6);
+      DesiredVel = std::max(DesiredVel, -MaxVel6);
     }
     targetVel = ACC();
     MotionMode = MotionState::ACC;

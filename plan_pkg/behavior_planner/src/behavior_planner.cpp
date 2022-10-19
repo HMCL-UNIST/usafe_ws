@@ -30,7 +30,15 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("minFront", minFront, 100);
     nh_.param<float>("unknownFront", unknownFront, 50);
     nh_.param<int>("nStore", nStore, 10); //need to check
-    nh_.param<float>("thresLC", thresLC, 0.8); // need to check if 1 is sufficient
+    nh_.param<int>("thresInit2", thresInit2, 40);
+    nh_.param<int>("thresStopAtStartPos", thresStopAtStartPos, 20);
+    nh_.param<int>("thresStartArrival", thresStartArrival, 20);
+    nh_.param<int>("thresPedestrian", thresPedestrian, 30);
+    nh_.param<int>("thresFrontLuggage", thresFrontLuggage, 40);
+    nh_.param<int>("thresFrontCarStop", thresFrontCarStop, 10);
+    nh_.param<int>("thresSpeedBump", thresSpeedBump, 10);
+    nh_.param<int>("thresStopAtGoalPos", thresStopAtGoalPos, 20);
+    nh_.param<float>("thresLC", thresLC, 0.5); // need to check if 1 is sufficient
     nh_.param<float>("thresStop", thresStop, 0.1); // need to check if 0.01 is sufficient
     nh_.param<float>("thresCW", thresCW, 15);
     nh_.param<float>("thresSB", thresSB, 15);
@@ -38,7 +46,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("thresTL", thresTL, 25);
     nh_.param<float>("thresTLtime", thresTLtime, 3);
     nh_.param<float>("thresDistSG", thresDistSG, 7);
-    nh_.param<float>("successDistSG", successDistSG, 5);
+    nh_.param<float>("successDistSG", successDistSG, 5); //need to check 
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
     pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::odometryCallback, this);
@@ -82,7 +90,6 @@ BehaviorPlanner::BehaviorPlanner(){
     speedBumpSign = false;
     speedBumpPass = false;
     approachToGoalPos = false;
-    startArrivalCheck = false;
 
 
     getObject = false;
@@ -117,7 +124,14 @@ BehaviorPlanner::BehaviorPlanner(){
     countFront = 0;
     countStationary = 0;
     countSB = 0;
-    countStart = 0;
+    countInit2 = 0;
+    countStopAtStartPos = 0;
+    countStartArrival = 0;
+    countPedestrian = 0;
+    countFrontLuggage = 0;
+    countFrontCarStop = 0;
+    countSpeedBump = 0;
+    countStopAtGoalPos = 0;
     prevLaneID = -1;
     pedestrian = false;
 
@@ -195,7 +209,8 @@ void BehaviorPlanner::calculateFrenet(int n, float* psarr, float px, float py, f
 
 
 void BehaviorPlanner::updateFactors(){
-    ROS_INFO("---------------BEHAVIOR_PLANNER----------------");
+    std::cout<< "--BEHAVIOR--BEHAVIOR--BEHAVIOR--BEHAVIOR-- " <<std::endl;
+    // ROS_INFO("---------------BEHAVIOR_PLANNER----------------");
     while(1){
         if(!getPose){
             ROS_INFO("Can not receive pose");
@@ -212,7 +227,7 @@ void BehaviorPlanner::updateFactors(){
 
 
         // behavior factors
-        // missionStart = true; //for test
+        missionStart = true; //for test
         // leftTurn = false;
         // rightTurn = false;
         approachToStartPos = false;
@@ -283,9 +298,9 @@ void BehaviorPlanner::updateFactors(){
             break;
         }
 
-        ROS_INFO("global lanes size: %d", globalLaneArray.lanes.size());
-        ROS_INFO("ego lane wpts size: %d", globalLaneArray.lanes[0].waypoints.size());
-        if(globalLaneArray.lanes.size() < 1 || globalLaneArray.lanes[0].waypoints.size()<1){
+        // ROS_INFO("global lanes size: %d", globalLaneArray.lanes.size());
+        // ROS_INFO("ego lane wpts size: %d", globalLaneArray.lanes[0].waypoints.size());
+        if(globalLaneArray.lanes.size() < 1 || globalLaneArray.lanes[0].waypoints.size() < 1){
             ROS_INFO("global array doesn't contain waypoint");
             break;
         }
@@ -355,7 +370,6 @@ void BehaviorPlanner::updateFactors(){
             float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
             if(distToStart < thresDistSG){
                 approachToStartPos = true;
-                countStart++;
             }
             if(distToStart < successDistSG && stopCheck){
                 startArrivalCheck = true;
@@ -375,7 +389,7 @@ void BehaviorPlanner::updateFactors(){
         //calculate yaw angle
         float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
         ROS_INFO("egopose x: %f, y: %f",egoPose.position.x, egoPose.position.y);
-        ROS_INFO("globalpose x: %f, y: %f",globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y);
+        // ROS_INFO("globalpose x: %f, y: %f",globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x,globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y);
 
         // convert relative coordinate to global coordinate
         int idxtmp = 0;
@@ -489,25 +503,24 @@ void BehaviorPlanner::updateFactors(){
                 }
             }
         }
-        if(globalLaneArray.lanes[0].lane_id == 7){ //for Rehearsal
-            unknownFront = 50;
-            for(int i = 0; i < lugn; i++){
-                psarr = sarr0;
-                this->calculateFrenet(n0, psarr, xLug[i], yLug[i], vxLug[i], vyLug[i], psl, globalLaneArray.lanes[0]);
-                sLug[i] = slObj[0];
-                lLug[i] = slObj[1];
-                dsLug[i] = slObj[2];
-                dlLug[i] = slObj[3];
-                ROS_INFO("i:%d,sLug: %f,lLug: %f,vx: %f,vy: %f",i,sLug[i],lLug[i],dsLug[i],dlLug[i]);
-                if(abs(lLug[i]) <= wLane/2){
-                    // front luggage
-                    if(sLug[i]-sEgo < unknownFront && sLug[i]-sEgo > 0){
-                        unknownFront = sLug[i]-sEgo;
-                        luggageDrop = true;
-                    }
+        unknownFront = 50;
+        for(int i = 0; i < lugn; i++){
+            psarr = sarr0;
+            this->calculateFrenet(n0, psarr, xLug[i], yLug[i], vxLug[i], vyLug[i], psl, globalLaneArray.lanes[0]);
+            sLug[i] = slObj[0];
+            lLug[i] = slObj[1];
+            dsLug[i] = slObj[2];
+            dlLug[i] = slObj[3];
+            ROS_INFO("i:%d,sLug: %f,lLug: %f,vx: %f,vy: %f",i,sLug[i],lLug[i],dsLug[i],dlLug[i]);
+            if(abs(lLug[i]) <= wLane/2){
+                // front luggage
+                if(sLug[i]-sEgo < unknownFront && sLug[i]-sEgo > 0){
+                    unknownFront = sLug[i]-sEgo;
+                    luggageDrop = true;
                 }
             }
-        } 
+        }
+
 
         
         // calculate safe distance and check if it is stationary car
@@ -523,12 +536,12 @@ void BehaviorPlanner::updateFactors(){
 
         // store front car for nStore time steps
         if(frontPrev){
+            countFront++;
             if(frontCar == false){
                 if(countFront < nStore){
                     front_id = 1000;
                     frontCar = true;
                     stationaryFrontCar = stationaryPrev;
-                    countFront++;
                 }
                 else{
                     frontPrev = false;
@@ -536,21 +549,12 @@ void BehaviorPlanner::updateFactors(){
                     countFront = 0;
                 }
             }
-        }
-
-        if(stationaryFrontCar){
-            countStationary++;
-            if(countStationary > 10*runRate){
-                brokenFrontCar = true;
-                if(prevLaneID == -1){
-                    laneChangeDone = false;
-                    prevLaneID = globalLaneArray.lanes[0].lane_id;
-                }
+            else{
+                countFront = 0;
             }
         }
-        else{
-            countStationary = 0;
-        }
+
+        
         ROS_INFO("front car : %d , stationary : %d", frontCar, stationaryFrontCar);
 
         // compute dist to crosswalk
@@ -743,7 +747,6 @@ void BehaviorPlanner::updateFactors(){
             eventState = junc3Signal.States[3].eventState;
             timing_min_End_Time = junc3Signal.States[3].timing_min_End_Time;
         }
-        ROS_INFO("dkkdkdkk");
         if(essentialLaneChange == false && turn == false && signal_id != -1 && dJunc < thresTL && dJunc > 0){
             // red light
             if(eventState == 3){
@@ -772,21 +775,71 @@ void BehaviorPlanner::updateFactors(){
     
     if(approachToCrosswalk == false && inCW == false) crosswalkPass = true;
     if(turn || trafficLightStop) approachToCrosswalk = false;
-    // startArrivalSuccess = startArrivalCheck; //for test
+    startArrivalSuccess = startArrivalCheck; //for test
     ROS_INFO("turn: %d, apptoCW: %d", turn, approachToCrosswalk);
 
-    if(startArrivalSuccess){
-        approachToStartPos = false;
-    }
-
-    if(countStart > runRate*30){
-        startArrivalSuccess = true;
-    }
+    
 
     if(currentMission==MissionState::DriveToGoalPos){
         startArrivalSuccess = true;
     }
-    
+    if(startArrivalSuccess){
+        approachToStartPos = false;
+    }
+
+
+    if(countInit2 > runRate*thresInit2){
+        missionStart = true;
+        ROS_INFO("Init2 Time Out!!!");
+    }
+    if(countStopAtStartPos > runRate*thresStopAtStartPos){
+        startArrivalCheck = true;
+        ROS_INFO("StopAtStartPos Time Out!!!");
+    }
+    if(countStartArrival > runRate*thresStartArrival){
+        startArrivalSuccess = true;
+        ROS_INFO("StartArrival Time Out!!!");
+    }
+    if(countPedestrian >= runRate*thresPedestrian){
+        pedestrianOnCrosswalk = false;
+        countPedestrian++;
+        if(countPedestrian > runRate*(thresPedestrian+5)) countPedestrian = 0;
+        ROS_INFO("Pedestrian Time Out!!!");
+    }
+    if(countFrontLuggage >= runRate*thresFrontLuggage){
+        luggageDrop = false;
+        countFrontLuggage++;
+        if(countFrontLuggage > runRate*(thresFrontLuggage+5)) countFrontLuggage = 0;
+        ROS_INFO("FrontLuggage Time Out!!!");
+    }
+    if(countFrontCarStop > runRate*thresFrontCarStop){
+        brokenFrontCar = true;
+        if(prevLaneID == -1){
+            laneChangeDone = false;
+            prevLaneID = globalLaneArray.lanes[0].lane_id;
+        }
+        ROS_INFO("Broken Front Car!!!");
+    }
+    if(countSpeedBump >= runRate*thresSpeedBump){
+        speedBumpPass = true;
+        countSpeedBump++;
+        if(countSpeedBump > runRate*(thresSpeedBump+5)) countSpeedBump = 0;
+        ROS_INFO("SpeedBump Time Out!!!");
+    }
+    if(countStopAtGoalPos > runRate*thresStopAtGoalPos){
+        goalArrivalCheck = true;
+        ROS_INFO("StopAtGoalPos Time Out!!!");
+    }
+
+    ROS_INFO("countInit2: %d",countInit2);
+    ROS_INFO("countStopAtStartPos: %d",countStopAtStartPos);
+    ROS_INFO("countStartArrival: %d",countStartArrival);
+    ROS_INFO("countPedestrian: %d",countPedestrian);
+    ROS_INFO("countFrontLuggage: %d",countFrontLuggage);
+    ROS_INFO("countFrontCarStop: %d",countFrontCarStop);
+    ROS_INFO("countSpeedBump: %d",countSpeedBump);
+    ROS_INFO("countStopAtGoalPos: %d",countStopAtGoalPos);
+
     //update behavior factor
     behaviorFactor.front_id = front_id; // done
     behaviorFactor.front_dist = front_dist;
@@ -826,7 +879,7 @@ void BehaviorPlanner::updateBehaviorState(){
         if(luggageDrop){
             currentBehavior = BehaviorState::FrontLuggage;
         }
-        else if(stationaryFrontCar && prevBehavior == BehaviorState::TrafficLightStop){
+        else if(stationaryFrontCar && prevBehavior != BehaviorState::TrafficLightStop){
             currentBehavior = BehaviorState::FrontCarStop;
         }
         else if(speedBumpSign){
@@ -892,7 +945,9 @@ void BehaviorPlanner::updateBehaviorState(){
                 }
             }
             else if(prevBehavior == BehaviorState::Pedestrian){
+                countPedestrian++;
                 if(pedestrianOnCrosswalk == false && turn){
+                    if(countPedestrian < runRate*thresPedestrian) countPedestrian = 0;
                     if(trafficLightStop == true){
                         currentBehavior = BehaviorState::TrafficLightStop;
                     }
@@ -901,6 +956,7 @@ void BehaviorPlanner::updateBehaviorState(){
                     }
                 }
                 else if(pedestrianOnCrosswalk == false){
+                    if(countPedestrian < runRate*thresPedestrian) countPedestrian = 0;
                     currentBehavior = BehaviorState::Crosswalk;
                 }
             }
@@ -909,38 +965,52 @@ void BehaviorPlanner::updateBehaviorState(){
     }
     else{
         if(prevBehavior == BehaviorState::Init2){
+            countInit2++;
             if(missionStart){
+                countInit2 = 0;
                 goToLaneFollowing = true;
             }
         }
         else if(prevBehavior == BehaviorState::StopAtStartPos){
+            countStopAtStartPos++;
             if(startArrivalCheck){
+                countStopAtStartPos = 0;
                 currentBehavior = BehaviorState::StartArrival;
             }
         }
         else if(prevBehavior == BehaviorState::StartArrival){
+            countStartArrival++;
             if(startArrivalSuccess){
+                countStartArrival = 0;
                 goToNormalDrive = true;
             }
         }
         else if(prevBehavior == BehaviorState::StopAtGoalPos){
+            countStopAtGoalPos++;
             if(goalArrivalCheck){
+                countStopAtGoalPos = 0;
                 currentBehavior = BehaviorState::GoalArrival;
             }
         }
         else if(prevBehavior == BehaviorState::FrontLuggage){
+            countFrontLuggage++;
             if(luggageDrop == false || stationaryFrontCar == false){
+                if(countFrontLuggage < runRate*thresFrontLuggage) countFrontLuggage = 0;
                 goToNormalDrive = true;
             }
         }
         else if(prevBehavior == BehaviorState::FrontCarStop){
+            countFrontCarStop++;
             if(stationaryFrontCar == false){
+                countFrontCarStop = 0;
                 goToNormalDrive = true;
             }
             else if(brokenFrontCar){
+                countFrontCarStop = 0;
                 currentBehavior = BehaviorState::ObstacleLaneChange;
             }
             else if(luggageDrop){
+                countFrontCarStop = 0;
                 currentBehavior = BehaviorState::FrontLuggage;
             }
         }
@@ -955,7 +1025,9 @@ void BehaviorPlanner::updateBehaviorState(){
             }
         }
         else if(prevBehavior == BehaviorState::SpeedBump){
+            countSpeedBump++;
             if(speedBumpPass){
+                if(countSpeedBump < runRate*thresSpeedBump) countSpeedBump = 0;
                 goToNormalDrive = true;
             }
         }

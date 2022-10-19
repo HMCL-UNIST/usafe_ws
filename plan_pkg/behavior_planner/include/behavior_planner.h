@@ -53,9 +53,11 @@ inline const char* stateToStringBehavior(BehaviorState v)
 
         case BehaviorState::StartArrival:   return "StartArrival";
 
-        case BehaviorState::RightTurn:   return "RightTurn";
+        case BehaviorState::TrafficLightStop:   return "TrafficLightStop";
 
         case BehaviorState::LeftTurn:   return "LeftTurn";
+
+        case BehaviorState::RightTurn:   return "RightTurn";
 
         case BehaviorState::Crosswalk:   return "Crosswalk";
 
@@ -107,13 +109,17 @@ class BehaviorPlanner
         bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone;
         bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
         short front_id, prevLaneID, unknown_id;
-        int nStore, countFront, countStationary, countSB, countStart;
+        int nStore, countFront, countStationary, countSB;
         bool stop_line_stop;
         bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3;
         bool inCW, frontPrev, stationaryPrev, sbPrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
         bool NormalDrive, LaneFollowing, Turn;
+        int countInit2, countStopAtStartPos, countStartArrival;
+        int countPedestrian, countFrontLuggage, countFrontCarStop, countSpeedBump, countStopAtGoalPos;
+        int thresInit2, thresStopAtStartPos, thresStartArrival;
+        int thresPedestrian, thresFrontLuggage, thresFrontCarStop, thresSpeedBump, thresStopAtGoalPos;
 
     public:
         BehaviorPlanner(); 

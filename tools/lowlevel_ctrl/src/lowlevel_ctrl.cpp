@@ -157,6 +157,7 @@ void LowlevelCtrl::AcanSender()
         int SCC_mode_ready = 1;
         scc_frame.data[0] = (unsigned int)SCC_mode_ready & 0b11111111;                
         ROS_INFO("SCC takeover");
+        
       }
       if(scc_info_.scc_mode == 1 ){
         short zero_dcel = (0*100);       
@@ -165,12 +166,16 @@ void LowlevelCtrl::AcanSender()
         ROS_INFO("SCC On");
       }
      
+      // if(scc_info_.scc_mode != 0){
+        usleep(1000);
+       AcanPub.publish(scc_frame);
       usleep(1000);
-      // AcanPub.publish(scc_frame);
+       AcanPub.publish(gear_frame);
       usleep(1000);
-      // AcanPub.publish(gear_frame);
-      usleep(1000);
-      // AcanPub.publish(steering_frame);
+       AcanPub.publish(steering_frame);
+      // }
+      
+     
       usleep(1000);     
       AcanPub.publish(light_frame);  
       usleep(1000);     

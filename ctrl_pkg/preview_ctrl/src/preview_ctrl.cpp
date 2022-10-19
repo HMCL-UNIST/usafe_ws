@@ -96,7 +96,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
-  steer_filter.initialize(dt, 5.0);
+  steer_filter.initialize(dt, 1.5); // 5 
 
   yaw_filter.initialize(dt, 1.0);
 
@@ -168,7 +168,7 @@ void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
 void PreviewCtrl::reschedule_weight(double speed){
 
   
-      if(speed > 25/3.6){
+      if(speed > 30/3.6){
         // For high speed
         Q_ey = 3.0;
         Q_eydot = 5.0;
@@ -186,15 +186,24 @@ void PreviewCtrl::reschedule_weight(double speed){
       // // Qweight[2] = tmp_ydot_q;
       // R_weight = tmp_r;
       VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+         Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
       }else{
+        std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
         // For Low speed  
         // ROS_WARN("low speed tune");       
       // std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
 
-      std::vector<double> Qweight = {3.0, 5.0, 25.0, 1.0};
-      R_weight = 500;
-      VehicleModel_.setWeight( Qweight, R_weight);
-      }
+      
       
       
   
@@ -223,12 +232,12 @@ void PreviewCtrl::steering_rate_reset(double speed){
     // }
 
     // angle_rate_limit = -0.01*speed*3.6 +0.6;
-    if(speed > 30/3.6){
+    if(speed > 40/3.6){
       // angle_rate_limit = -0.0131*speed*3.6 +0.647;
       
       // angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
         angle_rate_limit = 0.1;
-    }else if(speed > 20/3.6 && speed <= 30/3.6){
+    }else if(speed > 30/3.6 && speed <= 40/3.6){
       angle_rate_limit = 0.2;
     }else{
         angle_rate_limit = 20;
