@@ -1,0 +1,8 @@
+prefix=/home/hmc/usafe_ws/devel/.private/ackermann_msgs
+
+Name: ackermann_msgs
+Description: Description of ackermann_msgs
+Version: 1.0.2
+Cflags: -I/home/hmc/usafe_ws/devel/.private/ackermann_msgs/include -I/usr/include
+Libs: -L${prefix}/lib 
+Requires: message_runtime std_msgs

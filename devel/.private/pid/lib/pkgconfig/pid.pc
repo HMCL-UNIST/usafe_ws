@@ -1,0 +1,8 @@
+prefix=/home/hmc/usafe_ws/devel/.private/pid
+
+Name: pid
+Description: Description of pid
+Version: 0.0.28
+Cflags: -I/home/hmc/usafe_ws/devel/.private/pid/include -I/home/hmc/usafe_ws/src/pid/include
+Libs: -L${prefix}/lib 
+Requires: roscpp std_msgs message_runtime dynamic_reconfigure

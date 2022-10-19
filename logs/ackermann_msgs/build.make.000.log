@@ -1,0 +1,29 @@
+[  0%] Built target std_msgs_generate_messages_py
+[  0%] Built target std_msgs_generate_messages_eus
+[  0%] Built target std_msgs_generate_messages_lisp
+[  0%] Built target std_msgs_generate_messages_nodejs
+[  0%] Built target std_msgs_generate_messages_cpp
+[  0%] Built target _ackermann_msgs_generate_messages_check_deps_AckermannDriveStamped
+[  0%] Built target _ackermann_msgs_generate_messages_check_deps_AckermannDrive
+[  8%] [34m[1mGenerating Python from MSG ackermann_msgs/AckermannDriveStamped[0m
+[ 16%] [34m[1mGenerating Python from MSG ackermann_msgs/AckermannDrive[0m
+[ 25%] [34m[1mGenerating C++ code from ackermann_msgs/AckermannDriveStamped.msg[0m
+[ 33%] [34m[1mGenerating EusLisp code from ackermann_msgs/AckermannDriveStamped.msg[0m
+[ 41%] [34m[1mGenerating EusLisp code from ackermann_msgs/AckermannDrive.msg[0m
+[ 50%] [34m[1mGenerating C++ code from ackermann_msgs/AckermannDrive.msg[0m
+[ 58%] [34m[1mGenerating EusLisp manifest code for ackermann_msgs[0m
+[ 66%] [34m[1mGenerating Python msg __init__.py for ackermann_msgs[0m
+WARNING: Package name "LaneExtractor" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+WARNING: Package name "mapPublisher" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+[ 66%] Built target ackermann_msgs_generate_messages_cpp
+[ 66%] Built target ackermann_msgs_generate_messages_py
+[ 75%] [34m[1mGenerating Lisp code from ackermann_msgs/AckermannDriveStamped.msg[0m
+[ 83%] [34m[1mGenerating Javascript code from ackermann_msgs/AckermannDriveStamped.msg[0m
+[ 91%] [34m[1mGenerating Lisp code from ackermann_msgs/AckermannDrive.msg[0m
+[100%] [34m[1mGenerating Javascript code from ackermann_msgs/AckermannDrive.msg[0m
+[100%] Built target ackermann_msgs_generate_messages_nodejs
+[100%] Built target ackermann_msgs_generate_messages_lisp
+WARNING: Package name "LaneExtractor" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+WARNING: Package name "mapPublisher" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+[100%] Built target ackermann_msgs_generate_messages_eus
+[100%] Built target ackermann_msgs_generate_messages

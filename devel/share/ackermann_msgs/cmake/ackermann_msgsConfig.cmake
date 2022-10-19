@@ -1,0 +1,1 @@
+/home/hmc/usafe_ws/devel/.private/ackermann_msgs/share/ackermann_msgs/cmake/ackermann_msgsConfig.cmake

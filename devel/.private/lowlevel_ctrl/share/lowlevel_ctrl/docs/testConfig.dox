@@ -1,0 +1,15 @@
+\subsubsection parameters ROS parameters
+
+Reads and maintains the following parameters on the ROS server
+
+- \b "~Master_Switch" : \b [bool] turn on dynamic configure min: False, default: False, max: True
+- \b "~AD_STR_MODE_CMD" : \b [bool] A Boolean parameter min: False, default: False, max: True
+- \b "~AD_STR_POS_CMD" : \b [int] A int parameter min: -5400, default: 0, max: 5400
+- \b "~AD_SCC_ACCEL_CMD" : \b [int] A int parameter min: -500, default: 0, max: 100
+- \b "~AD_SCC_TAKEOVER_CMD" : \b [bool] A bool parameter min: False, default: False, max: True
+- \b "~AD_LEFT_TURNLAMP_STAT" : \b [bool] A Boolean parameter min: False, default: False, max: True
+- \b "~AD_RIGHT_TURNLAMP_STAT" : \b [bool] A Boolean parameter min: False, default: False, max: True
+- \b "~AD_HAZARD_STAT" : \b [bool] A Boolean parameter min: False, default: False, max: True
+- \b "~AD_GEAR_POS_CMD" : \b [int] A size parameter which is edited via an enum min: 0, default: 0, max: 3
+- \b "~AD_SCC_MODE_CMD" : \b [int] A size parameter which is edited via an enum min: 0, default: 0, max: 2
+

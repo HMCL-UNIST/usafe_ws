@@ -1,0 +1,56 @@
+In file included from [01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:33[m[K:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:[m[K In constructor ‘[01m[KLowlevelCtrl::LowlevelCtrl(ros::NodeHandle&, ros::NodeHandle&, ros::NodeHandle&, ros::NodeHandle&)[m[K’:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:96:5:[m[K [01;35m[Kwarning: [m[K‘[01m[KLowlevelCtrl::emergency_count[m[K’ will be initialized after [[01;35m[K-Wreorder[m[K]
+   96 | int [01;35m[Kemergency_count[m[K;
+      |     [01;35m[K^~~~~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:95:6:[m[K [01;35m[Kwarning: [m[K  ‘[01m[Kbool LowlevelCtrl::emergency_stop_activate[m[K’ [[01;35m[K-Wreorder[m[K]
+   95 | bool [01;35m[Kemergency_stop_activate[m[K;
+      |      [01;35m[K^~~~~~~~~~~~~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:37:1:[m[K [01;35m[Kwarning: [m[K  when initialized here [[01;35m[K-Wreorder[m[K]
+   37 | [01;35m[KLowlevelCtrl[m[K::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light):
+      | [01;35m[K^~~~~~~~~~~~[m[K
+In file included from [01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:33[m[K:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:95:6:[m[K [01;35m[Kwarning: [m[K‘[01m[KLowlevelCtrl::emergency_stop_activate[m[K’ will be initialized after [[01;35m[K-Wreorder[m[K]
+   95 | bool [01;35m[Kemergency_stop_activate[m[K;
+      |      [01;35m[K^~~~~~~~~~~~~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:90:14:[m[K [01;35m[Kwarning: [m[K  ‘[01m[KDrivingState LowlevelCtrl::drivingState[m[K’ [[01;35m[K-Wreorder[m[K]
+   90 | DrivingState [01;35m[KdrivingState[m[K;
+      |              [01;35m[K^~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:37:1:[m[K [01;35m[Kwarning: [m[K  when initialized here [[01;35m[K-Wreorder[m[K]
+   37 | [01;35m[KLowlevelCtrl[m[K::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light):
+      | [01;35m[K^~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_callbacks.cpp:[m[K In member function ‘[01m[Kvoid LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr)[m[K’:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_callbacks.cpp:158:7:[m[K [01;35m[Kwarning: [m[Kvariable ‘[01m[Ka[m[K’ set but not used [[01;35m[K-Wunused-but-set-variable[m[K]
+  158 |   int [01;35m[Ka[m[K;
+      |       [01;35m[K^[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_callbacks.cpp:160:10:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Ksteer_d[m[K’ [[01;35m[K-Wunused-variable[m[K]
+  160 |   double [01;35m[Ksteer_d[m[K;
+      |          [01;35m[K^~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_callbacks.cpp:[m[K In member function ‘[01m[Kvoid LowlevelCtrl::AcanCallback(can_msgs::FrameConstPtr)[m[K’:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_callbacks.cpp:158:7:[m[K [01;35m[Kwarning: [m[Kvariable ‘[01m[Ka[m[K’ set but not used [[01;35m[K-Wunused-but-set-variable[m[K]
+  158 |   int [01;35m[Ka[m[K;
+      |       [01;35m[K^[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_callbacks.cpp:160:10:[m[K [01;35m[Kwarning: [m[Kunused variable ‘[01m[Ksteer_d[m[K’ [[01;35m[K-Wunused-variable[m[K]
+  160 |   double [01;35m[Ksteer_d[m[K;
+      |          [01;35m[K^~~~~~~[m[K
+In file included from [01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:33[m[K:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:[m[K In constructor ‘[01m[KLowlevelCtrl::LowlevelCtrl(ros::NodeHandle&, ros::NodeHandle&, ros::NodeHandle&, ros::NodeHandle&)[m[K’:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:96:5:[m[K [01;35m[Kwarning: [m[K‘[01m[KLowlevelCtrl::emergency_count[m[K’ will be initialized after [[01;35m[K-Wreorder[m[K]
+   96 | int [01;35m[Kemergency_count[m[K;
+      |     [01;35m[K^~~~~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:95:6:[m[K [01;35m[Kwarning: [m[K  ‘[01m[Kbool LowlevelCtrl::emergency_stop_activate[m[K’ [[01;35m[K-Wreorder[m[K]
+   95 | bool [01;35m[Kemergency_stop_activate[m[K;
+      |      [01;35m[K^~~~~~~~~~~~~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:37:1:[m[K [01;35m[Kwarning: [m[K  when initialized here [[01;35m[K-Wreorder[m[K]
+   37 | [01;35m[KLowlevelCtrl[m[K::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light):
+      | [01;35m[K^~~~~~~~~~~~[m[K
+In file included from [01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:33[m[K:
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:95:6:[m[K [01;35m[Kwarning: [m[K‘[01m[KLowlevelCtrl::emergency_stop_activate[m[K’ will be initialized after [[01;35m[K-Wreorder[m[K]
+   95 | bool [01;35m[Kemergency_stop_activate[m[K;
+      |      [01;35m[K^~~~~~~~~~~~~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/include/lowlevel_ctrl.h:90:14:[m[K [01;35m[Kwarning: [m[K  ‘[01m[KDrivingState LowlevelCtrl::drivingState[m[K’ [[01;35m[K-Wreorder[m[K]
+   90 | DrivingState [01;35m[KdrivingState[m[K;
+      |              [01;35m[K^~~~~~~~~~~~[m[K
+[01m[K/home/hmc/usafe_ws/src/tools/lowlevel_ctrl/src/lowlevel_ctrl.cpp:37:1:[m[K [01;35m[Kwarning: [m[K  when initialized here [[01;35m[K-Wreorder[m[K]
+   37 | [01;35m[KLowlevelCtrl[m[K::LowlevelCtrl(ros::NodeHandle& nh_can, ros::NodeHandle& nh_acc,ros::NodeHandle& nh_steer,ros::NodeHandle& nh_light):
+      | [01;35m[K^~~~~~~~~~~~[m[K

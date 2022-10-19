@@ -1,0 +1,15 @@
+\subsubsection usage Usage
+\verbatim
+<node name="preview_ctrl" pkg="preview_ctrl" type="preview_ctrl">
+  <param name="config_switch" type="bool" value="False" />
+  <param name="Q_ey" type="double" value="3.0" />
+  <param name="Q_eydot" type="double" value="5.0" />
+  <param name="Q_epsi" type="double" value="25.0" />
+  <param name="Q_epsidot" type="double" value="1.0" />
+  <param name="R_weight" type="double" value="4500.0" />
+  <param name="angle_rate_limit" type="double" value="0.1" />
+  <param name="delay_in_sec" type="double" value="0.14" />
+  <param name="lag_tau" type="double" value="0.14" />
+</node>
+\endverbatim
+

@@ -1,0 +1,23 @@
+[  0%] Built target _can_msgs_generate_messages_check_deps_Frame
+[  0%] Built target std_msgs_generate_messages_py
+[  0%] Built target std_msgs_generate_messages_cpp
+[  0%] Built target std_msgs_generate_messages_eus
+[  0%] Built target std_msgs_generate_messages_lisp
+[  0%] Built target std_msgs_generate_messages_nodejs
+[ 14%] [34m[1mGenerating Python from MSG can_msgs/Frame[0m
+[ 28%] [34m[1mGenerating C++ code from can_msgs/Frame.msg[0m
+[ 42%] [34m[1mGenerating EusLisp code from can_msgs/Frame.msg[0m
+[ 57%] [34m[1mGenerating EusLisp manifest code for can_msgs[0m
+[ 71%] [34m[1mGenerating Lisp code from can_msgs/Frame.msg[0m
+[ 71%] Built target can_msgs_generate_messages_lisp
+[ 71%] Built target can_msgs_generate_messages_cpp
+WARNING: Package name "LaneExtractor" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+[ 85%] [34m[1mGenerating Javascript code from can_msgs/Frame.msg[0m
+[100%] [34m[1mGenerating Python msg __init__.py for can_msgs[0m
+WARNING: Package name "mapPublisher" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+[100%] Built target can_msgs_generate_messages_nodejs
+[100%] Built target can_msgs_generate_messages_py
+WARNING: Package name "LaneExtractor" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+WARNING: Package name "mapPublisher" does not follow the naming conventions. It should start with a lower case letter and only contain lower case letters, digits, underscores, and dashes.
+[100%] Built target can_msgs_generate_messages_eus
+[100%] Built target can_msgs_generate_messages

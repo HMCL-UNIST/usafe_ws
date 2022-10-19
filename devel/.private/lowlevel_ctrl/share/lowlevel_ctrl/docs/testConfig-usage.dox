@@ -1,0 +1,16 @@
+\subsubsection usage Usage
+\verbatim
+<node name="lowlevel_ctrl" pkg="lowlevel_ctrl" type="lowlevel_ctrl">
+  <param name="Master_Switch" type="bool" value="False" />
+  <param name="AD_STR_MODE_CMD" type="bool" value="False" />
+  <param name="AD_STR_POS_CMD" type="int" value="0" />
+  <param name="AD_SCC_ACCEL_CMD" type="int" value="0" />
+  <param name="AD_SCC_TAKEOVER_CMD" type="bool" value="False" />
+  <param name="AD_LEFT_TURNLAMP_STAT" type="bool" value="False" />
+  <param name="AD_RIGHT_TURNLAMP_STAT" type="bool" value="False" />
+  <param name="AD_HAZARD_STAT" type="bool" value="False" />
+  <param name="AD_GEAR_POS_CMD" type="int" value="0" />
+  <param name="AD_SCC_MODE_CMD" type="int" value="0" />
+</node>
+\endverbatim
+

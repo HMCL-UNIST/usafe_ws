@@ -1,0 +1,12 @@
+Symlinking /home/hmc/usafe_ws/devel/lib/python2.7/dist-packages/lowlevel_ctrl/__init__.py
+Symlinking /home/hmc/usafe_ws/devel/lib/python2.7/dist-packages/lowlevel_ctrl/cfg/testConfig.py
+Symlinking /home/hmc/usafe_ws/devel/lib/python2.7/dist-packages/lowlevel_ctrl/cfg/__init__.py
+Symlinking /home/hmc/usafe_ws/devel/lib/lowlevel_ctrl/dynamic_reconfigure_node
+Symlinking /home/hmc/usafe_ws/devel/lib/lowlevel_ctrl/lowlevel_ctrl
+Symlinking /home/hmc/usafe_ws/devel/lib/pkgconfig/lowlevel_ctrl.pc
+Symlinking /home/hmc/usafe_ws/devel/include/lowlevel_ctrl/testConfig.h
+Symlinking /home/hmc/usafe_ws/devel/share/lowlevel_ctrl/cmake/lowlevel_ctrlConfig-version.cmake
+Symlinking /home/hmc/usafe_ws/devel/share/lowlevel_ctrl/cmake/lowlevel_ctrlConfig.cmake
+Symlinking /home/hmc/usafe_ws/devel/share/lowlevel_ctrl/docs/testConfig.dox
+Symlinking /home/hmc/usafe_ws/devel/share/lowlevel_ctrl/docs/testConfig-usage.dox
+Symlinking /home/hmc/usafe_ws/devel/share/lowlevel_ctrl/docs/testConfig.wikidoc

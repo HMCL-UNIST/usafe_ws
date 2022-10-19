@@ -1,6 +1,0 @@
-bool enabled
-bool used
-bool residual_high_warning
-bool sample_time_warning
-bool configuration_error
-bool max_num_meas_exceeded

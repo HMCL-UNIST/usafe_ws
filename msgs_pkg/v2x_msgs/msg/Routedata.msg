@@ -1,6 +1,0 @@
-int32 mission_route_id
-int32 route_node_total_count
-int32 route_node_index
-int32 route_node_type
-int32 route_node_pos_lat
-int32 route_node_pos_lon

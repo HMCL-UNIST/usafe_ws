@@ -1,0 +1,1 @@
+/home/hmc/usafe_ws/devel/.private/ackermann_msgs/share/gennodejs/ros/ackermann_msgs/msg/_index.js

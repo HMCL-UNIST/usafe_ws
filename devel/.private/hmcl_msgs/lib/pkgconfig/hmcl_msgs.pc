@@ -1,0 +1,8 @@
+prefix=/home/hmc/usafe_ws/devel/.private/hmcl_msgs
+
+Name: hmcl_msgs
+Description: Description of hmcl_msgs
+Version: 1.13.0
+Cflags: -I/home/hmc/usafe_ws/devel/.private/hmcl_msgs/include
+Libs: -L${prefix}/lib 
+Requires: geometry_msgs message_runtime sensor_msgs std_msgs

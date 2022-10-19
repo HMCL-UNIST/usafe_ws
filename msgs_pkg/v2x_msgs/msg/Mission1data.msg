@@ -1,4 +1,0 @@
-int32 route_node_index
-int32 route_node_type
-float32 route_node_pos_lat
-float32 route_node_pos_lon
