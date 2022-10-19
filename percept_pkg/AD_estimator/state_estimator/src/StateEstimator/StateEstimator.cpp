@@ -781,7 +781,7 @@ namespace localization_core
           int key_ = round(timeDiff_);                       
           if (std::abs(timeDiff_ - key_) < 1e-1)
           { 
-            gtsam::Pose3 local_pose3_ = Pose3(Rot3::Quaternion(local_pose_->pose.orientation.w, local_pose_->pose.orientation.x, local_pose_->pose.orientation.y, local_pose_->pose.orientation.z),Point3(local_pose_->pose.position.x, local_pose_->pose.position.y, local_pose_->pose.position.z));
+            gtsam::Pose3 local_pose3_ = Pose3(bodyPSensor_.rotation() *Rot3::Quaternion(local_pose_->pose.orientation.w, local_pose_->pose.orientation.x, local_pose_->pose.orientation.y, local_pose_->pose.orientation.z),Point3(local_pose_->pose.position.x, local_pose_->pose.position.y, local_pose_->pose.position.z));
 
             // check if the LocalPoseMsg message is close to our expected position
             Pose3 expectedState_;            

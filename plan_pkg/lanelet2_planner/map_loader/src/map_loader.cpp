@@ -149,7 +149,7 @@ void MapLoader::global_traj_handler(const ros::TimerEvent& time){
 
   if(global_traj_available){
     way_pub.publish(global_lane_array);
-    ROS_INFO("GLOBAL");
+    // ROS_INFO("GLOBAL");
   }  
 
 }
@@ -415,9 +415,9 @@ void MapLoader::compute_global_path(){
   findnearest_lane_and_point_idx(global_lane_array, pose_b, g_lane_idx, g_pt_idx);
   id = global_lane_array.lanes[g_lane_idx].lane_id;
   mission_pt.end.z = id;
-  // ROS_INFO("start idx is %f", mission_pt.start.z);
-  // ROS_INFO("end idx is %f", mission_pt.end.z);
-  mission_pt.remain = xyz.size();
+  ROS_INFO("start idx is %f", mission_pt.start.z);
+  ROS_INFO("end idx is %f", mission_pt.end.z);
+  // mission_pt.remain = xyz.size();
 
   for(int t=0; t<xyz.size()-1; t++){ 
 
@@ -430,15 +430,15 @@ void MapLoader::compute_global_path(){
     findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
     id = global_lane_array.lanes[s_lane_idx].lane_id;
     // ROS_INFO("id is : %d",id);
-    
     id_array.push_back(id);
+    ROS_INFO("HEREHEREHRE");
     if (t == xyz.size()-2){
-      find_check =true;
+      
       ROS_INFO("start idx is %f", mission_pt.start.z);
       ROS_INFO("end idx is %f", mission_pt.end.z);
     }
   }
-
+  find_check =true;
 }
 
 unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_){
@@ -522,12 +522,12 @@ void MapLoader::lane_in_range(){
   lir_array.lanes.clear();
   tmp_array2.lanes.clear();
 
-  for (int j=0; j<tmp_array.lanes.size(); j++){
-    if (tmp_array.lanes[j].lane_id == current_id){
-      cl_lane_idx = j;
-      break;
-    }
-  }
+  // for (int j=0; j<tmp_array.lanes.size(); j++){
+  //   if (tmp_array.lanes[j].lane_id == current_id){
+  //     cl_lane_idx = j;
+  //     break;
+  //   }
+  // }
   for (int k=0; k<6; k++){
     if (cl_lane_idx+k < tmp_array.lanes.size()){
       tmp_array2.lanes.push_back(tmp_array.lanes[cl_lane_idx+k]);    
@@ -545,9 +545,9 @@ void MapLoader::lane_in_range(){
   }
 
   for(int i=0; i<cl_lane_idx; i++){
+    // ROS_INFO("%d lane is deleted",tmp_array2.lanes[i].lane_id);
     tmp_array2.lanes.erase(tmp_array2.lanes.begin());
   }
-
 
   // global 
   hmcl_msgs::Lane ll;
@@ -565,12 +565,13 @@ void MapLoader::lane_in_range(){
   lanelet::ConstLanelet target_lane;
   std::vector<lanelet::ConstLanelet> target_lanes;
   // std::vector<lanelet::ConstLanelet> lanes;
-  ROS_INFO("Current node is %d", id_array.size());
+  // ROS_INFO("Current node is %d", id_array.size());
   if (id_array.size()>=1){
-    if (lane_id == id_array[1]){
+    if (lane_id == id_array[0]){
       id_array.erase(id_array.begin());
       ROS_INFO("Mission node is in Current lane");
       mission_pt.remain = id_array.size();
+      
     }
   }
 
@@ -868,20 +869,37 @@ void MapLoader::ped_state(const autoware_msgs::DetectedObjectArray& pobjects)
 }
 
 void MapLoader::ped_inCw(){
-  if(ped_available && pose_init){
+  tf::StampedTransform transform;
+  bool os_tf = false;
+  try{
+    transform_listener.lookupTransform("/map", "/os_sensor", ros::Time(0), transform);
+    os_tf = true;
+  }
+  catch(tf::TransformException ex){
+    ROS_ERROR("%s", ex.what());
+  }
+  
+  if(ped_available && os_tf){
     for(int i=0; i < ped_array.objects.size(); i++){
       // ROS_INFO("HERE:::::::::::oject size is %d", ped_array.objects.size());
       float x,y;
       double ped_x = ped_array.objects[i].pose.position.x;
       double ped_y = ped_array.objects[i].pose.position.y;
-      geometry_msgs::Pose egoPose = cur_pose;
+      geometry_msgs::Pose egoPose;
+      egoPose.position.x = transform.getOrigin().x();
+      egoPose.position.y = transform.getOrigin().y();
+      egoPose.orientation.x = transform.getRotation().getX();
+      egoPose.orientation.y = transform.getRotation().getY();
+      egoPose.orientation.z = transform.getRotation().getZ();
+      egoPose.orientation.w = transform.getRotation().getW();
       float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
       x=egoPose.position.x + ped_x*cos(yaw) - ped_y*sin(yaw);
       y=egoPose.position.y + ped_x*sin(yaw) + ped_y*cos(yaw);
 
+      // ROS_INFO("ped : %f, %f", x, y);
 
       double dis2ego = sqrt(pow(x-odom_x,2)+pow(y-odom_y,2));
-      ROS_INFO("Distance to Ego is:::::  %f", dis2ego);
+      // ROS_INFO("Distance to Ego is:::::  %f", dis2ego);
       if (dis2ego >= 30){
         continue;
       }

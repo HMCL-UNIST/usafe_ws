@@ -194,6 +194,7 @@ bool goal_available;
 bool lir_available = false;
 bool ped_available = false, ped_in=false, ped_tmp=false;
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
+tf::TransformListener transform_listener;
 
 geometry_msgs::Pose pose_a, pose_b;
 
@@ -230,7 +231,7 @@ lanelet::Areas stopline;
 
 lanelet::Optional<lanelet::routing::Route> route;
 
-bool find_check = false;
+bool find_check=false;
 bool left_change_signal, right_change_signal;
 LaneChangeState lane_change_state, prev_lane_change_state;
 double lane_change_weight;

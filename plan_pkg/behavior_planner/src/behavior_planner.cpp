@@ -37,7 +37,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("thresTurn", thresTurn, 25);
     nh_.param<float>("thresTL", thresTL, 25);
     nh_.param<float>("thresTLtime", thresTLtime, 3);
-    nh_.param<float>("thresDistSG", thresDistSG, 30);
+    nh_.param<float>("thresDistSG", thresDistSG, 7);
     nh_.param<float>("successDistSG", successDistSG, 5);
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);

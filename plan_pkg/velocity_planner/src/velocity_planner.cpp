@@ -440,6 +440,10 @@ void VelocityPlanner::CheckMotionState()
             motionstate_debug = "Before the stop line: Distance is" + to_string(Dis)
             +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
           }
+          if (targetVel1 >= 9/3.6)
+          {
+            targetVel1 = 9/3.6;
+          }
         }
       }
     }
@@ -544,6 +548,10 @@ void VelocityPlanner::CheckMotionState()
             motionstate_debug = "Before the stop line: Distance is" + to_string(Dis) +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
             targetVel1 = ACC();
           }
+          if (targetVel1 >= 9/3.6)
+          {
+            targetVel1 = 9/3.6;
+          }
         }
       }
       else{
@@ -581,18 +589,22 @@ void VelocityPlanner::CheckMotionState()
   else if(CurrentMode == BehaviorState::StopAtStartPos ){
     Dis = sqrt(pow(current_x-start.x,2) + pow(current_y-start.y,2));
     targetVel = 0;
-    if (Dis <= stop_margin || misson_stop){
+    // if (Dis <= stop_margin || misson_stop){
+    //   MotionMode = MotionState::STOP;
+    //   motionstate_debug = "At the start position";
+    //   targetVel1 = 0;
+    //   misson_stop = true;
+    // }
+    // else{
+    //   Dis = std::min(Dis, 10.0);
+    //   motionstate_debug = "Before the start position: Distance is" + to_string(Dis);
+    //   MotionMode = MotionState::DECELERATE;
+    //   targetVel1 = ACC();
+    // }
       MotionMode = MotionState::STOP;
       motionstate_debug = "At the start position";
       targetVel1 = 0;
       misson_stop = true;
-    }
-    else{
-      Dis = std::min(Dis, 30.0);
-      motionstate_debug = "Before the start position: Distance is" + to_string(Dis);
-      MotionMode = MotionState::DECELERATE;
-      targetVel1 = ACC();
-    }
     if (LeadVehicle){
       targetVel2 = CheckLeadVehicle();
       targetVel = std::min(targetVel1, targetVel2);
@@ -609,17 +621,21 @@ void VelocityPlanner::CheckMotionState()
   else if(CurrentMode == BehaviorState::StopAtGoalPos ){
     Dis = sqrt(pow(current_x-end.x,2) + pow(current_y-end.y,2));
     targetVel = 0;
-    if (Dis <= stop_margin || misson_stop){
-      MotionMode = MotionState::STOP;
-      motionstate_debug = "At the goal position";
-      targetVel1 = 0;
-    }
-    else{
-      Dis = std::min(Dis, 30.0);
-      MotionMode = MotionState::DECELERATE;
-      motionstate_debug = "Before the goal position: Distance is" + to_string(Dis);
-      targetVel1 = ACC();
-    }
+    // if (Dis <= stop_margin || misson_stop){
+    //   MotionMode = MotionState::STOP;
+    //   motionstate_debug = "At the goal position";
+    //   targetVel1 = 0;
+    // }
+    // else{
+    //   Dis = std::min(Dis, 30.0);
+    //   MotionMode = MotionState::DECELERATE;
+    //   motionstate_debug = "Before the goal position: Distance is" + to_string(Dis);
+    //   targetVel1 = ACC();
+    // }
+    MotionMode = MotionState::STOP;
+    motionstate_debug = "At the goal position";
+    targetVel1 = 0;
+    
     if (LeadVehicle){
       targetVel2 = CheckLeadVehicle();
       targetVel = std::min(targetVel1, targetVel2);

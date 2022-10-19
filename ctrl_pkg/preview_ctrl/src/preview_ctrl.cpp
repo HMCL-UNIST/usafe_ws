@@ -189,7 +189,9 @@ void PreviewCtrl::reschedule_weight(double speed){
       }else{
         // For Low speed  
         // ROS_WARN("low speed tune");       
-      std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
+      // std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
+
+      std::vector<double> Qweight = {3.0, 5.0, 25.0, 1.0};
       R_weight = 500;
       VehicleModel_.setWeight( Qweight, R_weight);
       }
@@ -222,9 +224,12 @@ void PreviewCtrl::steering_rate_reset(double speed){
 
     // angle_rate_limit = -0.01*speed*3.6 +0.6;
     if(speed > 30/3.6){
-      angle_rate_limit = -0.0131*speed*3.6 +0.647;
+      // angle_rate_limit = -0.0131*speed*3.6 +0.647;
       
-      angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
+      // angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
+        angle_rate_limit = 0.1;
+    }else if(speed > 20/3.6 && speed <= 30/3.6){
+      angle_rate_limit = 0.2;
     }else{
         angle_rate_limit = 20;
     }
@@ -241,7 +246,7 @@ void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
    
     wheel_speed = msg->wheelspeed.wheel_speed;
     reschedule_weight(wheel_speed);
-    // steering_rate_reset(wheel_speed);
+    steering_rate_reset(wheel_speed);
     
    
     
@@ -492,7 +497,7 @@ bool PreviewCtrl::stateSetup(){
 
 void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 {
-  // return ;
+  return ;
   ROS_INFO("Dynamiconfigure updated");
   config_switch = config.config_switch;
   if(config_switch){

@@ -35,7 +35,8 @@ class TcpCommunicator(threading.Thread):
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.listen(4)
         self.client_soc, self.addr = self.server_socket.accept()
-        self.offset_degree = 0.3
+        self.offset_degree = 0.3        
+        
         self.UTC_time = 0.0 
         self.activity_status = ""
         self.latitude = 0.0
@@ -138,8 +139,8 @@ if __name__ == '__main__':
     heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
     heading_raw_pub = rospy.Publisher('heading_ned', Float64, queue_size=1)
 
+    heading_offset_add = -9.6054/180*math.pi 
     
-
 
     rospy.init_node('tdr3000', anonymous=True)
     rate = rospy.Rate(5) # 10hz
@@ -184,9 +185,10 @@ if __name__ == '__main__':
             # if heading == 0.0 or activity_status !='A':
             if valid_heading:
                 
-               
+                heading = heading+ heading_offset_add
                 heading_raw_msg = Float64()
                 heading_raw_msg.data = heading*180/math.pi
+                
                 heading_raw_pub.publish(heading_raw_msg)
 
                 fix_viz_msg.header = fix_msg.header

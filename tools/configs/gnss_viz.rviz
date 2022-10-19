@@ -15,7 +15,7 @@ Panels:
         - /MarkerArray3
         - /Marker1
       Splitter Ratio: 0.27743902802467346
-    Tree Height: 726
+    Tree Height: 363
   - Class: rviz/Selection
     Name: Selection
   - Class: rviz/Tool Properties
@@ -111,7 +111,7 @@ Visualization Manager:
           Marker Topic: /local_traj_viz
           Name: Lpath
           Namespaces:
-            {}
+            local_markers: true
           Queue Size: 100
           Value: true
         - Class: rviz/MarkerArray
@@ -284,31 +284,13 @@ Visualization Manager:
         All Enabled: true
         base_link:
           Value: true
-        front_60_cam:
-          Value: true
-        front_l_cam:
-          Value: true
-        front_r_cam:
-          Value: true
         gnss_link:
-          Value: true
-        hesai:
           Value: true
         imu_link:
           Value: true
         map:
           Value: true
-        os_imu:
-          Value: true
-        os_lidar:
-          Value: true
         os_sensor:
-          Value: true
-        os_sensor_f:
-          Value: true
-        os_sensor_l:
-          Value: true
-        os_sensor_r:
           Value: true
       Marker Scale: 1
       Name: TF
@@ -318,16 +300,7 @@ Visualization Manager:
       Tree:
         map:
           os_sensor:
-            base_link:
-              gnss_link:
-                imu_link:
-                  {}
-            hesai:
-              {}
-            os_imu:
-              {}
-            os_lidar:
-              {}
+            {}
       Update Interval: 0
       Value: true
     - Class: rviz/MarkerArray
@@ -335,7 +308,7 @@ Visualization Manager:
       Marker Topic: /lir_viz
       Name: MarkerArray
       Namespaces:
-        {}
+        lir: true
       Queue Size: 1
       Value: true
     - Class: rviz/MarkerArray
@@ -343,7 +316,7 @@ Visualization Manager:
       Marker Topic: /local_traj_viz
       Name: MarkerArray
       Namespaces:
-        {}
+        local_markers: true
       Queue Size: 1
       Value: true
     - Class: rviz/MarkerArray
@@ -351,7 +324,9 @@ Visualization Manager:
       Marker Topic: /motionstate_viz
       Name: MarkerArray
       Namespaces:
-        {}
+        behave: true
+        motion_debug: true
+        motionstate: true
       Queue Size: 1
       Value: true
     - Class: rviz/Marker
@@ -375,7 +350,7 @@ Visualization Manager:
       Marker Topic: /ped_pt
       Name: MarkerArray
       Namespaces:
-        pedd: true
+        {}
       Queue Size: 100
       Value: true
   Enabled: true
@@ -406,25 +381,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 160.7265167236328
+      Distance: 30.20465850830078
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.05999999865889549
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -8.785761833190918
-        Y: -13.838947296142578
-        Z: 2.117667463608086e-6
+        X: -6.2966837882995605
+        Y: 13.087259292602539
+        Z: 1.153508583229268e-5
       Focal Shape Fixed Size: false
       Focal Shape Size: 0.05000000074505806
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.009999999776482582
-      Pitch: 1.230398416519165
+      Pitch: 1.5497963428497314
       Target Frame: base_link
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.29856014251709
+      Yaw: 5.621743679046631
     Saved: ~
 Window Geometry:
   Displays:

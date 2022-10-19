@@ -94,7 +94,7 @@ void LowlevelCtrl::InitCanmsg(){
   steering_frame.is_rtr = false;  
   steering_frame.data[0] = (steer_value & 0b11111111);
 	steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
-  steering_frame.data[2] = (unsigned int)0 & 0b11111111;
+  steering_frame.data[2] = (unsigned int)1 & 0b11111111;
       
   setToParking();
   short zero_dcel = (0*100);       
@@ -166,11 +166,11 @@ void LowlevelCtrl::AcanSender()
       }
      
       usleep(1000);
-      AcanPub.publish(scc_frame);
+      // AcanPub.publish(scc_frame);
       usleep(1000);
-      AcanPub.publish(gear_frame);
+      // AcanPub.publish(gear_frame);
       usleep(1000);
-      AcanPub.publish(steering_frame);
+      // AcanPub.publish(steering_frame);
       usleep(1000);     
       AcanPub.publish(light_frame);  
       usleep(1000);     
