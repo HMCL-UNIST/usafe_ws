@@ -1,8 +1,0 @@
-prefix=/home/hmc/usafe_ws/devel/.private/reboot
-
-Name: reboot
-Description: Description of reboot
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 

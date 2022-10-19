@@ -1,1 +1,0 @@
-/home/hmc/usafe_ws/devel/.private/carla_msgs/share/roseus/ros/carla_msgs/srv/GetBlueprints.l

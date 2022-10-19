@@ -1,8 +1,0 @@
-prefix=/home/hmc/usafe_ws/devel/.private/preview_ctrl
-
-Name: preview_ctrl
-Description: Description of preview_ctrl
-Version: 0.1.0
-Cflags: -I/home/hmc/usafe_ws/devel/.private/preview_ctrl/include
-Libs: -L${prefix}/lib 
-Requires: nav_msgs roscpp can_msgs sensor_msgs geometry_msgs std_msgs hmcl_msgs tf carla_msgs visualization_msgs dynamic_reconfigure

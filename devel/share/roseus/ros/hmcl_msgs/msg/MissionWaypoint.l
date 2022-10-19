@@ -1,1 +1,0 @@
-/home/hmc/usafe_ws/devel/.private/hmcl_msgs/share/roseus/ros/hmcl_msgs/msg/MissionWaypoint.l

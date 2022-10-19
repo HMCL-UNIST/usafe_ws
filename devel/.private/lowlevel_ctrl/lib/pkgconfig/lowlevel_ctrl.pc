@@ -1,8 +1,0 @@
-prefix=/home/hmc/usafe_ws/devel/.private/lowlevel_ctrl
-
-Name: lowlevel_ctrl
-Description: Description of lowlevel_ctrl
-Version: 0.1.0
-Cflags: -I/home/hmc/usafe_ws/devel/.private/lowlevel_ctrl/include
-Libs: -L${prefix}/lib 
-Requires: nav_msgs roscpp sensor_msgs geometry_msgs std_msgs hmcl_msgs tf dynamic_reconfigure

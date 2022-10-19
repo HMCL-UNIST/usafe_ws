@@ -1,1 +1,0 @@
-/home/hmc/usafe_ws/devel/.private/ackermann_msgs/share/roseus/ros/ackermann_msgs/msg/AckermannDriveStamped.l
