@@ -26,7 +26,35 @@ typedef enum{Init = 0, ChooseDifficulty = 1, MissionRequest = 2, DriveToStartPos
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
             Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival} BehaviorState;
 
+inline const char* stateToStringMission(MissionState v)
 
+{
+
+    switch (v)
+
+    {
+
+        case MissionState::Init:   return "Init";
+
+        case MissionState::ChooseDifficulty:   return "ChooseDifficulty";
+
+        case MissionState::MissionRequest:   return "MissionRequest";
+
+        case MissionState::DriveToStartPos:   return "DriveToStartPos";
+
+        case MissionState::StartArrivalRequest:   return "StartArrivalRequest";
+
+        case MissionState::DriveToGoalPos:   return "DriveToGoalPos";
+
+        case MissionState::GoalArrivalRequest:   return "GoalArrivalRequest";
+
+        case MissionState::MissionComplete:   return "MissionComplete";
+
+        default:      return "[Unknown MissionState]";
+
+    }
+
+}
 class MissionStateMachine
 {
     private:
@@ -39,6 +67,9 @@ class MissionStateMachine
         bool statusWait, statusStart, missionRequestSuccess, arriveAtStartPos,startArrivalSuccess, arriveAtGoalPos, goalArrivalSuccess;
         //callback data
         int v2xMissionStat;
+        double runRate;
+        int countInit, countChooseDifficulty, countMissionRequest, countDriveToStartPos, countStartArrivalRequest, countDriveToGoalPos, countGoalArrivalRequest;
+        int thresInit, thresChooseDifficulty, thresMissionRequest, thresDriveToStartPos, thresStartArrivalRequest, thresDriveToGoalPos, thresGoalArrivalRequest;
         BehaviorState currentBehavior;
         MissionState currentMission;
     public:

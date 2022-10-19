@@ -21,6 +21,15 @@
 
 MissionStateMachine::MissionStateMachine(){
 
+    nh_.param<double>("runRate", runRate, 10);
+    nh_.param<int>("thresInit", thresInit, 30);
+    nh_.param<int>("thresChooseDifficulty", thresChooseDifficulty, 5);
+    nh_.param<int>("thresMissionRequest", thresMissionRequest, 5);
+    nh_.param<int>("thresDriveToStartPos", thresDriveToStartPos, 600);
+    nh_.param<int>("thresStartArrivalRequest", thresStartArrivalRequest, 20);
+    nh_.param<int>("thresDriveToGoalPos", thresDriveToGoalPos, 600);
+    nh_.param<int>("thresGoalArrivalRequest", thresGoalArrivalRequest, 20);
+
     v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
     v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
     behavior_sub = nh_.subscribe("/behavior_state", 1, &MissionStateMachine::behaviorCallback, this);
@@ -37,15 +46,23 @@ MissionStateMachine::MissionStateMachine(){
     arriveAtGoalPos = false;
     goalArrivalSuccess = false;
 
+    countInit = 0;
+    countChooseDifficulty = 0;
+    countMissionRequest = 0;
+    countDriveToStartPos = 0;
+    countStartArrivalRequest = 0;
+    countDriveToGoalPos = 0;
+    countGoalArrivalRequest = 0;
+
+
     currentMission = Init;
     boost::thread callbackhandler(&MissionStateMachine::callbackthread,this); 
 }
 void MissionStateMachine::callbackthread()
 {   
-    ros::Rate loop_rate(10); // rate  
+    ros::Rate loop_rate(runRate); // rate  
     while(ros::ok()){
         updateMissionState();
-        ROS_INFO("DKJF");
         loop_rate.sleep();
     }
 }
@@ -80,11 +97,12 @@ MissionState MissionStateMachine::getCurrentMission(){
 
 void MissionStateMachine::updateFactors(){
 
-    // statusWait = false;
-    // statusStart = false;
     statusWait = true; //for test
     arriveAtStartPos = false;
+    // arriveAtStartPos = true; //for test
     arriveAtGoalPos = false;
+
+    std::cout<<"--MISSION--MISSION--MISSION--MISSION--"<<std::endl;
 
     switch(v2xMissionStat)
     {
@@ -102,6 +120,42 @@ void MissionStateMachine::updateFactors(){
         case BehaviorState::StopAtGoalPos:
             arriveAtGoalPos = true; 
     }
+
+    if(countInit>thresInit*runRate){
+        statusWait = true;
+        countInit = 0;
+        ROS_INFO("Init Time Out!!!");
+    }
+    if(countChooseDifficulty>thresChooseDifficulty*runRate){
+        statusStart = true;
+        countChooseDifficulty = 0;
+        ROS_INFO("ChooseDifficulty Time Out!!!");
+    }
+    if(countMissionRequest>thresMissionRequest*runRate){
+        missionRequestSuccess = true;
+        countMissionRequest = 0;
+        ROS_INFO("MissionRequest Time Out!!!");
+    }
+    if(countDriveToStartPos>thresDriveToStartPos*runRate){
+        arriveAtStartPos = true;
+        countDriveToStartPos = 0;
+        ROS_INFO("DriveToStartPos Time Out!!!");
+    }
+    if(countStartArrivalRequest>thresStartArrivalRequest*runRate){
+        startArrivalSuccess = true;
+        countStartArrivalRequest = 0;
+        ROS_INFO("StartArrivalRequest Time Out!!!");
+    }
+    if(countDriveToGoalPos>thresDriveToGoalPos*runRate){
+        arriveAtGoalPos = true;
+        countDriveToGoalPos = 0;
+        ROS_INFO("DriveToGoalPos Time Out!!!");
+    }
+    if(countGoalArrivalRequest>thresGoalArrivalRequest*runRate){
+        goalArrivalSuccess = true;
+        countGoalArrivalRequest = 0;
+        ROS_INFO("GoalArrivalRequest Time Out!!!");
+    }
 }
 
 void MissionStateMachine::updateMissionState(){   
@@ -109,36 +163,43 @@ void MissionStateMachine::updateMissionState(){
     switch(currentMission)
     {
         case MissionState::Init:
+            countInit++;
             if(statusWait){
                 currentMission = MissionState::ChooseDifficulty;
             }
             break;
         case MissionState::ChooseDifficulty:
+            countChooseDifficulty++;
             if(statusStart){
                 currentMission = MissionState::MissionRequest;
             }
             break;
         case MissionState::MissionRequest:
+            countMissionRequest++;
             if(missionRequestSuccess){
                 currentMission = MissionState::DriveToStartPos;
             }
             break;
         case MissionState::DriveToStartPos:
+            countDriveToStartPos++;
             if(arriveAtStartPos){
                 currentMission = MissionState::StartArrivalRequest;
             }
             break;
         case MissionState::StartArrivalRequest:
+            countStartArrivalRequest++;
             if(startArrivalSuccess){
                 currentMission = MissionState::DriveToGoalPos;
             }
             break;
         case MissionState::DriveToGoalPos:
+            countDriveToGoalPos++;
             if(arriveAtGoalPos){
                 currentMission = MissionState::GoalArrivalRequest;
             }
             break;
         case MissionState::GoalArrivalRequest:
+            countGoalArrivalRequest++;
             if(goalArrivalSuccess){
                 currentMission = MissionState::MissionComplete;
             }
@@ -148,6 +209,7 @@ void MissionStateMachine::updateMissionState(){
     }
     mission_msg.data = currentMission;
     mission_pub.publish(mission_msg);
+    std::cout<< stateToStringMission(currentMission) <<std::endl;
 }
 
 bool MissionStateMachine::getParam(int param_id){

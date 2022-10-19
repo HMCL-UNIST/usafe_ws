@@ -15,6 +15,7 @@
 #include <ros/package.h>
 
 #include <std_msgs/Int16.h>
+#include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/LaneArray.h>
@@ -33,7 +34,7 @@
 typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArrivalRequest, DriveToGoalPos,
             GoalArrivalRequest, MissionComplete} MissionState;
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange} BehaviorState;
+            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange, BackToGlobal} BehaviorState;
 
 inline const char* stateToStringBehavior(BehaviorState v)
 
@@ -77,6 +78,8 @@ inline const char* stateToStringBehavior(BehaviorState v)
 
         case BehaviorState::ObstacleLaneChange: return "ObstacleLaneChange";
 
+        case BehaviorState::BackToGlobal: return "BackToGlobal";
+
         default:      return "[Unknown BehaviorState]";
 
     }
@@ -89,7 +92,7 @@ class BehaviorPlanner
         ros::NodeHandle nh_;
         ros::Subscriber pose_sub, vel_sub, objs_sub, sb_sub, lug_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub, ped_sub;
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
-        ros::Publisher b_factor_pub, b_state_pub;
+        ros::Publisher b_factor_pub, b_state_pub, light_pub;
         // ros::Timer behavior_timer;
         double runRate;
         float wLane, lenEgo, frontlenEgo, minFront, front_dist, unknownFront, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
@@ -115,6 +118,7 @@ class BehaviorPlanner
         bool inCW, frontPrev, stationaryPrev, sbPrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
+        std_msgs::Float64 light_msg;
         bool NormalDrive, LaneFollowing, Turn;
         int countInit2, countStopAtStartPos, countStartArrival;
         int countPedestrian, countFrontLuggage, countFrontCarStop, countSpeedBump, countStopAtGoalPos;
