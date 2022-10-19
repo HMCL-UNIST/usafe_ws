@@ -1,5 +1,5 @@
 .vscode/
 build/
-install/
-log/
+devel/
+logs/
 tools/maps/bigmap06.pcd
