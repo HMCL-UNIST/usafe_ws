@@ -132,7 +132,7 @@ void LowlevelCtrl::Test(){
     }
 
     if(lc > 0 && lc < 50) {      
-      drivingState = DrivingState::Driving;      
+      drivingState = DrivingState::Parking;      
     }
 
     // if(lc  > 50 && lc < 100) {

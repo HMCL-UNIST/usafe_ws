@@ -139,6 +139,10 @@ MapLoader::~MapLoader()
 {}
 
 void MapLoader::global_traj_handler(const ros::TimerEvent& time){
+  if(!pose_init){
+    return;
+  }
+
   if(!goal_available){
     v2x_goal_nodes();
   }
@@ -163,7 +167,7 @@ void MapLoader::compute_global_path(){
     pose_b.position.y = xyz[t+1].second;
 
 
-  if(pose_init && road_lanelets_const.size() > 0){
+  if(road_lanelets_const.size() > 0){
       int start_closest_lane_idx = get_closest_lanelet(road_lanelets_const,pose_a);      
       int goal_closest_lane_idx = get_closest_lanelet(road_lanelets_const,pose_b);
       // lanelet::Optional<lanelet::routing::LaneletPath> route = routingGraph->shortestPath(road_lanelets[start_closest_lane_idx], road_lanelets[goal_closest_lane_idx], 1);
@@ -414,31 +418,20 @@ void MapLoader::compute_global_path(){
   mission_pt.start.z = id;
   findnearest_lane_and_point_idx(global_lane_array, pose_b, g_lane_idx, g_pt_idx);
   id = global_lane_array.lanes[g_lane_idx].lane_id;
-  mission_pt.end.z = id;
-  ROS_INFO("start idx is %f", mission_pt.start.z);
-  ROS_INFO("end idx is %f", mission_pt.end.z);
-  // mission_pt.remain = xyz.size();
 
-  for(int t=0; t<xyz.size()-1; t++){ 
 
-    if (find_check){
-      break;
+  if (!find_check){
+    for(int t=1; t<xyz.size()-1; t++){ 
+      pose_a.position.x = xyz[t].first;
+      pose_a.position.y = xyz[t].second;
+      findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
+      id = global_lane_array.lanes[s_lane_idx].lane_id;
+      // ROS_INFO("id is : %d",id);
+      std::pair<int,int> node = {id, s_pt_idx};
+      nodes.push_back(node);
     }
-
-    pose_a.position.x = xyz[t].first;
-    pose_a.position.y = xyz[t].second;
-    findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
-    id = global_lane_array.lanes[s_lane_idx].lane_id;
-    // ROS_INFO("id is : %d",id);
-    id_array.push_back(id);
-    ROS_INFO("HEREHEREHRE");
-    if (t == xyz.size()-2){
-      
-      ROS_INFO("start idx is %f", mission_pt.start.z);
-      ROS_INFO("end idx is %f", mission_pt.end.z);
-    }
+    find_check =true;
   }
-  find_check =true;
 }
 
 unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_){
@@ -470,6 +463,7 @@ unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLi
 
 void MapLoader::poseCallback(const nav_msgs::OdometryConstPtr& msg){  
   if(!pose_init){
+    ROS_INFO("Current Pose is not initialized");
     pose_init = true;
   }
   cur_pose = msg->pose.pose;
@@ -508,34 +502,70 @@ void MapLoader::lane_in_range(){
   current_id = tmp_array.lanes[cl_lane_idx].lane_id;
   int signal_id = check_traffic_light(current_id); 
 
-  // ROS_INFO("current lane is: %d", current_id);
-  // ROS_INFO("previous lane is: %d", previous_id);
 
-
-  if (previous_id == -1){
-    previous_id = cl_lane_idx;
+  if (previous_idx == -1){
+    previous_idx = cl_lane_idx;
   }
-  else if(abs(cl_lane_idx - previous_id) >3 ){
+  else if(abs(cl_lane_idx - previous_idx) >3 ){
     return;
   } 
+
+
+  if (nodes.size()>=1){
+
+    if (target_id == 0){
+      nodes.erase(nodes.begin());
+      target_id++;
+    }
+    if (target_id >= xyz.size()-1){
+      target_id = xyz.size()-1;
+    }
+    if (nodes[0].first == current_id){
+      if (!find_new_target){
+        // if (nodes[0].second > cl_pt_idx){
+          target_node = {xyz[target_id].first, xyz[target_id].second};
+          find_new_target = true;
+        // }
+      }
+      else{ 
+        if (nodes[0].second <= cl_pt_idx){
+          find_new_target = false;
+          pass_target = true;
+          target_id ++;
+          // ROS_INFO("*********PASSING****");
+          nodes.erase(nodes.begin());
+        }
+      }
+    }
+    if (previous_id != current_id && previous_id == nodes[0].first){
+      if (!pass_target){
+        find_new_target = false;
+        // ROS_INFO("*********JUST  PASSING****");
+        target_id ++;
+        nodes.erase(nodes.begin());
+      }
+      pass_target = false;
+    }
+  }
+  // mission_pt.remain = nodes.size();
+  // ROS_INFO("node ids is %d and current idx is %d", nodes[0].first, current_id);
+  // ROS_INFO("node wpts ids is %d and current wpts idx is %d", nodes[0].second, cl_pt_idx);
+  ROS_INFO("current target idx is %d and Remain is %d", target_id, nodes.size());
+  // ROS_INFO("%d", target_id);
+  
 
   lir_array.lanes.clear();
   tmp_array2.lanes.clear();
 
-  // for (int j=0; j<tmp_array.lanes.size(); j++){
-  //   if (tmp_array.lanes[j].lane_id == current_id){
-  //     cl_lane_idx = j;
-  //     break;
-  //   }
-  // }
+  
   for (int k=0; k<6; k++){
     if (cl_lane_idx+k < tmp_array.lanes.size()){
       tmp_array2.lanes.push_back(tmp_array.lanes[cl_lane_idx+k]);    
       }
   }
 
-
-  previous_id = cl_lane_idx;
+  previous_id = current_id;
+  previous_idx = cl_lane_idx;
   findnearest_lane_and_point_idx(tmp_array2, cur_pose, cl_lane_idx, cl_pt_idx);
   // lir_flag = true;
    
@@ -566,15 +596,7 @@ void MapLoader::lane_in_range(){
   std::vector<lanelet::ConstLanelet> target_lanes;
   // std::vector<lanelet::ConstLanelet> lanes;
   // ROS_INFO("Current node is %d", id_array.size());
-  if (id_array.size()>=1){
-    if (lane_id == id_array[0]){
-      id_array.erase(id_array.begin());
-      ROS_INFO("Mission node is in Current lane");
-      mission_pt.remain = id_array.size();
-      
-    }
-  }
-
+ 
   bool lc_flag = false;
   for(int i=0; i<tmp_array2.lanes.size(); i++){
     if (i == 0 && !tmp_array2.lanes[i].lane_change_flag){
@@ -1241,12 +1263,20 @@ void MapLoader::v2x_goal_nodes(){
 
   // start_idx = 0;
   // end_idx = 13;
+
   std::vector<std::pair<double,double>> mission_positions;
+  std::pair<double,double> mission_position;
   for(int i=0; i<lla.size(); i++){
     double x, y;
+    geometry_msgs::Point node_pt;
     GeographicLib::UTMUPS::Forward(lla[i].second, lla[i].first, zone, north, x, y, setzone, mgrs);
     std::pair<double,double> xy = {x-origin_x, y-origin_y};
     xyz.push_back(xy);
+
+    node_pt.x = x-origin_x;
+    node_pt.y = y-origin_y;
+    std::pair<double,double> mission_position = {x-origin_x, y-origin_y};
+    mission_pt.node_wpts.push_back(node_pt);
 
     if (i == start_idx){
       mission_pt.start.x = x-origin_x;
@@ -1256,8 +1286,6 @@ void MapLoader::v2x_goal_nodes(){
       mission_pt.end.x = x-origin_x;
       mission_pt.end.y = y-origin_y;
     }
-
-    std::pair<double,double> mission_position = {x-origin_x, y-origin_y};
     mission_positions.push_back(mission_position);
   }
 

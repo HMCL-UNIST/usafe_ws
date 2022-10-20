@@ -75,9 +75,9 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     local_lane_statePub = nh_.advertise<std_msgs::Float64>("/local_lane_state", 2, true);      
     
     
-    // curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
+    curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
 
-    curpose_sub = nh_.subscribe("/initialpose", 1, &RacingLinePlanner::currentposeCallback, this);
+    // curpose_sub = nh_.subscribe("/initialpose", 1, &RacingLinePlanner::currentposeCallback, this);
     
     vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &RacingLinePlanner::callbackVehicleStatus, this);
     
@@ -460,7 +460,7 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
     // }
     
     ////////////test 
-    // vel_msg.data = 56/3.6;
+    // vel_msg.data = 10/3.6;
     velPub.publish(vel_msg);
     
 }
@@ -823,8 +823,8 @@ void RacingLinePlanner::sortGlobalWaypoints(){
 }
 
 
-void RacingLinePlanner::currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg){    
-// void RacingLinePlanner::currentposeCallback(const nav_msgs::OdometryConstPtr &msg){
+// void RacingLinePlanner::currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg){    
+void RacingLinePlanner::currentposeCallback(const nav_msgs::OdometryConstPtr &msg){
     mu_mtx.lock();
     cur_pose.header = msg->header;
     cur_pose.pose = msg->pose.pose;

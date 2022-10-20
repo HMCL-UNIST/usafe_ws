@@ -79,7 +79,8 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
   nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
   nh_traj.param<double>("R_weight", R_weight, 4500); 
-
+  nh_traj.param<bool>("controller_for_low_speed", controller_for_low_speed, false);
+  controller_for_low_speed = true;
 
   nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 5); 
   
@@ -96,7 +97,12 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_yaw_error_.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
-  steer_filter.initialize(dt, 5); // 5 for high speed , 1.5 for low speed
+  
+  if(controller_for_low_speed){
+    steer_filter.initialize(dt, 1.5); // 5 for high speed , 1.5 for low speed
+  }else{
+    steer_filter.initialize(dt, 5); // 5 for high speed , 1.5 for low speed
+  }
 
   yaw_filter.initialize(dt, 5.0);
 
@@ -295,7 +301,7 @@ void PreviewCtrl::ControlLoop()
           continue;
         }
         VehicleModel_.setState(Xk,Cr);
-        double current_speed = max(vehicle_status_.twist.linear.x ,1.0); // less than 1m/s takes too much time for riccati solver
+        double current_speed = max(vehicle_status_.twist.linear.x ,1.5); // less than 1m/s takes too much time for riccati solver
         // double current_speed = max(wheel_speed,1.0); // less than 1m/s takes too much time for riccati solver
         //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~//
          
@@ -327,7 +333,7 @@ void PreviewCtrl::ControlLoop()
         
         
         if( fabs(diff_delta)/dt > angle_rate_limit ){
-          ROS_WARN("rate limit reached!!!");
+          ROS_WARN("rate limit reached!!! angle_rate_limit = %f",angle_rate_limit);
           if(diff_delta>0){
               delta_cmd = prev_delta_cmd + angle_rate_limit*dt;
           }else{

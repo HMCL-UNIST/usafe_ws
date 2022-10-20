@@ -27,9 +27,9 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("wLane", wLane, 3.5);
     nh_.param<float>("lenEgo", lenEgo, 4.180);
     nh_.param<float>("frontlenEgo", frontlenEgo, 4.180/2);// need to check lidar position in real vehicle
-    nh_.param<float>("minFront", minFront, 100);
-    nh_.param<float>("unknownFront", unknownFront, 50);
-    nh_.param<int>("nStore", nStore, 10); //need to check
+    nh_.param<float>("dFront", dFront, 100);
+    nh_.param<float>("dLuggage", dLuggage, 30);
+    nh_.param<int>("nStore", nStore, 20); //need to check
     nh_.param<int>("thresInit2", thresInit2, 40);
     nh_.param<int>("thresStopAtStartPos", thresStopAtStartPos, 20);
     nh_.param<int>("thresStartArrival", thresStartArrival, 20);
@@ -38,14 +38,15 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<int>("thresFrontCarStop", thresFrontCarStop, 10);
     nh_.param<int>("thresSpeedBump", thresSpeedBump, 10);
     nh_.param<int>("thresStopAtGoalPos", thresStopAtGoalPos, 20);
-    nh_.param<float>("thresLC", thresLC, 0.5); // need to check if 1 is sufficient
+    nh_.param<float>("thresObs", thresObs, 7); // need to check if 1 is sufficient
+    nh_.param<float>("thresLC", thresLC, 0.6); // need to check if 1 is sufficient
     nh_.param<float>("thresStop", thresStop, 0.1); // need to check if 0.01 is sufficient
     nh_.param<float>("thresCW", thresCW, 15);
     nh_.param<float>("thresSB", thresSB, 15);
     nh_.param<float>("thresTurn", thresTurn, 25);
     nh_.param<float>("thresTL", thresTL, 25);
     nh_.param<float>("thresTLtime", thresTLtime, 3);
-    nh_.param<float>("thresDistSG", thresDistSG, 7);
+    nh_.param<float>("thresDistSG", thresDistSG, 10);
     nh_.param<float>("successDistSG", successDistSG, 5); //need to check 
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
@@ -91,6 +92,7 @@ BehaviorPlanner::BehaviorPlanner(){
     speedBumpSign = false;
     speedBumpPass = false;
     approachToGoalPos = false;
+    checkObstacle = false;
 
 
     getObject = false;
@@ -122,9 +124,12 @@ BehaviorPlanner::BehaviorPlanner(){
     frontPrev = false;
     stationaryPrev = false;
     sbPrev = false;
+    luggagePrev = false;
     countFront = 0;
     countStationary = 0;
     countSB = 0;
+    countLuggage = 0;
+    countObs = 0;
     countInit2 = 0;
     countStopAtStartPos = 0;
     countStartArrival = 0;
@@ -240,7 +245,6 @@ void BehaviorPlanner::updateFactors(){
         trafficLightStop = false;
         stopCheck = false;
         luggageDrop = false;  // need to implement
-        brokenFrontCar = false;
         essentialLaneChange = false;
         speedBumpSign = false;
         approachToGoalPos = false;
@@ -404,16 +408,14 @@ void BehaviorPlanner::updateFactors(){
             }
         }
         idxtmp = 0;
-        if(globalLaneArray.lanes[0].lane_id == 7){
-            for(int i = 0; i < rawlugn; i++){
-                if(sqrt(pow(luggage.objects[i].pose.position.x,2)+pow(luggage.objects[i].pose.position.y,2)) < thresDetect){
-                    xLug[idxtmp] = egoPose.position.x + luggage.objects[i].pose.position.x*cos(yaw)-luggage.objects[i].pose.position.y*sin(yaw);
-                    yLug[idxtmp] = egoPose.position.y + luggage.objects[i].pose.position.x*sin(yaw)+luggage.objects[i].pose.position.y*cos(yaw);
-                    vxLug[idxtmp] = luggage.objects[i].velocity.linear.x*cos(yaw) - luggage.objects[i].velocity.linear.y*sin(yaw);
-                    vyLug[idxtmp] = luggage.objects[i].velocity.linear.x*sin(yaw) + luggage.objects[i].velocity.linear.y*cos(yaw);
-                    // ROS_INFO("i:%d,xLug: %f,yLug: %f,vxLug: %f,vyLug: %f",i,xLug[i],yLug[i],vxLug[i],vxLug[i]);
-                    idxtmp++;
-                }
+        for(int i = 0; i < rawlugn; i++){
+            if(sqrt(pow(luggage.objects[i].pose.position.x,2)+pow(luggage.objects[i].pose.position.y,2)) < thresDetect){
+                xLug[idxtmp] = egoPose.position.x + luggage.objects[i].pose.position.x*cos(yaw)-luggage.objects[i].pose.position.y*sin(yaw);
+                yLug[idxtmp] = egoPose.position.y + luggage.objects[i].pose.position.x*sin(yaw)+luggage.objects[i].pose.position.y*cos(yaw);
+                vxLug[idxtmp] = luggage.objects[i].velocity.linear.x*cos(yaw) - luggage.objects[i].velocity.linear.y*sin(yaw);
+                vyLug[idxtmp] = luggage.objects[i].velocity.linear.x*sin(yaw) + luggage.objects[i].velocity.linear.y*cos(yaw);
+                // ROS_INFO("i:%d,xLug: %f,yLug: %f,vxLug: %f,vyLug: %f",i,xLug[i],yLug[i],vxLug[i],vxLug[i]);
+                idxtmp++;
             }
         }
         idxtmp = 0;
@@ -464,9 +466,11 @@ void BehaviorPlanner::updateFactors(){
                     speedBumpPass = true;
                 }
             }
+            else{
+                countSB = 0;
+            }
         }
-        
-        
+    
 
         // calculate Frenet longitudinal length of egolane            
         psarr = sarr0;
@@ -483,7 +487,7 @@ void BehaviorPlanner::updateFactors(){
 
         // calculate Frenet coordinate of objects
         psl = slObj;
-        minFront = 50;
+        float minFront = dFront;
         for(int i = 0; i < on; i++){
             psarr = sarr0;
             this->calculateFrenet(n0, psarr, xObj[i], yObj[i], vxObj[i], vyObj[i], psl, globalLaneArray.lanes[0]);
@@ -503,7 +507,7 @@ void BehaviorPlanner::updateFactors(){
                 }
             }
         }
-        unknownFront = 50;
+        float unknownFront = dLuggage;
         for(int i = 0; i < lugn; i++){
             psarr = sarr0;
             this->calculateFrenet(n0, psarr, xLug[i], yLug[i], vxLug[i], vyLug[i], psl, globalLaneArray.lanes[0]);
@@ -517,6 +521,7 @@ void BehaviorPlanner::updateFactors(){
                 if(sLug[i]-sEgo < unknownFront && sLug[i]-sEgo > 0){
                     unknownFront = sLug[i]-sEgo;
                     luggageDrop = true;
+                    luggagePrev = true;
                 }
             }
         }
@@ -562,8 +567,21 @@ void BehaviorPlanner::updateFactors(){
         else{
             countStationary = 0;
         }
+        if(luggageDrop == false && luggagePrev){
+            countLuggage++;
+            if(countLuggage < nStore){
+                luggageDrop = true;
+            }
+            else{
+                countLuggage = 0;
+                luggagePrev = false;
+            }
+        }
+        else{
+            countLuggage = 0;
+        }
         
-        ROS_INFO("front car : %d , stationary : %d", frontCar, stationaryFrontCar);
+        // ROS_INFO("front car : %d , stationary : %d", frontCar, stationaryFrontCar);
 
         // compute dist to crosswalk
         float distToCW = -1;
@@ -667,6 +685,29 @@ void BehaviorPlanner::updateFactors(){
             laneChangeDone = true;
             prevLaneID = -1;
         }
+
+        if(!checkObstacle && abs(lEgo)>wLane*0.6){
+            bool isObstacle = false;
+            for(int i = 0; i < on; i++){
+                if(abs(lObj[i]) <= wLane/2){
+                    if(abs(sObj[i]-sEgo) < thresObs){
+                        isObstacle = true;
+                    }
+                }
+            }
+            if(!isObstacle){
+                countObs++;
+                if(countObs>nStore){
+                    checkObstacle = true;
+                    countObs = 0;
+                }
+            }
+            else{
+                countObs = 0;
+            }
+        }
+
+
         // get traffic light state correspond to current lane and ego 
         // need to add signalID correctly to the map 
         // int signal_id = -1;
@@ -822,10 +863,8 @@ void BehaviorPlanner::updateFactors(){
     }
     if(countFrontCarStop > runRate*thresFrontCarStop){
         brokenFrontCar = true;
-        if(prevLaneID == -1){
-            laneChangeDone = false;
-            prevLaneID = globalLaneArray.lanes[0].lane_id;
-        }
+        checkObstacle = false;
+        countObs = 0;
         ROS_INFO("Broken Front Car!!!");
     }
     if(countSpeedBump >= runRate*thresSpeedBump){
@@ -1023,14 +1062,8 @@ void BehaviorPlanner::updateBehaviorState(){
             }
         }
         else if(prevBehavior == BehaviorState::ObstacleLaneChange){
-            if(laneChangeDone){
-                currentBehavior = BehaviorState::BackToGlobal;
-                laneChangeDone = false;
-                prevLaneID = globalLaneArray.lanes[0].lane_id;
-            }
-        }
-        else if(prevBehavior == BehaviorState::BackToGlobal){
-            if(laneChangeDone){
+            if(checkObstacle){
+                brokenFrontCar = false;
                 goToNormalDrive = true;
             }
         }
@@ -1088,7 +1121,26 @@ void BehaviorPlanner::updateBehaviorState(){
     if(currentBehavior == BehaviorState::TrafficLightStop || currentBehavior == BehaviorState::Crosswalk || currentBehavior == BehaviorState::Pedestrian){
         NormalDrive = true;
     }
-    if(currentBehavior == BehaviorState::LeftTurn) light_msg.data = -1;
+
+    //light cmd
+    if(currentBehavior == BehaviorState::LaneChange && globalLaneArray.lanes.size() >= 2){
+        if(globalLaneArray.lanes[1].lane_id != 1000){
+            float tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+            float tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            float tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+            float tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) light_msg.data = -1;
+            else light_msg.data = 1;
+        }
+        else light_msg.data = 0;
+    }
+    else if(currentBehavior == BehaviorState::ObstacleLaneChange && globalLaneArray.lanes.size() >= 2){
+        float tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+        float tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+        float tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+        float tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+    }
+    else if(currentBehavior == BehaviorState::LeftTurn) light_msg.data = -1;
     else if(currentBehavior == BehaviorState::RightTurn) light_msg.data = 1;
     else light_msg.data = 0;
     std::cout<< stateToStringBehavior(currentBehavior) <<std::endl;

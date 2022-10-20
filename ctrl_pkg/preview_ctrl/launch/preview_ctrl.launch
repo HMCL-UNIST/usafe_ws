@@ -9,6 +9,8 @@
 
   <node name="preview_ctrl" pkg="preview_ctrl" type="preview_ctrl" output="screen">      
         <!-- <remap from="AA" to="BB"/> -->
+        <!-- <param name="controll_setup" value="1.7"/>  -->
+        <param name="controller_for_low_speed" value="true"/> 
   </node>
   
 </launch>

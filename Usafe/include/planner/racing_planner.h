@@ -250,8 +250,8 @@ void construct_lanelets_with_viz();
 
 bool waypoint_s_same(Waypoint wp1, Waypoint wp2);
 
-void currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);   
-// void currentposeCallback(const nav_msgs::OdometryConstPtr &msg);
+// void currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg);   
+void currentposeCallback(const nav_msgs::OdometryConstPtr &msg);
 void odomCallback(const nav_msgs::OdometryConstPtr& msg);
 void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
 // bool is_forward(const geometry_msgs::Pose& from_waypoint, const geometry_msgs::Pose& to_waypoint);

@@ -32,6 +32,12 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/thread/thread.hpp>
 #include <vector>
+
+#include <lanelet2_core/geometry/LaneletMap.h>
+#include <lanelet2_core/geometry/impl/Area.h>
+#include "lanelet2_core/geometry/Area.h"
+#include "lanelet2_core/geometry/BoundingBox.h"
+#include "lanelet2_core/geometry/LaneletMap.h"
 #include "map_loader.h"
 // macro for getting the time stamp of a ros message
 #define TIME(msg) ( (msg)->header.stamp.toSec() )
@@ -61,16 +67,19 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   debug_pub = nh_.advertise<geometry_msgs::PoseStamped>("/maploader_debug", 2, true);
 
   lir_pub= nh_.advertise<hmcl_msgs::LaneArray>("/lane_in_range",2,true);
-  ped_cw_pub = nh_.advertise<std_msgs::Bool>("Ped_in_Crosswalk",2,true);
-  
+  ped_cw_pub = nh_.advertise<std_msgs::Bool>("Ped_in_Crosswalk",2,true);  
   mission_pub= nh_.advertise<hmcl_msgs::MissionWaypoint>("/start_goal_pose",2,true);
-
+  mission_pt_pub= nh_.advertise<visualization_msgs::Marker>("/mission_pt",2,true);
+  mission_pts_pub= nh_.advertise<visualization_msgs::Marker>("/mission_pts",2,true);
+  ped_pts_pub= nh_.advertise<visualization_msgs::MarkerArray>("/ped_pt",2,true);
+  
   max_dist = 10000;
   
   pose_init = false; 
   goal_available = false;
   pose_sub = nh_.subscribe("/pose_estimate",1,&MapLoader::poseCallback,this);
   v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MapLoader::v2xMissionCallback, this);
+  ped_sub = nh_.subscribe("/tracking_pedestrian/objects",1, &MapLoader::PedCallback, this);
   // odom_sub = nh_.subscribe("/carla/hero/odometry",100, &MapLoader::llaCallback,this);
   // goal_sub = nh_.subscribe("move_base_simple/goal", 1, &MapLoader::callbackGetGoalPose, this);
   // vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &MapLoader::callbackVehicleStatus, this);
@@ -122,7 +131,6 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   g_traj_timer = nh_.createTimer(ros::Duration(0.5), &MapLoader::global_traj_handler,this);
   lir_timer = nh_.createTimer(ros::Duration(0.1),&MapLoader::lir_handler,this);
   ped_cw_timer = nh_.createTimer(ros::Duration(0.05),&MapLoader::ped_inCw_handler,this);
-
   rp_.setMap(map);   
 }
 
@@ -141,7 +149,7 @@ void MapLoader::global_traj_handler(const ros::TimerEvent& time){
 
   if(global_traj_available){
     way_pub.publish(global_lane_array);
-    ROS_INFO("GLOBAL");
+    // ROS_INFO("GLOBAL");
   }  
 
 }
@@ -154,11 +162,12 @@ void MapLoader::compute_global_path(){
     pose_b.position.x = xyz[t+1].first;
     pose_b.position.y = xyz[t+1].second;
 
+
   if(pose_init && road_lanelets_const.size() > 0){
       int start_closest_lane_idx = get_closest_lanelet(road_lanelets_const,pose_a);      
       int goal_closest_lane_idx = get_closest_lanelet(road_lanelets_const,pose_b);
       // lanelet::Optional<lanelet::routing::LaneletPath> route = routingGraph->shortestPath(road_lanelets[start_closest_lane_idx], road_lanelets[goal_closest_lane_idx], 1);
-      lanelet::Optional<lanelet::routing::Route> route = routingGraph->getRoute(road_lanelets_const[start_closest_lane_idx], road_lanelets_const[goal_closest_lane_idx], 0);
+      route = routingGraph->getRoute(road_lanelets_const[start_closest_lane_idx], road_lanelets_const[goal_closest_lane_idx], 0);
       if(!route){
         ROS_WARN("[MAP_LOADER] = Route is not found");      
         return;
@@ -178,6 +187,7 @@ void MapLoader::compute_global_path(){
           int _lane_idx = 0;
 
           //Check if the lane change requires from the last lanelent conversion
+
           int last_lane_change_lanelet_idx = local_path.size()-2;          
           if (last_lane_change_lanelet_idx < 0)
               {last_lane_change_lanelet_idx = 0;}
@@ -193,7 +203,7 @@ void MapLoader::compute_global_path(){
                }
              }
           }
-          
+
           for (int i =0; i < local_path.size() ; ++i ){                
               hmcl_msgs::Lane ll_;          
               ll_.header = global_lane_array.header;
@@ -327,6 +337,9 @@ void MapLoader::compute_global_path(){
 
           wp_inArea();
 
+          
+
+
           if(visualize_path){
               // Construct Traj_lanelet_marker 
               traj_lanelet_marker_array.markers.clear();            
@@ -385,7 +398,44 @@ void MapLoader::compute_global_path(){
     ROS_WARN("[MAP_LOADER] = Current pose is not initialized or map is not loaded");
   }
   }   
+  
+  
 
+  pose_a.position.x = xyz[start_idx+1].first;
+  pose_a.position.y = xyz[start_idx+1].second;
+  pose_b.position.x = xyz[end_idx+1].first;
+  pose_b.position.y = xyz[end_idx+1].second;
+
+  int s_lane_idx, s_pt_idx;
+  int g_lane_idx, g_pt_idx;
+  int id;
+  findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
+  id = global_lane_array.lanes[s_lane_idx].lane_id;
+  mission_pt.start.z = id;
+  findnearest_lane_and_point_idx(global_lane_array, pose_b, g_lane_idx, g_pt_idx);
+  id = global_lane_array.lanes[g_lane_idx].lane_id;
+  mission_pt.end.z = id;
+  // ROS_INFO("start idx is %f", mission_pt.start.z);
+  // ROS_INFO("end idx is %f", mission_pt.end.z);
+  // mission_pt.remain = xyz.size();
+
+  for(int t=0; t<xyz.size()-1; t++){ 
+
+    if (find_check){
+      // ROS_INFO("start idx is %f", mission_pt.start.z);
+      // ROS_INFO("end idx is %f", mission_pt.end.z);
+      break;
+    }
+
+    pose_a.position.x = xyz[t].first;
+    pose_a.position.y = xyz[t].second;
+    findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
+    id = global_lane_array.lanes[s_lane_idx].lane_id;
+    // ROS_INFO("id is : %d",id);
+    std::pair<int,int> node = {id, s_pt_idx};
+    nodes.push_back(node);
+  }
+  find_check =true;
 }
 
 unsigned int MapLoader::getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_){
@@ -431,15 +481,17 @@ void MapLoader::llaCallback(const nav_msgs::OdometryConstPtr& msg){
 }
 
 void MapLoader::PedCallback(const autoware_msgs::DetectedObjectArray &msg){
-  ped_array.objects.clear();
-  ped_available = false;
+ped_array.objects.clear();
+  // ROS_INFO("pedestrian");
   for(int i=0; i<msg.objects.size(); i++){
-    if(msg.objects[i].label == "Pedestrian"){
+    if(msg.objects[i].label == "pedestrian"){
+      // ROS_INFO("pedestrian");
       ped_array.objects.push_back(msg.objects[i]);
     }
   }
   if(ped_array.objects.size() > 0){
     ped_available = true;
+    ped_state(ped_array);
   }
 }
 
@@ -449,42 +501,72 @@ void MapLoader::lane_in_range(){
   int near_lane_idx, near_pt_idx;
   bool add_stop = false;
 
-  
-  // if (lir_flag == false){
-    findnearest_lane_and_point_idx(tmp_array, cur_pose, cl_lane_idx, cl_pt_idx);
-    current_id = tmp_array.lanes[cl_lane_idx].lane_id;
-    
-    int signal_id = check_traffic_light(current_id); 
+  findnearest_lane_and_point_idx(tmp_array, cur_pose, cl_lane_idx, cl_pt_idx);
+  current_id = tmp_array.lanes[cl_lane_idx].lane_id;
+  int signal_id = check_traffic_light(current_id); 
 
-    if (abs(cl_lane_idx - previous_id) > 2){
-      if (previous_id != -1){
-        previous_id = cl_lane_idx;
-        return;
-      } 
-    } 
+  if (previous_idx == -1){
+    previous_idx = cl_lane_idx;
+  }
+  else if(abs(cl_lane_idx - previous_idx) >3 ){
+    return;
+  } 
 
-    lir_array.lanes.clear();
-    tmp_array2.lanes.clear();
-  // }
-  // else{  
-    for (int j=0; j<tmp_array.lanes.size(); j++){
-      if (tmp_array.lanes[j].lane_id == current_id){
-        cl_lane_idx = j;
-        break;
+
+  if (nodes.size()>=1){
+
+    if (target_id == 0){
+      nodes.erase(nodes.begin());
+      target_id++;
+    }
+    if (target_id >= xyz.size()-1){
+      target_id = xyz.size()-1;
+    }
+    if (nodes[0].first == current_id){
+      if (!find_new_target){
+        // if (nodes[0].second > cl_pt_idx){
+          target_node = {xyz[target_id].first, xyz[target_id].second};
+          find_new_target = true;
+        // }
+      }
+      else{ 
+        if (nodes[0].second <= cl_pt_idx){
+          find_new_target = false;
+          pass_target = true;
+          target_id ++;
+          // ROS_INFO("*********PASSING****");
+          nodes.erase(nodes.begin());
+        }
       }
     }
-    for (int k=0; k<6; k++){
-      if (cl_lane_idx+k < tmp_array.lanes.size()){
-        tmp_array2.lanes.push_back(tmp_array.lanes[cl_lane_idx+k]);    
-        }
+    if (previous_id != current_id && previous_id == nodes[0].first){
+      if (!pass_target){
+        find_new_target = false;
+        // ROS_INFO("*********JUST  PASSING****");
+        target_id ++;
+        nodes.erase(nodes.begin());
+      }
+      pass_target = false;
     }
+  }
+  // mission_pt.remain = nodes.size();
+  // ROS_INFO("node ids is %d and current idx is %d", nodes[0].first, current_id);
+  // ROS_INFO("node wpts ids is %d and current wpts idx is %d", nodes[0].second, cl_pt_idx);
+  // ROS_INFO("current target idx is %d and Remain is %d", target_id, nodes.size());
+  ROS_INFO("%d", target_id);
+  previous_id = current_id;
 
-  // }
+  lir_array.lanes.clear();
+  tmp_array2.lanes.clear();
 
-  previous_id = cl_lane_idx;
-  ROS_INFO("tmp_array length is: %d", tmp_array.lanes.size());
-  ROS_INFO("current lane is: %d", cl_lane_idx);
-  ROS_INFO("tmp_array2 length is: %d", tmp_array2.lanes.size());
+  for (int k=0; k<6; k++){
+    if (cl_lane_idx+k < tmp_array.lanes.size()){
+      tmp_array2.lanes.push_back(tmp_array.lanes[cl_lane_idx+k]);    
+      }
+  }
+
+
+  previous_idx = cl_lane_idx;
   findnearest_lane_and_point_idx(tmp_array2, cur_pose, cl_lane_idx, cl_pt_idx);
   // lir_flag = true;
    
@@ -494,23 +576,68 @@ void MapLoader::lane_in_range(){
   }
 
   for(int i=0; i<cl_lane_idx; i++){
+    // ROS_INFO("%d lane is deleted",tmp_array2.lanes[i].lane_id);
     tmp_array2.lanes.erase(tmp_array2.lanes.begin());
   }
-  ROS_INFO("tmp_array222 length is: %d", tmp_array2.lanes.size());
 
   // global 
   hmcl_msgs::Lane ll;
   ll.signal_id = signal_id;
+  // hmcl_msgs::LaneArray findlanes;
+  // lanelet::Lanelets find_lanes;
+  // lanelet::Lanelets current_lane;
+  // lanelet::Lanelets find_lane;
+
+
   double dist_cum = 0;
   int lane_id = current_id;
-  ROS_INFO("lane id is : %d", lane_id);
-  bool lc_flag = false;
+  bool b_lane_change = true;
+  lanelet::ConstLineString3d target_ctl;
+  lanelet::ConstLanelet target_lane;
+  std::vector<lanelet::ConstLanelet> target_lanes;
+  // std::vector<lanelet::ConstLanelet> lanes;
+  // ROS_INFO("Current node is %d", id_array.size());
 
+
+  bool lc_flag = false;
   for(int i=0; i<tmp_array2.lanes.size(); i++){
+    if (i == 0 && !tmp_array2.lanes[i].lane_change_flag){
+      // ROS_INFO("NO CHANGE HERE");
+      b_lane_change = false;
+      geometry_msgs::Pose pose22; 
+      pose22.position.x = tmp_array2.lanes[i].waypoints[1].pose.pose.position.x;
+      pose22.position.y = tmp_array2.lanes[i].waypoints[1].pose.pose.position.y;
+      cl_lane_idx = get_closest_lanelet(road_lanelets_const,pose22);  
+      // findnearest_lane_and_point_idx(road_lanelets_const, tmp_array2.lanes[k].waypoints[1], cl_lane_idx, cl_pt_idx);
+      // current_lane = road_lanelets_const[cl_lane_idx];
+
+      auto left_next_lane = routingGraph->left(road_lanelets_const[cl_lane_idx]);                                              
+      auto right_next_lane = routingGraph->right(road_lanelets_const[cl_lane_idx]);
+
+      if(left_next_lane){
+        // ROS_INFO("left lane found");  
+        target_lane =left_next_lane.get(); 
+        target_lanes.push_back(target_lane);
+      }
+      
+      if(right_next_lane){
+        // ROS_INFO("right lane found");  
+        target_lane = right_next_lane.get(); 
+        target_lanes.push_back(target_lane);
+      }
+    }
+    // if (current_id == 12){
+    //   ROS_INFO("waypoint_size is %f", tmp_array2.lanes[i].waypoints.size()-1);
+    // }
+    if (tmp_array2.lanes[i].waypoints.size() <= 1){
+      continue;
+    }
+
     for(int j=0; j<tmp_array2.lanes[i].waypoints.size()-1; j++){
+      
       if(!tmp_array2.lanes[i].lane_change_flag){
+        ll.lane_id = lane_id;
         if(lc_flag){
-            ll.lane_id = lane_id;
             lir_array.lanes.push_back(ll);
             ll.waypoints.clear();
             lc_flag = false;
@@ -524,9 +651,19 @@ void MapLoader::lane_in_range(){
         }
       }
       else{
+        ll.lane_id = lane_id;
         if(calculate_distance_(tmp_array2.lanes[i].waypoints[j+1],tmp_array2.lanes[i].waypoints[j], max_dist, dist_cum)){
+          // ROS_INFO("CHANGE HERE");
           ll.waypoints.push_back(tmp_array2.lanes[i].waypoints[j]);
+          
           lc_flag = true;
+          if (b_lane_change){
+            ll.lane_change_flag = true;
+          }
+          else{
+            ll.lane_change_flag = false;
+          }
+
         }
         else{ 
           lir_array.lanes.push_back(ll);
@@ -542,9 +679,31 @@ void MapLoader::lane_in_range(){
       break;
     }
   }
+  
   if(ll.waypoints.size()>0){
     lir_array.lanes.push_back(ll);
   }
+
+  ll.waypoints.clear();
+  if(target_lanes.size()>0){
+    for(int i = 0; i <target_lanes.size(); i++)
+    {
+      ll.lane_id = 1000;
+      auto lstring = target_lanes[i].centerline();
+      for (int j = 0; j < lstring.size(); j++ ){
+        lanelet::ConstPoint3d p1Const = lstring[j]; 
+        // ROS_INFO("x = %f, y = %f, z = %f", p1Const.x(),p1Const.y(),p1Const.z());
+        hmcl_msgs::Waypoint wp_;                                    
+        // wp_.lane_id = 1000;
+        wp_.pose.pose.position.x = p1Const.x();
+        wp_.pose.pose.position.y = p1Const.y();
+        wp_.pose.pose.position.z = p1Const.z(); 
+        ll.waypoints.push_back(wp_);
+      }
+    }
+    lir_array.lanes.push_back(ll);
+  }
+
 
   if(lir_array.lanes.size()>0){
     lir_available = true;
@@ -552,9 +711,6 @@ void MapLoader::lane_in_range(){
   }
   else{
     lir_available = false;
-  }
-  for (int k=0; k<lir_array.lanes.size(); k++){
-    ROS_INFO("lir array id %d, %d , wpts : %d", k, lir_array.lanes[k].lane_id, lir_array.lanes[k].waypoints.size());
   }
 
 }
@@ -608,6 +764,9 @@ void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
     }
   }
 }
+
+
+
 int MapLoader::check_traffic_light(const int& id){
 
   int signal_id;
@@ -639,14 +798,15 @@ int MapLoader::check_traffic_light(const int& id){
     signal_id = 9;
   }
   else if (id == 8 || id == 9 || id == 43 || id == 10){
-    signal_id = 10
+    signal_id = 10;
   }
-  else if {
-    signal_id = -1
+  else{
+    signal_id = -1;
   }
   
-  return signal_id
+  return signal_id;
 }
+
 void MapLoader::lir_handler(const ros::TimerEvent& time){
   if(global_traj_available){
     lane_in_range();
@@ -683,25 +843,104 @@ void MapLoader::wp_inArea(){
     }
   }  
 }
+void MapLoader::ped_state(const autoware_msgs::DetectedObjectArray& pobjects)
+{
+  // ROS_INFO(">>>>>>>>>>>>>>>>>"  );
+  ped_marker_array.markers.clear();
+  if (pobjects.objects.size()> 0 && pose_init){
+    for (int i = 0; i < pobjects.objects.size(); i++)
+    { 
+      visualization_msgs::Marker marker_tmp;
+      marker_tmp.header.stamp = ros::Time::now();
+      marker_tmp.header.frame_id = "map" ;
+      marker_tmp.id = 10000+i;
+      marker_tmp.ns = "pedd";
+      marker_tmp.type = visualization_msgs::Marker::CUBE;
+      marker_tmp.action = visualization_msgs::Marker::ADD;
+
+      float x,y;
+      double ped_x = pobjects.objects[i].pose.position.x;
+      double ped_y = pobjects.objects[i].pose.position.y;
+      geometry_msgs::Pose egoPose = cur_pose;
+      float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
+      double xx =egoPose.position.x + ped_x*cos(yaw) - ped_y*sin(yaw);
+      double yy =egoPose.position.y + ped_x*sin(yaw) + ped_y*cos(yaw);
+    
+      marker_tmp.pose.position.x = xx; 
+      marker_tmp.pose.position.y = yy;   
+      // marker_tmp.pose.position.x = pobjects.objects[i].pose.position.x;
+      // marker_tmp.pose.position.y = pobjects.objects[i].pose.position.y;        
+      marker_tmp.pose.position.z = 0.2;
+      marker_tmp.pose.orientation.w = 1.0;
+      // marker_tmp.points[0].x = ped_x; 
+      // marker_tmp.points[0].y = ped_y;        
+      // marker_tmp.points[0].z = 0.2;
+      marker_tmp.color.r = 0.0;
+      marker_tmp.color.g = 1.0;
+      marker_tmp.color.b = 1.0;
+      marker_tmp.scale.x = 2.0;
+      marker_tmp.scale.y = 2.0;
+      marker_tmp.scale.z = 2.0;
+
+      marker_tmp.color.a = 1.0;
+      // marker_tmp.scale.z = 1.0;
+      // marker_tmp.lifetime = ros::Duration(1.0);
+      ped_marker_array.markers.push_back(marker_tmp);
+
+    }
+  }
+  ped_pts_pub.publish(ped_marker_array);
+}
 
 void MapLoader::ped_inCw(){
-  if(ped_available && pose_init){
+  tf::StampedTransform transform;
+  bool os_tf = false;
+  try{
+    transform_listener.lookupTransform("/map", "/os_sensor", ros::Time(0), transform);
+    os_tf = true;
+  }
+  catch(tf::TransformException ex){
+    ROS_ERROR("%s", ex.what());
+  }
+  
+  if(ped_available && os_tf){
     for(int i=0; i < ped_array.objects.size(); i++){
+      // ROS_INFO("HERE:::::::::::oject size is %d", ped_array.objects.size());
       float x,y;
       double ped_x = ped_array.objects[i].pose.position.x;
       double ped_y = ped_array.objects[i].pose.position.y;
-      geometry_msgs::Pose egoPose = cur_pose;
+      geometry_msgs::Pose egoPose;
+      egoPose.position.x = transform.getOrigin().x();
+      egoPose.position.y = transform.getOrigin().y();
+      egoPose.orientation.x = transform.getRotation().getX();
+      egoPose.orientation.y = transform.getRotation().getY();
+      egoPose.orientation.z = transform.getRotation().getZ();
+      egoPose.orientation.w = transform.getRotation().getW();
       float yaw = atan2(2.0*(egoPose.orientation.y*egoPose.orientation.x + egoPose.orientation.w*egoPose.orientation.z), 1-2*(egoPose.orientation.y*egoPose.orientation.y + egoPose.orientation.z*egoPose.orientation.z));
       x=egoPose.position.x + ped_x*cos(yaw) - ped_y*sin(yaw);
-      y=egoPose.position.y + ped_y*sin(yaw) + ped_y*cos(yaw);
-      for(int j=0; crosswalk.size(); j++){
-        lanelet::Area cross_tmp = crosswalk[i];
+      y=egoPose.position.y + ped_x*sin(yaw) + ped_y*cos(yaw);
+
+      // ROS_INFO("ped : %f, %f", x, y);
+
+      double dis2ego = sqrt(pow(x-odom_x,2)+pow(y-odom_y,2));
+      // ROS_INFO("Distance to Ego is:::::  %f", dis2ego);
+      if (dis2ego >= 30){
+        continue;
+      }
+    
+
+      for(int j=0; j<crosswalk.size(); j++){
+        lanelet::Area cross_tmp = crosswalk[j];
         if(lanelet::geometry::inside(cross_tmp,lanelet::BasicPoint2d(x,y))){
           ped_in = true;
+          ROS_INFO("HERE:::::::::::pedestrain is in");
           break;
         }
         else{
           ped_in = false;
+          if (dis2ego <= 5){
+            ped_in = true;
+          }
         }
       }
       if(ped_in){
@@ -712,26 +951,27 @@ void MapLoader::ped_inCw(){
   else{
     ped_in = false;
   }
+  ped_available = false;
 }
 
 void MapLoader::ped_inCw_handler(const ros::TimerEvent& time){
-  bool ped_tmp = false;
   ped_inCw();
   if(ped_in){
-    ped_tmp = ped_in;
+    ped_tmp = true;
     ped_count = 0;
     ped_cw.data = true;
   }
-  if(!ped_in && ped_tmp){
+  else if(ped_tmp){
     ped_count++;
     if(ped_count > 30){
       ped_cw.data=false;
+      ped_tmp = false;
     }
     else{
       ped_cw.data=true;
     }
   }
-  if(!ped_in && !ped_tmp){
+  else{
     ped_cw.data = false;
   }
   ped_cw_pub.publish(ped_cw);
@@ -817,6 +1057,7 @@ void MapLoader::viz_pub(const ros::TimerEvent& time){
     g_traj_viz_pub.publish(traj_marker_array);
     lir_viz_pub.publish(lir_marker_array);
     mission_pub.publish(mission_pt);
+    mission_pt_pub.publish(mission_pt_mark);
     
 }
 
@@ -842,6 +1083,101 @@ double MapLoader::get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::Co
   return _angle;
 }
 
+void MapLoader::mission1Callback(const v2x_msgs::Mission1& msg, const std::vector<std::pair<double,double>>  mission_positions){    
+    // ROS_INFO("Mission1 callback");
+    mission1_marker_array.markers.clear();
+    for(int i=0; i<msg.States.size(); i++){
+        visualization_msgs::Marker marker_tmp;
+        marker_tmp.header.stamp = ros::Time::now();
+        marker_tmp.header.frame_id = "map" ;
+        marker_tmp.id = 65000+i;
+        marker_tmp.ns = "mission1";
+        marker_tmp.text = std::to_string(msg.States[i].route_node_index);
+        marker_tmp.type = visualization_msgs::Marker::TEXT_VIEW_FACING;
+        marker_tmp.action = visualization_msgs::Marker::ADD;
+
+        marker_tmp.pose.position.x = mission_positions[i].first; 
+        marker_tmp.pose.position.y = mission_positions[i].second;        
+        marker_tmp.pose.position.z = 0;
+        marker_tmp.color.r = 1.0;
+        marker_tmp.color.g = 1.0;
+        marker_tmp.color.b = 1.0;
+
+        marker_tmp.color.a = 1.0;
+        marker_tmp.scale.z = 1.0;
+        marker_tmp.lifetime = ros::Duration(1.0);
+
+        if (msg.States[i].route_node_type == 1){
+            marker_tmp.text = "start : "+std::to_string(msg.States[i].route_node_index);
+        }
+        else if (msg.States[i].route_node_type == 2){
+            marker_tmp.text = "End : "+std::to_string(msg.States[i].route_node_index);
+        }
+        mission1_marker_array.markers.push_back(marker_tmp);
+
+        marker_tmp.id = 65100+i;
+        marker_tmp.type = visualization_msgs::Marker::SPHERE;
+        if (msg.States[i].route_node_type == 1){
+            marker_tmp.color.g = 0.0;
+            marker_tmp.color.b = 0.0;
+        }
+        else if (msg.States[i].route_node_type == 2){
+            marker_tmp.color.r = 0.0;
+            marker_tmp.color.g = 0.0; 
+        }
+        
+        marker_tmp.scale.x = 1;
+        marker_tmp.scale.y = 1;
+
+        marker_tmp.color.a = 0.3;
+        mission1_marker_array.markers.push_back(marker_tmp);
+    }
+    mission_pts_pub.publish(mission1_marker_array);
+    return;
+}
+
+
+void MapLoader::mission_state(const std::vector<std::pair<double,double>>  mission_positions)
+{
+  // visualization_msgs::MarkerArray vel_profs;
+  visualization_msgs::Marker mission_pt_mark;
+
+  mission_pt_mark.header.frame_id = "/map";
+  mission_pt_mark.header.stamp = ros::Time::now();
+  mission_pt_mark.ns = "mission_state";
+  mission_pt_mark.id = 1;
+  mission_pt_mark.type = visualization_msgs::Marker::POINTS;
+  mission_pt_mark.action = visualization_msgs::Marker::ADD;
+
+
+  for (int i = 0; i < mission_positions.size(); i++)
+  {
+      geometry_msgs::Point p;
+      if (i < mission_positions.size())
+      {
+          p.x = mission_positions[i].first;
+          // ROS_INFO("mission_pt: %f", p.x);
+          p.y = mission_positions[i].second;
+          p.z = 0;
+          mission_pt_mark.points.push_back(p);
+      }  
+  }
+  
+
+  mission_pt_mark.scale.x = 1;
+  mission_pt_mark.scale.y = 1;
+  mission_pt_mark.scale.z = 0;
+
+  mission_pt_mark.color.a = 1.0;
+  mission_pt_mark.color.r = 0.0;
+  mission_pt_mark.color.g = 1.0;
+  mission_pt_mark.color.b = 1.0;
+  
+  // vel_profs.markers.push_back(vel_prof);
+  mission_pt_pub.publish(mission_pt_mark);
+}
+
+
 void MapLoader::v2x_goal_nodes(){
 
   if (!getV2Xinfo){
@@ -851,7 +1187,7 @@ void MapLoader::v2x_goal_nodes(){
   int zone=52, setzone=-1;
   double gamma, k;
   bool north=true, mgrs=false;
-  int start_idx, end_idx;
+  
 
 
   std::vector<std::pair<double,double>> lla;
@@ -868,6 +1204,7 @@ void MapLoader::v2x_goal_nodes(){
       end_idx = i;
     }
   }
+  //TEST1
   // std::pair<double, double> n1 = {128.4007912, 35.6473269};
   // std::pair<double, double> n2 = {128.4004897, 35.6475503};
   // std::pair<double, double> n3 = {128.400041, 35.6476327};
@@ -898,14 +1235,37 @@ void MapLoader::v2x_goal_nodes(){
   // lla.push_back(n17); lla.push_back(n18); lla.push_back(n19); lla.push_back(n20);
   // lla.push_back(n21); lla.push_back(n22);
 
+  //Rehearsal 1
+  // std::pair<double, double> n1 = {128.4007912, 35.6473269};
+  // std::pair<double, double> n2 = {128.4004897, 35.6475503};
+  // std::pair<double, double> n3 = {128.400041, 35.6476327};
+  // std::pair<double, double> n4 = {128.3994251, 35.6479669};
+  // std::pair<double, double> n5 = {128.3991161, 35.6484246};
+  // std::pair<double, double> n6 = {128.3994841, 35.6483555};
+  // std::pair<double, double> n7 = {128.3998964, 35.6479855};
+  // std::pair<double, double> n8 = {128.4000641, 35.6476466};
+  // std::pair<double, double> n9 = {128.3994474, 35.6479488};
+  // std::pair<double, double> n10 = {128.3984803, 35.6487352};
+  // std::pair<double, double> n11 = {128.398201, 35.6492639};
+  // std::pair<double, double> n12 = {128.3984808, 35.6492473};
+  // std::pair<double, double> n13 = {128.3990016, 35.6487824};
+  // std::pair<double, double> n14 = {128.3995602, 35.648287};
+
+
+  // lla.push_back(n1); lla.push_back(n2); lla.push_back(n3); lla.push_back(n4);
+  // lla.push_back(n5); lla.push_back(n6); lla.push_back(n7); lla.push_back(n8);
+  // lla.push_back(n9); lla.push_back(n10); lla.push_back(n11); lla.push_back(n12);
+  // lla.push_back(n13); lla.push_back(n14);
+
   GeographicLib::UTMUPS::Forward(origin_lat, origin_lon, zone, north, origin_x, origin_y, setzone, mgrs);
-  
+  if(mission_status <= 1){
+    std::pair<double,double> xy = {odom_x, odom_y};
+    xyz.push_back(xy);
+  }
 
-  // if(mission_status <= 1){
-  //   std::pair<double,double> xy = {odom_x, odom_y};
-  //   xyz.push_back(xy);
-  // }
-
+  // start_idx = 0;
+  // end_idx = 13;
+  std::vector<std::pair<double,double>> mission_positions;
   for(int i=0; i<lla.size(); i++){
     double x, y;
     GeographicLib::UTMUPS::Forward(lla[i].second, lla[i].first, zone, north, x, y, setzone, mgrs);
@@ -920,7 +1280,13 @@ void MapLoader::v2x_goal_nodes(){
       mission_pt.end.x = x-origin_x;
       mission_pt.end.y = y-origin_y;
     }
+
+    std::pair<double,double> mission_position = {x-origin_x, y-origin_y};
+    mission_positions.push_back(mission_position);
   }
+
+  mission_state(mission_positions);
+  // mission1Callback(Mission_msg, mission_positions);
   goal_available = true;
 
 
@@ -1117,6 +1483,7 @@ PolyFit<double> MapLoader::polyfit(std::vector<double> x, std::vector<double> y)
 
 void MapLoader::v2xMissionCallback(const v2x_msgs::Mission1& msg){
   getV2Xinfo = true;
+  Mission_msg = msg;
   MissionStates.States = msg.States;
   mission_status = msg.status;
 

@@ -170,6 +170,8 @@ visualization_msgs::MarkerArray mission1_marker_array, ped_marker_array;
 
 autoware_msgs::DetectedObjectArray objects, prev_objects, ped_array; 
 
+std::vector<std::pair<int,int>> nodes;
+std::pair<int,int> target_node;
 std::vector<int> id_array;
 std::mutex mu_mtx;
 RoutePlanner rp_;
@@ -193,6 +195,7 @@ bool global_traj_available;
 bool goal_available;
 bool lir_available = false;
 bool ped_available = false, ped_in=false, ped_tmp=false;
+
 hmcl_msgs::LaneArray global_lane_array, global_lane_array_for_local, lir_array, route_array;
 tf::TransformListener transform_listener;
 
@@ -201,12 +204,14 @@ geometry_msgs::Pose pose_a, pose_b;
 int mission_status;
 int start_idx, end_idx;
 int cl_lane_idx = 0; 
-int cl_pt_idx = 0;
+int cl_pt_idx = 0, previous_idx = -1;
 std::vector<int> global_index ={};
 int current_id = 0;
-int previous_id = -1;
+int previous_id = 0;
 bool lir_flag = false;
+bool pass_target = false, find_new_target = false;
 int ped_count;
+int target_id;
 
 std::string osm_file_name;
 double map_road_resolution;

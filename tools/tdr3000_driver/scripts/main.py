@@ -139,7 +139,7 @@ if __name__ == '__main__':
     heading_pose_pub = rospy.Publisher('gnss_h_pose', PoseStamped, queue_size=1)
     heading_raw_pub = rospy.Publisher('heading_ned', Float64, queue_size=1)
 
-    heading_offset_add = -9.6054/180*math.pi 
+    heading_offset_add = 0 # -9.6054/180*math.pi 
     
 
     rospy.init_node('tdr3000', anonymous=True)
@@ -176,7 +176,7 @@ if __name__ == '__main__':
             
             if activity_status !='A':
                 fix_msg.position_covariance = [1000] * 9
-                continue
+                # continue
             
 
             fix_pub.publish(fix_msg)

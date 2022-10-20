@@ -166,14 +166,14 @@ void LowlevelCtrl::AcanSender()
         ROS_INFO("SCC On");
       }
      
-      // if(scc_info_.scc_mode != 0){
+      
         usleep(1000);
        AcanPub.publish(scc_frame);
       usleep(1000);
        AcanPub.publish(gear_frame);
-      // usleep(1000);
-      //  AcanPub.publish(steering_frame);
-      // }
+      usleep(1000);
+       AcanPub.publish(steering_frame);
+      
       
      
       usleep(1000);     

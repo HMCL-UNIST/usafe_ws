@@ -28,7 +28,9 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 generate_dynamic_reconfigure_options(
-     cfg/test.cfg
+    cfg/test.cfg
+    cfg/test1.cfg
+
 )
 
 catkin_package(
@@ -51,10 +53,15 @@ add_executable(v2x_simulation src/v2x_simulation.cpp)
 target_link_libraries(v2x_simulation ${catkin_LIBRARIES})
 add_dependencies(v2x_simulation ${catkin_EXPORTED_TARGETS})
 
+add_executable(v2x_simulation1 src/v2x_simulation1.cpp)
+target_link_libraries(v2x_simulation1 ${catkin_LIBRARIES})
+add_dependencies(v2x_simulation1 ${catkin_EXPORTED_TARGETS})
+
 
 install(
   TARGETS
-  v2x_simulation    
+  v2x_simulation
+  v2x_simulation1  
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

@@ -728,7 +728,7 @@ void VelocityPlanner::checkTrafficSignal(const bool& leftTurn){
       eventState = junc2Signal.States[9].eventState;
       timing_min_End_Time = junc2Signal.States[9].timing_min_End_Time;
   }
-  else if(signal_id == 9 && leftTurn){
+  else if(signal_id == 9){
       eventState = junc3Signal.States[0].eventState;
       timing_min_End_Time = junc3Signal.States[0].timing_min_End_Time;
   }
@@ -1063,7 +1063,7 @@ void VelocityPlanner::VelocitySmoother()
     return;
   }
   else if (MotionMode == MotionState::ACC){
-    if (targetVel <= 1.8){
+    if (targetVel <= 0.8){
       targetVel = 0;
     }
     ref_speed = targetVel;

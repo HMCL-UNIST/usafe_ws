@@ -34,7 +34,7 @@
 typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArrivalRequest, DriveToGoalPos,
             GoalArrivalRequest, MissionComplete} MissionState;
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange, BackToGlobal} BehaviorState;
+            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange} BehaviorState;
 
 inline const char* stateToStringBehavior(BehaviorState v)
 
@@ -78,8 +78,6 @@ inline const char* stateToStringBehavior(BehaviorState v)
 
         case BehaviorState::ObstacleLaneChange: return "ObstacleLaneChange";
 
-        case BehaviorState::BackToGlobal: return "BackToGlobal";
-
         default:      return "[Unknown BehaviorState]";
 
     }
@@ -95,7 +93,7 @@ class BehaviorPlanner
         ros::Publisher b_factor_pub, b_state_pub, light_pub;
         // ros::Timer behavior_timer;
         double runRate;
-        float wLane, lenEgo, frontlenEgo, minFront, front_dist, unknownFront, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
+        float wLane, lenEgo, frontlenEgo, dFront, front_dist, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
         autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage;
@@ -109,13 +107,13 @@ class BehaviorPlanner
         MissionState currentMission;
         BehaviorState currentBehavior;
         bool missionStart, approachToStartPos, startArrivalCheck, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
-        bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone;
+        bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone, checkObstacle;
         bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
         short front_id, prevLaneID, unknown_id;
-        int nStore, countFront, countStationary, countSB;
+        int nStore, countFront, countStationary, countSB, countLuggage, countObs;
         bool stop_line_stop;
         bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3;
-        bool inCW, frontPrev, stationaryPrev, sbPrev;
+        bool inCW, frontPrev, stationaryPrev, sbPrev, luggagePrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
         std_msgs::Float64 light_msg;

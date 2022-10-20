@@ -114,6 +114,7 @@ Butterworth2dFilter lpf_ey;
 Butterworth2dFilter lpf_epsi; 
 Butterworth2dFilter steer_filter; 
 Butterworth2dFilter yaw_filter; 
+bool controller_for_low_speed;
 double current_yaw;
 int steering_offset = 8;
 bool state_received;

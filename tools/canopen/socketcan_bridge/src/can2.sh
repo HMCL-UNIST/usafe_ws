@@ -10,7 +10,7 @@ echo hmc2020 | sudo -S ifconfig can0 up
 
 
 sleep 1;
-gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src/tools/canopen/socketcan_bridge/launch; roslaunch socketcan_bridge.launch; exec bash"
+#gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src/tools/canopen/socketcan_bridge/launch; roslaunch socketcan_bridge.launch; exec bash"
 
 sleep 1;
 # gnome-terminal -- bash -c "cd ~/usafe; source install/setup.bash; cd ~/usafe/src/tools/canopen/socketcan_bridge/launch; roslaunch socketcan_bridge2.launch; exec bash"
@@ -46,3 +46,4 @@ sleep 1;
 
 # sleep 1;
 # gnome-terminal -- bash -c "rosrun rviz rviz -d /home/hmcl/usafe/src/tools/configs/gnss_viz.rviz; exec bash"
+

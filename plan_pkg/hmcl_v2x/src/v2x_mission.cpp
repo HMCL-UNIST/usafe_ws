@@ -464,10 +464,10 @@ void V2XMission::PubMissionStage2(MissionListStage2 *msg)
 void V2XMission::PrintMissionStage1(MissionListStage1 *msg)
 {
 
-    if(!DISPLAY_PACKET)
-    {
-        return;
-    }
+    // if(!DISPLAY_PACKET)
+    // {
+        // return;
+    // }
     if(msg == nullptr)
     {
         printf("[PrintMissionStage1] fail : msg == nullptr\n");

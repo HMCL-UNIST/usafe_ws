@@ -121,41 +121,41 @@ void MissionStateMachine::updateFactors(){
             arriveAtGoalPos = true; 
     }
 
-    if(countInit>thresInit*runRate){
-        statusWait = true;
-        countInit = 0;
-        ROS_INFO("Init Time Out!!!");
-    }
-    if(countChooseDifficulty>thresChooseDifficulty*runRate){
-        statusStart = true;
-        countChooseDifficulty = 0;
-        ROS_INFO("ChooseDifficulty Time Out!!!");
-    }
-    if(countMissionRequest>thresMissionRequest*runRate){
-        missionRequestSuccess = true;
-        countMissionRequest = 0;
-        ROS_INFO("MissionRequest Time Out!!!");
-    }
-    if(countDriveToStartPos>thresDriveToStartPos*runRate){
-        arriveAtStartPos = true;
-        countDriveToStartPos = 0;
-        ROS_INFO("DriveToStartPos Time Out!!!");
-    }
-    if(countStartArrivalRequest>thresStartArrivalRequest*runRate){
-        startArrivalSuccess = true;
-        countStartArrivalRequest = 0;
-        ROS_INFO("StartArrivalRequest Time Out!!!");
-    }
-    if(countDriveToGoalPos>thresDriveToGoalPos*runRate){
-        arriveAtGoalPos = true;
-        countDriveToGoalPos = 0;
-        ROS_INFO("DriveToGoalPos Time Out!!!");
-    }
-    if(countGoalArrivalRequest>thresGoalArrivalRequest*runRate){
-        goalArrivalSuccess = true;
-        countGoalArrivalRequest = 0;
-        ROS_INFO("GoalArrivalRequest Time Out!!!");
-    }
+//     if(countInit>thresInit*runRate){
+//         statusWait = true;
+//         countInit = 0;
+//         ROS_INFO("Init Time Out!!!");
+//     }
+//     if(countChooseDifficulty>thresChooseDifficulty*runRate){
+//         statusStart = true;
+//         countChooseDifficulty = 0;
+//         ROS_INFO("ChooseDifficulty Time Out!!!");
+//     }
+//     if(countMissionRequest>thresMissionRequest*runRate){
+//         missionRequestSuccess = true;
+//         countMissionRequest = 0;
+//         ROS_INFO("MissionRequest Time Out!!!");
+//     }
+//     if(countDriveToStartPos>thresDriveToStartPos*runRate){
+//         arriveAtStartPos = true;
+//         countDriveToStartPos = 0;
+//         ROS_INFO("DriveToStartPos Time Out!!!");
+//     }
+//     if(countStartArrivalRequest>thresStartArrivalRequest*runRate){
+//         startArrivalSuccess = true;
+//         countStartArrivalRequest = 0;
+//         ROS_INFO("StartArrivalRequest Time Out!!!");
+//     }
+//     if(countDriveToGoalPos>thresDriveToGoalPos*runRate){
+//         arriveAtGoalPos = true;
+//         countDriveToGoalPos = 0;
+//         ROS_INFO("DriveToGoalPos Time Out!!!");
+//     }
+//     if(countGoalArrivalRequest>thresGoalArrivalRequest*runRate){
+//         goalArrivalSuccess = true;
+//         countGoalArrivalRequest = 0;
+//         ROS_INFO("GoalArrivalRequest Time Out!!!");
+//     }
 }
 
 void MissionStateMachine::updateMissionState(){   
