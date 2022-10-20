@@ -179,20 +179,20 @@ void PidObject::printParameters()
 }
 
 void PidObject::reconfigureCallback(pid::PidConfig& config, uint32_t level)
-{
-  if (first_reconfig_)
-  {
-    getParams(Kp_, config.Kp, config.Kp_scale);
-    getParams(Ki_, config.Ki, config.Ki_scale);
-    getParams(Kd_, config.Kd, config.Kd_scale);
-    first_reconfig_ = false;
-    return;  // Ignore the first call to reconfigure which happens at startup
-  }
+{ return;
+  // if (first_reconfig_)
+  // {
+  //   getParams(Kp_, config.Kp, config.Kp_scale);
+  //   getParams(Ki_, config.Ki, config.Ki_scale);
+  //   getParams(Kd_, config.Kd, config.Kd_scale);
+  //   first_reconfig_ = false;
+  //   return;  // Ignore the first call to reconfigure which happens at startup
+  // }
 
-  Kp_ = config.Kp * config.Kp_scale;
-  Ki_ = config.Ki * config.Ki_scale;
-  Kd_ = config.Kd * config.Kd_scale;
-  ROS_INFO("Pid reconfigure request: Kp: %f, Ki: %f, Kd: %f", Kp_, Ki_, Kd_);
+  // Kp_ = config.Kp * config.Kp_scale;
+  // Ki_ = config.Ki * config.Ki_scale;
+  // Kd_ = config.Kd * config.Kd_scale;
+  // ROS_INFO("Pid reconfigure request: Kp: %f, Ki: %f, Kd: %f", Kp_, Ki_, Kd_);
 }
 
 void PidObject::doCalcs()

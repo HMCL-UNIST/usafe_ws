@@ -3,7 +3,7 @@
 <launch>
 
 
-  <node name="system_manager" pkg="system_manager" type="main.py" output="screen">      
+  <node name="system_manager" pkg="system_manager" type="system_manager.py" output="screen">      
   </node>
 
 </launch>

@@ -245,7 +245,7 @@ void LowlevelCtrl::setToDrive(){
 
 int main (int argc, char** argv)
 {
-  ros::init(argc, argv, "Lowlevel_ctrl");
+  ros::init(argc, argv, "highspeed_lowlevel_ctrl");
 
   ros::NodeHandle nh_can, nh_acc, nh_steer, nh_light;
   LowlevelCtrl LowlevelCtrl_(nh_can,nh_acc,nh_steer,nh_light);

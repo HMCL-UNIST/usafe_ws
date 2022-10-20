@@ -8,7 +8,7 @@
   
 
 
-  <node name="gnss_fix2pose" pkg="gnss_fix2pose" type="gnss_fix2pose" output="screen">      
+  <node name="gnss_fix2pose" pkg="gnss_fix2pose" type="gnss_fix2pose" output="log">      
         <!-- <remap from="AA" to="BB"/> -->
       <remap from="/gps" to="/fix"/>
       <remap from="/pose" to="/current_pose"/>

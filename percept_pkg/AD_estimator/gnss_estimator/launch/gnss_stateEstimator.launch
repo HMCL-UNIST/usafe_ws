@@ -3,7 +3,7 @@
 <launch>
   
 
-  <node name="gnss_estimator" pkg="gnss_estimator" type="StateEstimator" output="screen">      
+  <node name="gnss_estimator" pkg="gnss_estimator" type="StateEstimator" output="log">      
       <!-- subscribe topics  -->
       <remap from="gnss_estimator/gps" to="/fix"/>
       <!-- <remap from="state_estimator/imu" to="/nav/filtered_imu/data"/> -->

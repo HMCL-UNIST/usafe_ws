@@ -3,7 +3,7 @@
   <!-- <include file="$(find pid)/launch/servo_sim.launch"/> -->
   
 
-  <node name="lowlevel_ctrl" pkg="lowlevel_ctrl" type="lowlevel_ctrl" output="log">      
+  <node name="highspeed_lowlevel_ctrl" pkg="highspeed_lowlevel_ctrl" type="highspeed_lowlevel_ctrl" output="log">      
         <!-- <remap from="AA" to="BB"/> -->
   </node>
   

@@ -10,7 +10,7 @@
   <!-- <node pkg="tf" type="static_transform_publisher" name="tmp_map_to_gnss" args="0.0 0 0.0 0 0 0 1 map gnss_link 100" /> -->
 
 
-  <node name="fix2pose" pkg="fix2pose" type="fix2pose" output="screen">      
+  <node name="fix2pose" pkg="fix2pose" type="fix2pose" output="log">      
         <!-- <remap from="AA" to="BB"/> -->
       <remap from="/gps" to="/fix"/>
       <remap from="/pose" to="/current_pose"/>

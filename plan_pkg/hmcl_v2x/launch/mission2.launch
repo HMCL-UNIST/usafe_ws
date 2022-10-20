@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-    <node pkg="hmcl_v2x" type="pvd_pubs" name="pvd_pubs" output="screen">
+    <node pkg="hmcl_v2x" type="pvd_pubs" name="pvd_pubs" output="log">
     </node>
-    <node pkg="hmcl_v2x" type="mission_pub" name="mission_pub" output="screen">
+    <node pkg="hmcl_v2x" type="mission_pub" name="mission_pub" output="log">
     </node>
 
 </launch>

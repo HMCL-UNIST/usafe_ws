@@ -7,10 +7,10 @@
   <node pkg="tf" type="static_transform_publisher" name="tmp_map_to_gnss" args="0.0 0 0.0 0 0 0 1 map gnss_link 100" /> -->
 
 
-  <node name="preview_ctrl" pkg="preview_ctrl" type="preview_ctrl" output="log">      
+  <node name="highspeed_ctrl" pkg="highspeed_ctrl" type="highspeed_ctrl" output="log">      
         <!-- <remap from="AA" to="BB"/> -->
         <!-- <param name="controll_setup" value="1.7"/>  -->
-        <param name="controller_for_low_speed" value="true"/> 
+        
   </node>
   
 </launch>

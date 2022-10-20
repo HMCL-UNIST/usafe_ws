@@ -1,5 +1,5 @@
 <launch>
-    <node name="accel_control_pid" pkg="pid" type="controller" output="screen" >
+    <node name="accel_control_pid" pkg="pid" type="controller" output="log" >
       <param name="Kp" value="1" />
       <!-- <param name="Kp" value="0.1" /> -->
       <param name="Ki" value="0.001" />
