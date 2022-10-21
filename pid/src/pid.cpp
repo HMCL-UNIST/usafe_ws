@@ -68,8 +68,13 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
   config_server.setCallback(f);
 
   // Wait for first messages
-  while( ros::ok() && !ros::topic::waitForMessage<std_msgs::Float64>(setpoint_topic_, ros::Duration(10.)))
-     ROS_WARN_STREAM("Waiting for first setpoint message.");
+  while( ros::ok() && !ros::topic::waitForMessage<std_msgs::Float64>(setpoint_topic_, ros::Duration(1.))){
+    ROS_WARN_STREAM("Waiting for first setpoint message.");
+    std_msgs::Float64 tmp_msg;
+    tmp_msg.data = 0.0;
+    control_effort_pub_.publish(tmp_msg);
+  }
+     
 
   while( ros::ok() && !ros::topic::waitForMessage<hmcl_msgs::VehicleWheelSpeed>(topic_from_plant_, ros::Duration(10.)))
      ROS_WARN_STREAM("Waiting for first state message from the plant.");

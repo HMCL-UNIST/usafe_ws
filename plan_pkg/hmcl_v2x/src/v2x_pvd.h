@@ -100,7 +100,7 @@ class V2XPVD
 private:
     ros::NodeHandle nh_, nh_local_;
 
-    ros::Publisher pub_spat;
+    ros::Publisher pub_spat, pvd_status_pub;
     ros::Subscriber sub_pos, sub_dir, sub_veh;
 
     // OBU와 연결할 차량시스템의 기본 정보

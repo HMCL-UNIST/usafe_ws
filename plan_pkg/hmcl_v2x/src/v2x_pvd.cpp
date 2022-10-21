@@ -9,7 +9,8 @@ V2XPVD::V2XPVD(ros::NodeHandle& nh, ros::NodeHandle& nh_local):
     sub_pos = nh_local_.subscribe("/fix", 1, &V2XPVD::pos_callback, this);
     sub_dir = nh_.subscribe("/heading_ned", 1, &V2XPVD::dir_callback, this);
     sub_veh = nh_.subscribe("/vehicle_status", 1, &V2XPVD::veh_callback,this);
-
+    pvd_status_pub = nh_.advertise<std_msgs::Float64>("/pvd_status", 2, true); 
+    
     txPvd = get_clock_time();
 
     ROS_INFO("V2X PVD Publisher Initialization");
@@ -69,6 +70,9 @@ ros::Rate loop_rate(10);
             loop_rate.sleep();
             continue;
         }
+        std_msgs::Float64 status_msg;
+        status_msg.data = 1.0;
+        pvd_status_pub.publish(status_msg);
         
         loop_rate.sleep();
     }

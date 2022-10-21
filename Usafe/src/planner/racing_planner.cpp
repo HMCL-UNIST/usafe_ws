@@ -262,6 +262,8 @@ void RacingLinePlanner::localPathGenCallback() {
     ////////////////////////////////////////////////////////////////
     if(!cur_pose_available){
         ROS_WARN("Current position is not available");
+        light_data.data = 0.0;
+        light_pub.publish(light_data);
         loop_rate.sleep();        
         continue;
     }

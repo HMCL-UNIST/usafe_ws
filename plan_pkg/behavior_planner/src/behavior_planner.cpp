@@ -113,6 +113,10 @@ BehaviorPlanner::BehaviorPlanner(){
     front_dist = 100;
     front_vel = -1;
     stop_line_stop = false;
+    xObstacle = -1;
+    yObstacle = -1;
+    xSBsign = -1;
+    ySBsign = -1;
 
     unknown_id = -1;
 
@@ -353,7 +357,7 @@ void BehaviorPlanner::updateFactors(){
 
         float xObj[on], yObj[on], vxObj[on], vyObj[on], velObj[on];
         float sObj[on], lObj[on], dsObj[on], dlObj[on];
-        float xSB[sbn], ySB[sbn];
+        float xSB[sbn], ySB[sbn], vxSB[sbn], vySB[sbn], sSB[sbn], lSB[sbn];
         float xLug[lugn], yLug[lugn], vxLug[lugn], vyLug[lugn], velLug[lugn];
         float sLug[lugn], lLug[lugn], dsLug[lugn], dlLug[lugn];
         float distToGlobal = 6;
@@ -372,19 +376,17 @@ void BehaviorPlanner::updateFactors(){
         }
 
         
-        if(globalLaneArray.lanes[0].lane_id == (int)startID && globalLaneArray.lanes[0].lane_id != 0){
-            float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
-            if(distToStart < thresDistSG){
-                approachToStartPos = true;
-            }
-            if(distToStart < successDistSG && stopCheck){
-                startArrivalCheck = true;
-            }
-            ROS_INFO("dist to START: %f, %f, %f", distToStart,startX, startY);
+        float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
+        if(targetID == (int)startX && globalLaneArray.lanes[0].lane_id == (int)startID && distToStart < thresDistSG){
+            approachToStartPos = true;
         }
-        // if(globalLaneArray.lanes[0].lane_id == (int)goalID && globalLaneArray.lanes[0].lane_id != 0){
+        if(distToStart < successDistSG && stopCheck){
+            startArrivalCheck = true;
+        }
+        ROS_INFO("dist to START: %f, %d, %f", distToStart,globalLaneArray.lanes[0].lane_id, startID);
+
         float distToGoal = sqrt(pow(egoPose.position.x-goalX,2)+pow(egoPose.position.y-goalY,2));
-        if(distToGoal < thresDistSG && remain <= 2){
+        if(targetID == (int)goalX && globalLaneArray.lanes[0].lane_id == (int)goalID && distToGoal < thresDistSG){
             approachToGoalPos = true;
         }
         if(distToGoal < successDistSG && stopCheck){
@@ -427,55 +429,10 @@ void BehaviorPlanner::updateFactors(){
             if(sqrt(pow(sb.objects[i].pose.position.x,2)+pow(sb.objects[i].pose.position.y,2)) < thresDetect){
                 xSB[idxtmp] = egoPose.position.x + sb.objects[i].pose.position.x*cos(yaw)-sb.objects[i].pose.position.y*sin(yaw);
                 ySB[idxtmp] = egoPose.position.y + sb.objects[i].pose.position.x*sin(yaw)+sb.objects[i].pose.position.y*cos(yaw);
+                vxSB[idxtmp] = sb.objects[i].velocity.linear.x*cos(yaw) - sb.objects[i].velocity.linear.y*sin(yaw);
+                vySB[idxtmp] = sb.objects[i].velocity.linear.x*sin(yaw) + sb.objects[i].velocity.linear.y*cos(yaw);
                 // ROS_INFO("i:%d,xSB: %f,ySB: %f",i,xSB[i],ySB[i]);
                 idxtmp++;
-            }
-        }
-        for(int i = 0; i < sbn; i++){
-            // calculate distance to speed bump
-            // double old_dis = 100;
-            // double dis = 0;
-            // double lane_x, lane_y;
-            // int speed_id = globalLaneArray.lanes[0].waypoints.size()-1;
-            // for (int j= 0; j < globalLaneArray.lanes[0].waypoints.size(); j++){
-            //     lane_x = globalLaneArray.lanes[0].waypoints[j].pose.pose.position.x;
-            //     lane_y = globalLaneArray.lanes[0].waypoints[j].pose.pose.position.y;
-            //     dis = sqrt(pow(lane_x-xSB[i],2)+pow(lane_y-ySB[i],2));
-            //     if (dis <= old_dis){
-            //         dis = old_dis;
-            //         speed_id = j;
-            //     }
-            // }
-            // lane_x = globalLaneArray.lanes[0].waypoints[speed_id].pose.pose.position.x;
-            // lane_y = globalLaneArray.lanes[0].waypoints[speed_id].pose.pose.position.y;
-            // double distSB = sqrt(pow(lane_x-xSB[i],2)+pow(lane_y-ySB[i],2));
-            double distSB = sqrt(pow(sb.objects[i].pose.position.x,2)+pow(sb.objects[i].pose.position.y,2));
-            ROS_INFO("speedbump: %f",distSB);
-
-            if(distSB < thresSB){
-                speedBumpSign = true;
-                countSB = 0;
-                sbPrev = true;
-                speedBumpPass = false;
-                
-            }
-        }
-        
-        if(sbPrev){
-            if(speedBumpSign == false){
-                if(countSB < nStore){
-                    speedBumpSign = true;
-                    speedBumpPass = false;
-                    countSB++;
-                }
-                else{
-                    sbPrev = false;
-                    countSB = 0;
-                    speedBumpPass = true;
-                }
-            }
-            else{
-                countSB = 0;
             }
         }
     
@@ -534,7 +491,59 @@ void BehaviorPlanner::updateFactors(){
                 }
             }
         }
+        float minSB = thresSB;
+        for(int i = 0; i < sbn; i++){
+            // calculate distance to speed bump
+            psarr = sarr0;
+            
+            this->calculateFrenet(n0, psarr, xSB[i], ySB[i], vxSB[i], vySB[i], psl, globalLaneArray.lanes[0]);
+            sSB[i] = slObj[0];
+            lSB[i] = slObj[1];
+            double distSB = sSB[i]-sEgo;
+            ROS_INFO("speedbump: %f, sbn : %d",distSB, sbn);
 
+            if(distSB < minSB && distSB > 0){
+                minSB = distSB;
+                speedBumpSign = true;
+                countSB = 0;
+                sbPrev = true;
+                speedBumpPass = false;
+                xSBsign = xSB[i];
+                ySBsign = ySB[i];
+            }
+        }
+        
+        if(sbPrev){
+            if(speedBumpSign == false){
+                if(countSB < nStore){
+                    speedBumpSign = true;
+                    speedBumpPass = false;
+                    countSB++;
+                }
+                else{
+                    sbPrev = false;
+                    countSB = 0;
+                }
+            }
+            else{
+                countSB = 0;
+            }
+        }
+        if(xSBsign != -1){
+            this->calculateFrenet(n0, psarr, xSBsign, ySBsign, 0, 0, psl, globalLaneArray.lanes[0]);
+            if(slObj[0]-sEgo > 0){
+                speedBumpSign = true;
+                speedBumpPass = false;
+                ROS_INFO("speedbump: %f",slObj[0]-sEgo);
+
+            }
+            else{
+                speedBumpSign = false;
+                speedBumpPass = true;
+                xSBsign = -1;
+                ySBsign = -1;
+            }
+        }
 
         
         // calculate safe distance and check if it is stationary car
@@ -545,16 +554,34 @@ void BehaviorPlanner::updateFactors(){
                 front_dist = std::min(minFront, unknownFront);
                 if(front_dist == minFront){
                     front_vel = velObj[front_id];
+                    if(countFrontCarStop > runRate*thresFrontCarStop*0.5 && countFrontCarStop < runRate*thresFrontCarStop*0.7){
+                        xObstacle = xObj[front_id];
+                        yObstacle = yObj[front_id];
+                    }
                 }
-                else front_vel = velLug[lug_id];
+                else{
+                    front_vel = velLug[lug_id];
+                    if(countFrontCarStop > runRate*thresFrontCarStop*0.5 && countFrontCarStop < runRate*thresFrontCarStop*0.7){
+                        xObstacle = xLug[lug_id];
+                        yObstacle = yLug[lug_id];
+                    }
+                }
             }
             else if(frontCar){
                 front_dist = minFront;
                 front_vel = velObj[front_id];
+                if(countFrontCarStop > runRate*thresFrontCarStop*0.5 && countFrontCarStop < runRate*thresFrontCarStop*0.7){
+                    xObstacle = xObj[front_id];
+                    yObstacle = yObj[front_id];
+                }
             }
             else{
                 front_dist = unknownFront;
                 front_vel = velLug[lug_id];
+                if(countFrontCarStop > runRate*thresFrontCarStop*0.5 && countFrontCarStop < runRate*thresFrontCarStop*0.7){
+                    xObstacle = xLug[lug_id];
+                    yObstacle = yLug[lug_id];
+                }
             }
             if(front_dist == minFront){
                 if (sqrt(pow(vxObj[front_id],2)+pow(vyObj[front_id],2)) < thresStop){
@@ -722,36 +749,37 @@ void BehaviorPlanner::updateFactors(){
             laneChangeDone = true;
             prevLaneID = -1;
         }
-
-        if(!checkObstacle) frontCar = false;
-        if(!checkObstacle && abs(lEgo)>wLane*0.6){
-            bool isObstacle = false;
-            for(int i = 0; i < on; i++){
-                if(abs(lObj[i]) <= wLane/2){
-                    if(abs(sObj[i]-sEgo) < thresObs){
-                        isObstacle = true;
-                    }
-                }
-            }
-            for(int i = 0; i < lugn; i++){
-                if(abs(lLug[i]) <= wLane/2){
-                    if(abs(sLug[i]-sEgo) < thresObs){
-                        isObstacle = true;
-                    }
-                }
-            }
-            if(!isObstacle){
-                countObs++;
-                if(countObs>nStore){
-                    checkObstacle = true;
-                    countObs = 0;
-                }
-            }
-            else{
-                countObs = 0;
-            }
-            ROS_INFO("check obstacle : %d, count : %d", checkObstacle, countObs);
-        }
+        ROS_INFO("lEgo : %f", lEgo);
+        if(abs(lEgo)>wLane*0.7) frontCar = false;
+        if(abs(lEgo)>wLane*0.7) checkObstacle = true;
+        // if(!checkObstacle && abs(lEgo)>wLane*0.6){
+        //     bool isObstacle = false;
+        //     for(int i = 0; i < on; i++){
+        //         if(abs(lObj[i]) <= wLane/2){
+        //             if(abs(sObj[i]-sEgo) < thresObs){
+        //                 isObstacle = true;
+        //             }
+        //         }
+        //     }
+        //     for(int i = 0; i < lugn; i++){
+        //         if(abs(lLug[i]) <= wLane/2){
+        //             if(abs(sLug[i]-sEgo) < thresObs){
+        //                 isObstacle = true;
+        //             }
+        //         }
+        //     }
+        //     if(!isObstacle){
+        //         countObs++;
+        //         if(countObs>nStore){
+        //             checkObstacle = true;
+        //             countObs = 0;
+        //         }
+        //     }
+        //     else{
+        //         countObs = 0;
+        //     }
+        //     ROS_INFO("check obstacle : %d, count : %d", checkObstacle, countObs);
+        // }
 
 
         // get traffic light state correspond to current lane and ego 
@@ -937,6 +965,8 @@ void BehaviorPlanner::updateFactors(){
     //update behavior factor
     behaviorFactor.front_vel = front_vel; // done
     behaviorFactor.front_dist = front_dist;
+    behaviorFactor.xObstacle = xObstacle;
+    behaviorFactor.yObstacle = yObstacle;
     behaviorFactor.stop_line_stop = stop_line_stop;
     behaviorFactor.transition_condition.missionStart = missionStart;
     behaviorFactor.transition_condition.approachToStartPos = approachToStartPos;
@@ -1236,7 +1266,7 @@ void BehaviorPlanner::v2xStartGoalCallback(const hmcl_msgs::MissionWaypoint& msg
     goalX = msg.end.x;
     goalY = msg.end.y;
     goalID = msg.end.z;
-    remain = msg.remain;
+    targetID = msg.target_idx;
 }
 
 void BehaviorPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){

@@ -236,6 +236,7 @@ lanelet::Areas stopline;
 
 lanelet::Optional<lanelet::routing::Route> route;
 
+int total_node_num;
 bool find_check=false;
 bool left_change_signal, right_change_signal;
 LaneChangeState lane_change_state, prev_lane_change_state;

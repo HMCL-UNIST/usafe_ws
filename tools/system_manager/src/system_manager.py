@@ -7,17 +7,18 @@ import rospy
 import shlex
 import psutil
 import signal
-from std_msgs.msg import String, Bool
+from std_msgs.msg import String, Bool, Float64
 from can_msgs.msg import Frame
 from sensor_msgs.msg import NavSatFix, Imu
 from nav_msgs.msg import Odometry
 import subprocess
+from geometry_msgs.msg import PoseStamped
 
 from subprocess import Popen, PIPE, TimeoutExpired, call
 from threading import Thread, Lock
 
 import sys
-from signal import SIGINT, SIGKILL
+from signal import SIGINT
 from datetime import datetime
 import os
 
@@ -63,7 +64,8 @@ class SystemManager():
     def __init__(self) -> None:
         rospy.init_node('system_manager')
 
-        
+    
+            
         
         self.power_switch = False
         self.stop_switch = False
@@ -94,83 +96,92 @@ class SystemManager():
 
         self.sensor_ready = False
 
-        # self.init_setup()
         self.process_start_sub = rospy.Subscriber("/usafe/starter",Bool,self.startercallback)
         self.process_stop_sub = rospy.Subscriber("/usafe/stopper",Bool,self.stoppercallback)
         
 
 
         # self.main_timer = rospy.Timer(rospy.Duration(0.1), self.mainCallback)
+        self.cleanROSLog()
+        rospy.sleep(1)
+        rospy.loginfo("cleaning ros log")
         self.init_process()
-        self.srv = Server(sysConfig, self.dyn_callback)
+
+        #self.srv = Server(sysConfig, self.dyn_callback)
     
-    def dyn_callback(self,config, level):
-        mutex.acquire()
-        self.imu_switch = config.Power_imu
-        self.can_switch = config.Power_can
-        self.tdr_switch = config.Power_tdr
-        self.vel_switch = config.Power_vel
-        self.preview_switch = config.Power_preview
-        self.usafe_switch = config.Power_usafe
-        self.v2x_switch = config.Power_v2x
-        self.fix2pose_switch = config.Power_fix2pose
-        self.estimator_switch = config.Power_estimator
-        self.lowlevel_switch = config.Power_lowlevel
+    # def dyn_callback(self,config, level):
+    #     mutex.acquire()
+    #     self.imu_switch = config.Power_imu
+    #     self.can_switch = config.Power_can
+    #     self.tdr_switch = config.Power_tdr
+    #     self.vel_switch = config.Power_vel
+    #     self.preview_switch = config.Power_preview
+    #     self.usafe_switch = config.Power_usafe
+    #     self.v2x_switch = config.Power_v2x
+    #     self.fix2pose_switch = config.Power_fix2pose
+    #     self.estimator_switch = config.Power_estimator
+    #     self.lowlevel_switch = config.Power_lowlevel
 
-        if self.lowlevel_switch:
-            self.initLowCtrl()
-        else:
-            self.killLowCtrl()
+    #     if self.lowlevel_switch:
+    #         self.initLowCtrl()
+    #     else:
+    #         self.killLowCtrl()
 
-        if self.estimator_switch:
-            self.initEstimator()
-        else:
-            self.killEstimator()
+    #     if self.estimator_switch:
+    #         self.initEstimator()
+    #     else:
+    #         self.killEstimator()
         
-        if self.fix2pose_switch:
-            self.initFix2pose()
-        else:
-            self.killFix2pose()
+    #     if self.fix2pose_switch:
+    #         self.initFix2pose()
+    #     else:
+    #         self.killFix2pose()
 
-        if self.imu_switch:
-            self.initIMU()
-        else:
-            self.killIMU()
+    #     if self.imu_switch:
+    #         self.initIMU()
+    #     else:
+    #         self.killIMU()
 
-        if self.can_switch:
-            self.initCAN()
-        else:
-            self.killCAN()
+    #     if self.can_switch:
+    #         self.initCAN()
+    #     else:
+    #         self.killCAN()
 
-        if self.tdr_switch:
-            self.initTDR()
-        else:
-            self.killTDR()
+    #     if self.tdr_switch:
+    #         self.initTDR()
+    #     else:
+    #         self.killTDR()
 
-        if self.vel_switch:
-            self.initPID()
-        else:
-            self.killPID()
+    #     if self.vel_switch:
+    #         self.initPID()
+    #     else:
+    #         self.killPID()
 
-        if self.preview_switch:
-            self.initPREVIEW()
-        else:
-            self.killPREVIEW()
+    #     if self.preview_switch:
+    #         self.initPREVIEW()
+    #     else:
+    #         self.killPREVIEW()
 
-        if self.usafe_switch:
-            self.initUSAFE()
-        else:
-            self.killUSAFE()
+    #     if self.usafe_switch:
+    #         self.initUSAFE()
+    #     else:
+    #         self.killUSAFE()
 
-        if self.v2x_switch:
-            self.initV2X()
-        else:
-            self.killV2X()
+    #     if self.v2x_switch:
+    #         self.initV2X()
+    #     else:
+    #         self.killV2X()
 
-        mutex.release()
-        return config
+    #     mutex.release()
+    #     return config
 
-
+    def cleanROSLog(self):
+        self.qclean=Queue()
+        self.clean = Popen(['rosclean','purge','-y'],stdout=PIPE, stderr=PIPE)
+        self.t_clean= Thread(target=enque_output, args=(self.clean.stdout,self.qclean))
+        self.t_clean.daemon = True            
+        self.t_clean.start()            
+        rospy.logwarn("ROS Log Clean process open")
     
     def initEstimator(self):
         if self.estimator is None:
@@ -266,10 +277,10 @@ class SystemManager():
     def initLowCtrl(self):
         if self.lowlevel is None:
             self.qlowlevel=Queue()
-            self.lowlevel = Popen(['roslaunch','highspeed_lowlevel_ctrl','highspeed_lowlevel_ctrl.launch'],stdout=PIPE, stderr=PIPE)
-            self.t_lowlevel= Thread(target=enque_output, args=(self.lowlevel.stdout,self.qlowlevel))
-            self.t_lowlevel.daemon = True            
-            self.t_lowlevel.start()            
+            self.lowlevel = Popen(['roslaunch','highspeed_lowlevel_ctrl','highspeed_lowlevel_ctrl.launch'])
+            # self.t_lowlevel= Thread(target=enque_output, args=(self.lowlevel.stdout,self.qlowlevel))
+            # self.t_lowlevel.daemon = True            
+            # self.t_lowlevel.start()            
             rospy.loginfo("lowlevel Ctrl process open")
     
        
@@ -426,6 +437,7 @@ class SystemManager():
 
 
 
+
     def startercallback(self,msg):
         if self.stop_switch is not True:
             self.power_switch = msg.data
@@ -439,35 +451,20 @@ class SystemManager():
     def stoppercallback(self,msg):
         self.stop_switch = msg.data
         if self.stop_switch:
-            rospy.loginfo("Stop swtich actiavted")            
+            rospy.loginfo("Stop swtich actiavted")    
+            self.killProcesses()        
         else:
             rospy.loginfo("Stop swtich de-activated")
 
 
-    def init_sensors():
-        self.initTDR()
-        self.initIMU()
-        self.initCAN()
-        self.initV2X()
-
-    def init_localization():
-        self.initFix2pose()
-        self.initEstimator()
-
-    def init_controller():        
-        self.initPREVIEW()
-        self.initPID()
-        
-    def init_lowlevel():
-        self.initCAN()
-        self.initLowCtrl()
-    
-    def init_planner():
-        self.initUSAFE()
     
 
     def init_process(self):
-        self.init_sensors()
+        
+
+        self.initTDR()
+        
+
         fix_msg = None
         while fix_msg is None:
             try:
@@ -475,6 +472,11 @@ class SystemManager():
             except:
                 pass
             
+        rospy.logwarn("GNSS received")
+        rospy.sleep(1)
+        
+        self.initCAN()
+        
 
         can_msg = None
         while can_msg is None:
@@ -482,24 +484,114 @@ class SystemManager():
                 can_msg = rospy.wait_for_message('/a_can_l2h', Frame, timeout=1)
             except:
                 pass
-            
+
+        rospy.logwarn("CAN received")
+
+        
+        rospy.sleep(1)
+        self.initLowCtrl()
+
+        can_receive_msg = None
+        while can_receive_msg is None:
+            try:
+                can_receive_msg = rospy.wait_for_message('/driving_gui', String, timeout=1)
+            except:
+                pass
+        rospy.logwarn("Lowlevel received")
+        rospy.sleep(1)
+        self.initIMU()
+        
         imu_msg = None
         while imu_msg is None:
             try:
                 imu_msg = rospy.wait_for_message('/imu/data', Imu, timeout=1)
             except:
                 pass
+        rospy.logwarn("IMU received")
+        rospy.sleep(1)
+        self.initFix2pose()
 
-        self.init_localization()
         pose_msg = None
         while pose_msg is None:
             try:
-                pose_msg = rospy.wait_for_message('/pose_estimate', Odometry, timeout=1)
+                pose_msg = rospy.wait_for_message('/gnss_pose_world', PoseStamped, timeout=1)
             except:
                 pass
+        rospy.sleep(1)
+        self.initEstimator()
+        
+        odom_msg = None
+        while odom_msg is None:
+            try:
+                odom_msg = rospy.wait_for_message('/pose_estimate', Odometry, timeout=1)
+            except:
+                pass
+        rospy.logwarn("Pose estimate received")
+        
+        rospy.sleep(1)
+        self.initPREVIEW()       
+
+        preview_debug_msg = None
+        while preview_debug_msg is None:
+            try:
+                preview_debug_msg = rospy.wait_for_message('/preview_debug', PoseStamped, timeout=1)
+            except:
+                pass
+        rospy.logwarn("Preview Ctrl Activated")
+
+        rospy.sleep(1)
+        self.initPID()
+        control_effort_msg = None
+        while control_effort_msg is None:
+            try:
+                control_effort_msg = rospy.wait_for_message('/control_effort', Float64, timeout=1)
+            except:
+                pass
+        rospy.logwarn("PID Ctrl Activated")
+
+        rospy.sleep(1)
+        self.initUSAFE()
+        usafe_light_msg = None
+        while usafe_light_msg is None:
+            try:
+                usafe_light_msg = rospy.wait_for_message('/light_cmd', Float64, timeout=1)
+            except:
+                pass
+        rospy.logwarn("USAFE Planner Activated")
+            
+        rospy.sleep(1)
+        self.initV2X()
+        pvd_status_msg = None
+        while pvd_status_msg is None:
+            try:
+                pvd_status_msg = rospy.wait_for_message('/pvd_status', Float64, timeout=1)
+            except:
+                pass
+        rospy.logwarn("V2X PVD Activated")
+
+        v2x_status_msg = None
+        while v2x_status_msg is None:
+            try:
+                v2x_status_msg = rospy.wait_for_message('/v2x_mission_status', Float64, timeout=1)
+            except:
+                pass
+        rospy.logwarn("V2X Mission Node Activated")
+
+
+        rospy.logwarn("SYSTEM IS READY!!!!!")
         
         
-        self.init_controller()
+    def killProcesses(self):
+        self.killLowCtrl() 
+        self.killTDR()
+        self.killIMU()
+        self.killCAN()
+        self.killPID()
+        self.killPREVIEW()
+        self.killUSAFE()
+        self.killV2X()
+        self.killEstimator()
+        self.killFix2pose()
 
     # def mainCallback(self, timer):
 

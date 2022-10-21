@@ -118,7 +118,7 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   
   odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
   
-  debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
+  debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("/preview_debug", 2);    
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);   
   // velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
   
@@ -294,6 +294,8 @@ void PreviewCtrl::ControlLoop()
         // Prepare current State for state feedback control 
         if(!stateSetup()){
           ROS_WARN("Path is not close to the current position");
+          debug_msg.header.stamp = ros::Time::now();    
+          debugPub.publish(debug_msg);
            loop_rate.sleep();
           continue;
         }
@@ -425,9 +427,9 @@ void PreviewCtrl::ControlLoop()
 bool PreviewCtrl::stateSetup(){
 
   current_yaw = tf2::getYaw(vehicle_status_.pose.orientation);
-  debug_msg.pose.orientation.x = current_yaw;        
+  // debug_msg.pose.orientation.x = current_yaw;        
   yaw_filter.filter(current_yaw);
-  debug_msg.pose.orientation.y = current_yaw; 
+  // debug_msg.pose.orientation.y = current_yaw; 
   debug_yaw = current_yaw;
   /* calculate nearest point on reference trajectory (used as initial state) */
   unsigned int nearest_index = 0;
@@ -484,6 +486,7 @@ bool PreviewCtrl::stateSetup(){
       }
 
       debug_msg.header.stamp = ros::Time::now();    
+      debugPub.publish(debug_msg);
       // debug_msg.pose.orientation.x = err_lat;  
       // debug_msg.pose.orientation.y = eydot;  
       // debug_msg.pose.orientation.z = yaw_err*180.0/3.14195;    
@@ -493,7 +496,7 @@ bool PreviewCtrl::stateSetup(){
       // debug_msg.pose.orientation.y = Xk(0); // ;        
       // debug_msg.pose.orientation.z = Xk(2)*180/PI;
       // debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
-      debugPub.publish(debug_msg);
+      // debugPub.publish(debug_msg);
 
 
   }

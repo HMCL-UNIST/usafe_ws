@@ -415,9 +415,12 @@ void MapLoader::compute_global_path(){
   int id;
   findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
   id = global_lane_array.lanes[s_lane_idx].lane_id;
+  mission_pt.start.x = start_idx;
   mission_pt.start.z = id;
   findnearest_lane_and_point_idx(global_lane_array, pose_b, g_lane_idx, g_pt_idx);
   id = global_lane_array.lanes[g_lane_idx].lane_id;
+  mission_pt.end.z = id;
+  mission_pt.end.x = end_idx;
 
 
   if (!find_check){
@@ -427,10 +430,14 @@ void MapLoader::compute_global_path(){
       findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
       id = global_lane_array.lanes[s_lane_idx].lane_id;
       // ROS_INFO("id is : %d",id);
-      std::pair<int,int> node = {id, s_pt_idx};
+      std::pair<int,int> node = {s_lane_idx, s_pt_idx};
       nodes.push_back(node);
+      total_node_num = nodes.size();
     }
     find_check =true;
+    for(int x=0; x<nodes.size(); x++){
+      std::cout << x << " : " << nodes[x].first << " , " << nodes[x].second << std::endl;
+    }
   }
 }
 
@@ -513,14 +520,10 @@ void MapLoader::lane_in_range(){
 
   if (nodes.size()>=1){
 
-    if (target_id == 0){
-      nodes.erase(nodes.begin());
-      target_id++;
-    }
     if (target_id >= xyz.size()-1){
       target_id = xyz.size()-1;
     }
-    if (nodes[0].first == current_id){
+    if (nodes[0].first == cl_lane_idx){
       if (!find_new_target){
         // if (nodes[0].second > cl_pt_idx){
           target_node = {xyz[target_id].first, xyz[target_id].second};
@@ -532,12 +535,11 @@ void MapLoader::lane_in_range(){
           find_new_target = false;
           pass_target = true;
           target_id ++;
-          // ROS_INFO("*********PASSING****");
           nodes.erase(nodes.begin());
         }
       }
     }
-    if (previous_id != current_id && previous_id == nodes[0].first){
+    if (previous_idx != cl_lane_idx && previous_idx == nodes[0].first){
       if (!pass_target){
         find_new_target = false;
         // ROS_INFO("*********JUST  PASSING****");
@@ -546,11 +548,13 @@ void MapLoader::lane_in_range(){
       }
       pass_target = false;
     }
+    mission_pt.target_idx = total_node_num-nodes.size();
   }
   // mission_pt.remain = nodes.size();
-  // ROS_INFO("node ids is %d and current idx is %d", nodes[0].first, current_id);
-  // ROS_INFO("node wpts ids is %d and current wpts idx is %d", nodes[0].second, cl_pt_idx);
-  ROS_INFO("current target idx is %d and Remain is %d", target_id, nodes.size());
+  std::cout << "------------------------------------------" <<std::endl;
+  std::cout<< "target id" <<  nodes[0].first  << "----- current" << current_id <<std::endl;
+  std::cout<< "target wpts id" <<  nodes[0].second   << "----- current wpts" << cl_pt_idx <<std::endl;
+  std::cout<< "All" <<  total_node_num << "-----current target" << total_node_num-nodes.size() << "------Remain" << nodes.size() <<std::endl;
   // ROS_INFO("%d", target_id);
   
 
@@ -768,10 +772,10 @@ void MapLoader::viz_lir(hmcl_msgs::LaneArray &lanes){
 int MapLoader::check_traffic_light(const int& id){
 
   int signal_id;
-  if (id == 56 || id ==62 || id == 75 || id == 57 || id == 63){
+  if (id == 56 || id ==62 || id == 71 || id == 75 || id == 57 || id == 63){
     signal_id = 1;
   }
-  else if (id == 35 || id == 68 || id == 25){
+  else if (id == 24 || id == 77 || id == 68 || id == 25){
     signal_id = 2;
   }
   else if (id == 53 || id == 47 || id == 81 || id == 69 || id == 54 || id == 48){
@@ -786,14 +790,14 @@ int MapLoader::check_traffic_light(const int& id){
   else if (id == 34 || id == 78 || id == 70 || id == 35){
     signal_id = 6;
   }
-  else if (id == 51 || id == 44 || id ==82 || id == 45 || id == 52 || id == 45){
+  else if (id == 51 || id == 44 || id ==82 || id == 45 || id == 52 || id == 46){
     signal_id = 7;
   }
   else if (id == 41 || id == 80 || id == 74 || id == 40 ){
     signal_id = 8;
   }
-  else if (id == 60 || id == 66 || id == 67){
-    signal_id = 9;
+  else if (id == 60 || id == 66 || id == 67 || id == 741 ){
+    signal_id = 9; 
   }
   else if (id == 8 || id == 9 || id == 43 || id == 10){
     signal_id = 10;
@@ -1277,15 +1281,6 @@ void MapLoader::v2x_goal_nodes(){
     node_pt.y = y-origin_y;
     std::pair<double,double> mission_position = {x-origin_x, y-origin_y};
     mission_pt.node_wpts.push_back(node_pt);
-
-    if (i == start_idx){
-      mission_pt.start.x = x-origin_x;
-      mission_pt.start.y = y-origin_y;
-    }
-    else if (i == end_idx){
-      mission_pt.end.x = x-origin_x;
-      mission_pt.end.y = y-origin_y;
-    }
     mission_positions.push_back(mission_position);
   }
 

@@ -119,11 +119,11 @@ private:
     bool new_behavior_mode, find_stopline, find_crosswalk, find_judgeline;
     bool passcrosswalk, passjudgeline;
     bool stop = false;
-    float LeadVehicleDist;
+    float LeadVehicleVel, LeadVehicleDist;
     double wait_tt;
     short LeadVehicleInd;
     double MaxVel;
-    int signal_id;
+    int signal_id, lane_id;
     double rel_vel;
 
     BehaviorState CurrentMode, PreviousMode;

@@ -9,6 +9,7 @@ V2XMission::V2XMission(ros::NodeHandle& nh,ros::NodeHandle& nh_local):
     pub_mission2 = nh_.advertise<v2x_msgs::Mission2>("Mission2", 10);
     pub_item = nh_.advertise<v2x_msgs::Item>("Item", 10);
     pub_request = nh_.advertise<v2x_msgs::Request>("Request", 10);
+    mission_status_pub = nh_.advertise<std_msgs::Float64>("/v2x_mission_status", 2, true); 
     timer_ = nh_.createTimer(ros::Duration(0.1), &V2XMission::connect_handler,this);    
     
     ROS_INFO("V2X Mission Publisher Initialization");
@@ -18,7 +19,11 @@ V2XMission::~V2XMission()
 {}
 
 void V2XMission::connect_handler(const ros::TimerEvent& time){
-  
+    std_msgs::Float64 mission_status_msg;
+    mission_status_msg.data = 0.0;
+    mission_status_pub.publish(mission_status_msg);
+
+
     if(sock_connect_state == -1)
     {
         cout << " connect try" <<endl;

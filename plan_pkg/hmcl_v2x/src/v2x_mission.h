@@ -9,6 +9,7 @@
 
 #include <ros/spinner.h>
 #include <ros/callback_queue.h>
+#include <std_msgs/Float64.h>
 
 #include "v2x_msgs/Mission1.h"
 #include "v2x_msgs/Mission1data.h"
@@ -30,7 +31,7 @@ class V2XMission
 {
 private:
     ros::NodeHandle nh_, nh_local_;
-    ros::Publisher debug_pub, pub_mission1, pub_mission2, pub_item, pub_request;
+    ros::Publisher debug_pub, pub_mission1, pub_mission2, pub_item, pub_request, mission_status_pub;
     ros::Subscriber sub_reply;
 
     ros::Timer timer_;

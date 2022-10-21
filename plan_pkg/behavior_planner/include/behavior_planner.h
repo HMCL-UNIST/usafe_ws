@@ -96,9 +96,10 @@ class BehaviorPlanner
         float wLane, lenEgo, frontlenEgo, dFront, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
+        float xObstacle, yObstacle, xSBsign, ySBsign;
         autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage;
         double startX, startY, startID, goalX, goalY, goalID;
-        int remain;
+        int targetID;
         //startpos info 
         //goalpos
         //traffic_signal
