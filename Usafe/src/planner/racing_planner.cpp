@@ -60,6 +60,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     positive_cost_assign_ = false;
     cur_pose_available = false;
     Mission_start = false;
+    Mission_complete = false;
+    init_boost = false;
     // Set publisher and subscriber 
     g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);      
     waypoints_pub = nh_.advertise<visualization_msgs::MarkerArray>("/waypoints", 2, true);          
@@ -74,21 +76,17 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     boost_duration_pub = nh_.advertise<std_msgs::Float64>("/boost_duration", 2, true);      
     local_lane_statePub = nh_.advertise<std_msgs::Float64>("/local_lane_state", 2, true);      
     
-    
     curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
-
     // curpose_sub = nh_.subscribe("/initialpose", 1, &RacingLinePlanner::currentposeCallback, this);
-    
     vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &RacingLinePlanner::callbackVehicleStatus, this);
     
-    // Set timer callbacks
-    viz_timer = nh_.createTimer(ros::Duration(0.1), &RacingLinePlanner::viz_pub,this);    
 
     // Initialize Map 
     load_map();
     load_map_for_driving();
     ROS_INFO("constructing lanelets ..... ");
-    lanelet::traffic_rules::TrafficRulesPtr trafficRules =  lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
+    // lanelet::traffic_rules::TrafficRulesPtr trafficRules =  lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
+     trafficRules =  lanelet::traffic_rules::TrafficRulesFactory::create(lanelet::Locations::Germany, lanelet::Participants::Vehicle);
     routingGraph = lanelet::routing::RoutingGraph::build(*map, *trafficRules);      
     routingGraph_for_driving = lanelet::routing::RoutingGraph::build(*map_for_driving, *trafficRules);      
     
@@ -106,6 +104,7 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     
 
     boost::thread local_path_generation(&RacingLinePlanner::localPathGenCallback,this); 
+    viz_timer = nh_.createTimer(ros::Duration(0.1), &RacingLinePlanner::viz_pub,this); 
     
   return;  
 }
@@ -297,14 +296,26 @@ void RacingLinePlanner::localPathGenCallback() {
         cur_projected_pose.position.x = cur_projected_point.x();
         cur_projected_pose.position.y = cur_projected_point.y();        
         ///////////////////////////
+          int current_closest_lanelet_id = get_closest_lanelet(road_lanelets_const_for_driving,cur_pose.pose);      
+        bool canLanechange = false;
+        if(trafficRules->canChangeLane(road_lanelets_const_for_driving.at(wp_closest_lane_idx), road_lanelets_const_for_driving.at(current_closest_lanelet_id)))
+        {
+            canLanechange = true;
+            ROS_INFO(" lane changable");
+        }
         
-        if(cur_pose_cord.length == 0.0){         
+
+
+
+
+        if(cur_pose_cord.length == 0.0 || !canLanechange || init_boost){            
             //Lane Follow, Target lane is too far   
             light_data.data = 0.0;
             local_lane_points = LaneFollowPathGen(local_path_length, cur_pose.pose, speed_limits);      
             local_lane_state.data = 0.0;
         }
         else{
+            ROS_INFO("cur_pose_cord.distance = %f", cur_pose_cord.distance);
             if(fabs(cur_pose_cord.distance) > 9.0){       
                 // Something weird happen,.. just follow the current lane        
                 light_data.data = 0.0;
@@ -410,6 +421,7 @@ void RacingLinePlanner::setup_boostup(ros::Time boost_time, double boost_speed_,
     boost_init_time = boost_time;
     boost_speed =     boost_speed_;
     boost_duration =  boost_duration_;
+    
     mu_mtx.unlock();
 } 
 
@@ -427,8 +439,11 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
         ros::Time cur_time = ros::Time::now();
         ros::Duration diff_time = cur_time - boost_init_time;
         if( diff_time.toSec() < boost_duration){
-            target_speed = 100.0/3.6; 
-            ROS_INFO("BOOST!!!!!!");           
+            target_speed = 96.0; 
+            ROS_INFO("BOOST!!!!!!");  
+            init_boost = true;         
+        }else{
+            init_boost = false;
         }
         double boost_left_time = boost_duration - diff_time.toSec();
         boost_left_time = std::max(boost_left_time,0.0);
@@ -444,25 +459,11 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
     if(!Mission_start){
         vel_msg.data = 0.0;
     }   
-     
-    // if(vel_msg.data > vel_constant){
-    //     vel_msg.data = vel_constant;    
-    // }   /////////////// test 
 
-    // reduce speed for hybrid road
-
-    // double dist_tmp = sqrt(pow((-569.103881836-cur_pose.pose.position.x),2)+pow((806.690185547-cur_pose.pose.position.y),2));
-    // if(dist_tmp < 6.0){
-    //     vel_msg.data = 15;
-    // }
-    // double dist_tmp2 = sqrt(pow((-772.731323242-cur_pose.pose.position.x),2)+pow((873.287597656-cur_pose.pose.position.y),2));
     
-    // if(dist_tmp2 < 5){
-    //     vel_constant = 18;
-    // }
-    
-    ////////////test 
-    // vel_msg.data = 10/3.6;
+    if(Mission_complete){
+        vel_msg.data = 0.0;
+    }
     velPub.publish(vel_msg);
     
 }
