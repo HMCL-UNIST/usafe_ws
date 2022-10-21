@@ -9,7 +9,7 @@ import psutil
 import signal
 from std_msgs.msg import String, Bool, Float64
 from can_msgs.msg import Frame
-from sensor_msgs.msg import NavSatFix, Imu
+from sensor_msgs.msg import NavSatFix, Imu, PointCloud2
 from nav_msgs.msg import Odometry
 import subprocess
 from geometry_msgs.msg import PoseStamped
@@ -174,6 +174,22 @@ class SystemManager():
 
     #     mutex.release()
     #     return config
+    def initLidar(self):
+        self.qlidar=Queue()
+        self.lidar = Popen(['/home/hmcl/commands/lidar_xavier3'],stdout=PIPE, stderr=PIPE)
+        self.t_lidar= Thread(target=enque_output, args=(self.lidar.stdout,self.qlidar))
+        self.t_lidar.daemon = True            
+        self.t_lidar.start()            
+        rospy.logwarn("Xavier Lidar process open")
+
+
+    def initFastlio(self):
+        self.qfast=Queue()
+        self.fast = Popen(['rosclean','purge','-y'],stdout=PIPE, stderr=PIPE)
+        self.t_fast= Thread(target=enque_output, args=(self.clean.stdout,self.qclean))
+        self.t_fast.daemon = True            
+        self.t_fast.start()            
+        rospy.logwarn("ROS Log Clean process open")
 
     def cleanROSLog(self):
         self.qclean=Queue()
@@ -186,7 +202,8 @@ class SystemManager():
     def initEstimator(self):
         if self.estimator is None:
             self.qestimator=Queue()
-            self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'],stdout=PIPE, stderr=PIPE)
+            # self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'],stdout=PIPE, stderr=PIPE)
+            self.estimator = Popen(['roslaunch','speedy_estimator','newSE.launch'],stdout=PIPE, stderr=PIPE)
             self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
             self.t_estimator.daemon = True            
             self.t_estimator.start()            
@@ -436,13 +453,14 @@ class SystemManager():
             self.tdr = None
 
 
-
+    
 
     def startercallback(self,msg):
         if self.stop_switch is not True:
             self.power_switch = msg.data
             if self.power_switch:
                 rospy.loginfo("Power swtich actiavted")                
+                self.init_controller()                
             else:
                 rospy.loginfo("Power swtich de-actiavted")
         else:
@@ -457,13 +475,51 @@ class SystemManager():
             rospy.loginfo("Stop swtich de-activated")
 
 
-    
+    def init_controller(self):
 
+        rospy.sleep(1)
+        self.initPREVIEW()       
+
+        preview_debug_msg = None
+        while preview_debug_msg is None:
+            try:
+                preview_debug_msg = rospy.wait_for_message('/preview_debug', PoseStamped, timeout=1)
+            except:
+                pass
+        rospy.logwarn("Preview Ctrl Activated")
+
+        
+
+        rospy.sleep(1)
+        self.initLowCtrl()
+
+        can_receive_msg = None
+        while can_receive_msg is None:
+            try:
+                can_receive_msg = rospy.wait_for_message('/driving_gui', String, timeout=1)
+            except:
+                pass
+        rospy.logwarn("Lowlevel received")
+        rospy.logwarn("SYSTEM IS READY!!!!!!!!!!!!!!!!!!!")
+
+    
     def init_process(self):
         
-
-        self.initTDR()
+        self.initLidar()
+        lidar_msg = None 
+        while lidar_msg is None:
+            try:
+                lidar_msg = rospy.wait_for_message('/os_cloud_node/points', PointCloud2, timeout=1)
+            except:
+                pass
         
+        rospy.logwarn("Lidar point cloud received")
+
+        ## FAST LIO turn on 
+
+        #######################################
+        
+        self.initTDR()        
 
         fix_msg = None
         while fix_msg is None:
@@ -488,16 +544,7 @@ class SystemManager():
         rospy.logwarn("CAN received")
 
         
-        rospy.sleep(1)
-        self.initLowCtrl()
-
-        can_receive_msg = None
-        while can_receive_msg is None:
-            try:
-                can_receive_msg = rospy.wait_for_message('/driving_gui', String, timeout=1)
-            except:
-                pass
-        rospy.logwarn("Lowlevel received")
+        
         rospy.sleep(1)
         self.initIMU()
         
@@ -509,6 +556,9 @@ class SystemManager():
                 pass
         rospy.logwarn("IMU received")
         rospy.sleep(1)
+
+
+
         self.initFix2pose()
 
         pose_msg = None
@@ -518,6 +568,11 @@ class SystemManager():
             except:
                 pass
         rospy.sleep(1)
+
+
+        
+
+        ## State estimator on 
         self.initEstimator()
         
         odom_msg = None
@@ -528,16 +583,7 @@ class SystemManager():
                 pass
         rospy.logwarn("Pose estimate received")
         
-        rospy.sleep(1)
-        self.initPREVIEW()       
 
-        preview_debug_msg = None
-        while preview_debug_msg is None:
-            try:
-                preview_debug_msg = rospy.wait_for_message('/preview_debug', PoseStamped, timeout=1)
-            except:
-                pass
-        rospy.logwarn("Preview Ctrl Activated")
 
         rospy.sleep(1)
         self.initPID()
@@ -549,16 +595,6 @@ class SystemManager():
                 pass
         rospy.logwarn("PID Ctrl Activated")
 
-        rospy.sleep(1)
-        self.initUSAFE()
-        usafe_light_msg = None
-        while usafe_light_msg is None:
-            try:
-                usafe_light_msg = rospy.wait_for_message('/light_cmd', Float64, timeout=1)
-            except:
-                pass
-        rospy.logwarn("USAFE Planner Activated")
-            
         rospy.sleep(1)
         self.initV2X()
         pvd_status_msg = None
@@ -577,8 +613,21 @@ class SystemManager():
                 pass
         rospy.logwarn("V2X Mission Node Activated")
 
+        
+        rospy.sleep(1)
+        self.initUSAFE()
+        usafe_light_msg = None
+        while usafe_light_msg is None:
+            try:
+                usafe_light_msg = rospy.wait_for_message('/light_cmd', Float64, timeout=1)
+            except:
+                pass
+        rospy.logwarn("USAFE Planner Activated")
+            
+        
 
-        rospy.logwarn("SYSTEM IS READY!!!!!")
+
+        
         
         
     def killProcesses(self):

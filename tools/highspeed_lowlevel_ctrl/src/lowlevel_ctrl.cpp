@@ -168,9 +168,9 @@ void LowlevelCtrl::AcanSender()
      
       
         usleep(1000);
-       AcanPub.publish(scc_frame);
+      //  AcanPub.publish(scc_frame);
       usleep(1000);
-       AcanPub.publish(gear_frame);
+      //  AcanPub.publish(gear_frame);
       usleep(1000);
        AcanPub.publish(steering_frame);
       

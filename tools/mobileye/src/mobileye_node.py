@@ -18,8 +18,8 @@ class mobileyeSub():
     def __init__(self):
         rospy.init_node("dbw_mobileye_node")
         self.mobPub = rospy.Publisher('/Mobileye_Info', MobileyeInfo, queue_size=20)
-        self.objs_Pub = rospy.Publisher('/detected_objs', DetectedObjectArray, queue_size=10)
-        self.objs_viz_Pub = rospy.Publisher('/detected_objs_viz', MarkerArray, queue_size=2)
+        self.objs_Pub = rospy.Publisher('/mobileye_detected_objs', DetectedObjectArray, queue_size=10)
+        self.objs_viz_Pub = rospy.Publisher('/mobileye_detected_objs_viz', MarkerArray, queue_size=2)
         self.can_sub = rospy.Subscriber("/received_messages", Frame, self.data_pub)
         self.poseSub = rospy.Subscriber("/pose_estimate", Odometry, self.poseCallback)
         self.localPathSub = rospy.Subscriber("/local_traj", Lane, self.pathCallback)
@@ -75,6 +75,7 @@ class mobileyeSub():
         return marker
 
     def detected_obj_pub_callback(self):
+        rospy.logwarn('/* log */')
         if(len(self.obstacle_data) < 1):
             print("No obstacle found")    
             return

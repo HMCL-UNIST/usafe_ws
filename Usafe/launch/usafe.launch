@@ -10,8 +10,9 @@
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
       <param name="osm_file_name" value="$(find usafe)/maps/race_track_v18_fix.osm"/> 
-      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v18_continue_fix.osm"/> 
+      <!-- <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v19_continue_fix.osm"/>  -->
       <!-- <param name="osm_file_name_for_driving" value="$(find usafe)/maps/ad_road_hj_v6_fix.osm"/>  -->
+      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/ctrl_test_local_path.osm"/> 
       
 
       <!-- <param name="map_origin_lat" value="0.002330359333808985"/> 

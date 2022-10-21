@@ -1,8 +1,11 @@
 #!/bin/sh
+# echo hmc2020 | sudo -S modprobe can
+# echo hmc2020 | sudo -S modprobe kvaser_usb
 echo hmc2020 | sudo -S modprobe can
-echo hmc2020 | sudo -S modprobe kvaser_usb
 echo hmc2020 | sudo -S ip link set can0 type can bitrate 500000
 echo hmc2020 | sudo -S ifconfig can0 up
+
+
 
 # gnome-terminal -- bash -c "source ~/.bashrc; roscore; exec bash"
 # sleep 1;

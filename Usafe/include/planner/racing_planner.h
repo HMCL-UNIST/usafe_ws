@@ -183,7 +183,7 @@ private:
     double boost_speed;
     double boost_duration;
 
-    
+    lanelet::traffic_rules::TrafficRulesPtr trafficRules;
     int prev_wp_closest_lane_idx;
     bool polyfit_error;
     double poly_error;
@@ -210,7 +210,9 @@ RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p);
 
 double vel_constant;
 bool Mission_start;
+bool Mission_complete;
 bool waypoint_received;
+bool init_boost;
 v2x_msgs::Mission2  v2x_data;
 
 std::deque<Waypoint> v2x_waypoints;

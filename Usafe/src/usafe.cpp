@@ -113,6 +113,7 @@ void Usafe::missionFSM(){
               ROS_INFO("Mission Stop");
             }else if(v2x_msg.mission_status == 3){
               race_planner_->Mission_start = false; 
+              race_planner_->Mission_complete = true;
               mission_state = MissionState::WaitforCue;                                 
               ROS_INFO("Mission Completed");
             }
