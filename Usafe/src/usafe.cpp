@@ -80,7 +80,7 @@ void Usafe::missionFSM(){
             behav_msgs.transition_condition.missionStart = false;
             lowlevelMissionPub.publish(behav_msgs);
 
-            if (v2x_msg.mission_status == 1){              
+            if (v2x_msg.mission_status == 1 || v2x_msg.mission_status == 4){              
                if(race_planner_->global_path_wps.size() > 0){                
                 race_planner_->Mission_start = true;                
                 mission_state = MissionState::Driving;                

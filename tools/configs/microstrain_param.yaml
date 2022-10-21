@@ -1,4 +1,4 @@
-port : "/dev/ttyACM2"
+port : "/dev/ttyACM1"
 imu_data_rate: 200
 filter_data_rate: 200
 filter_frame_id: "imu_link"
