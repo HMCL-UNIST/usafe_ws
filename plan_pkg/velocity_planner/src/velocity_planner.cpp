@@ -59,7 +59,7 @@ VelocityPlanner::VelocityPlanner()
   behavior_state_condition_sub = nh_.subscribe("/behavior_factor", 1, &VelocityPlanner::BehaviorStateFactorCallback, this);
   // lanelet_map_sub = nh_.subscribe("", 1, &VelocityPlanner::LaneletCallback, this);
   local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityPlanner::trajCallback,this);
-  start_end_sub =  nh_.subscribe("/start_end_pose", 1, &VelocityPlanner::startendCallback,this);
+  start_end_sub =  nh_.subscribe("/start_goal_pose", 1, &VelocityPlanner::startendCallback,this);
   v2x_spat_sub = nh_.subscribe("/SPAT",1, &VelocityPlanner::v2xSPATCallback, this);
   // Publish
   vel_pub = nh_.advertise<std_msgs::Float64>("/setpoint", 2, true);
@@ -86,6 +86,13 @@ void VelocityPlanner::PlanVel()
   if (!getLocalTraj){
     ROS_INFO("NO LOCAL TRAJECTORY");
     return;
+  }
+  else if (!getBehavior){
+    ROS_INFO("NO Behavior PLANNER");
+    return;
+  }
+  else if (!getMission){
+    ROS_INFO("NO MISSON NODE");
   }
   CheckMotionState();
   VelocitySmoother();
@@ -294,12 +301,15 @@ void VelocityPlanner::CheckMotionState()
 
   else if (CurrentMode ==  BehaviorState::Follow){
     //Adaptive Cruise Control
-    double DesiredDis = current_vel*d_time + d_safe;
+     double DesiredDis = current_vel*d_time + d_safe;
     Dis = LeadVehicleDist;
     Dis = std::min(Dis, 150.0); 
-    
-    double DesiredVel = object_vel; //- current_vel;    
-
+    double DesiredVel = LeadVehicleVel;// + current_vel; //- current_vel;    
+    ROS_INFO("Obastcle velocity is %f", LeadVehicleVel);
+    ROS_INFO("**Desired velocity is %f", DesiredVel);
+    if (isinf(LeadVehicleVel)){
+      DesiredVel = 0.0;
+    }
     // velocity difference is not greater than the speed limit ... 
     if(DesiredVel > 0){
       DesiredVel = std::min(DesiredVel, MaxVel);
@@ -669,12 +679,17 @@ void VelocityPlanner::CheckMotionState()
 }
 void VelocityPlanner::checkTrafficSignal(const bool& leftTurn){
 
-  ROS_INFO("signal_id:  %d, leftTurn is: %d", signal_id, leftTurn);
+  // ROS_INFO("signal_id:  %d, leftTurn is: %d", signal_id, leftTurn);
+
+    // if(!getSPAT1 || !getSPAT2 || !getSPAT3){
+    //     ROS_INFO("Can not receive SPAT data");
+    //     break;
+    // }
 
   if(signal_id == 1 && leftTurn){
       eventState = junc1Signal.States[1].eventState;
       timing_min_End_Time = junc1Signal.States[1].timing_min_End_Time;
-      ROS_INFO("eventState:  %d, timing_min_End_Time is: %d", eventState, timing_min_End_Time);
+      // ROS_INFO("eventState:  %d, timing_min_End_Time is: %d", eventState, timing_min_End_Time);
   }
   else if(signal_id == 1){
       eventState = junc1Signal.States[0].eventState;
@@ -912,7 +927,10 @@ double VelocityPlanner::CheckLeadVehicle(){
   double DesiredDis = current_vel*d_time + d_safe;
   Dis = LeadVehicleDist;
   Dis = std::min(Dis, 150.0); 
-  double DesiredVel = current_vel+LeadVehicleVel; //- current_vel;    
+  double DesiredVel = LeadVehicleVel;// + current_vel; //- current_vel;    
+  ROS_INFO("Obastcle velocity is %f", LeadVehicleVel);
+  ROS_INFO("**Desired velocity is %f", DesiredVel);
+
 
   // velocity difference is not greater than the speed
   if(DesiredVel > 0){
@@ -1281,13 +1299,17 @@ void VelocityPlanner::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg)
 
 void VelocityPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
     //traffic_signal
+
     if(msg.id == 1){
+        getSPAT1 = true;
         junc1Signal = msg;
     }
     else if(msg.id == 2){
+        getSPAT2 = true;
         junc2Signal = msg;
     }
     else if(msg.id == 3){
+        getSPAT3 = true;
         junc3Signal = msg;
     }
 }
@@ -1296,6 +1318,9 @@ void VelocityPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
 void VelocityPlanner::startendCallback(const hmcl_msgs::MissionWaypoint& msg)
 {
   // std::cout << "Get velocity: " << state_msg.twist.twist.linear.x << std::endl;
+  if (!getMission){
+    getMission = true;
+  }
   int start_id = msg.start.x;
   int end_id  = msg.end.x;
 
@@ -1338,11 +1363,14 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
   signal_id = msg.signal_id;
   lane_id = msg.lane_id;
   traj.waypoints = msg.waypoints;
-  std::cout << "Get reference velocity: " << MaxVel << std::endl;
+  // std::cout << "Get reference velocity: " << MaxVel << std::endl;
 }
 
 void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
   
+  if (!getBehavior){
+    getBehavior = true;
+  }
   eventState = -1;
   timing_min_End_Time = -1;
 

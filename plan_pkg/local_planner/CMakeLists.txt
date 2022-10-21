@@ -42,7 +42,7 @@ include_directories(
 #target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 #SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(local_planners src/local_planners.cpp)
+add_executable(local_planners src/local_planner.cpp)
 target_link_libraries(local_planners ${catkin_LIBRARIES})
 add_dependencies(local_planners ${catkin_EXPORTED_TARGETS})
 

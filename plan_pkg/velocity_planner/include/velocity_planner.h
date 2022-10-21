@@ -105,7 +105,7 @@ private:
     
     double current_acc, current_vel, current_x, current_y;
     double object_x, object_y, object_vel;
-
+    bool getSPAT1 =false, getSPAT2=false, getSPAT3=false; 
     geometry_msgs::Point start, end;
     v2x_msgs::SPAT junc1Signal, junc2Signal, junc3Signal;
     
@@ -123,6 +123,7 @@ private:
     double wait_tt;
     short LeadVehicleInd;
     double MaxVel;
+    bool getBehavior=false, getMission=false;
     int signal_id, lane_id;
     double rel_vel;
 

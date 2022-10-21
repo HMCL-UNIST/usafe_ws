@@ -15,10 +15,10 @@
 #include <hmcl_msgs/LaneArray.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/Waypoint.h>
+#include <hmcl_msgs/BehaviorFactor.h>
 
 #include <std_msgs/Int16.h>
 #include <hmcl_msgs/VehicleStatus.h>
-#include <autoware_msgs/DetectedObjectArray.h>
 
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
@@ -32,6 +32,13 @@ struct Sector
 {
     geometry_msgs::Pose section{};
     double speed;
+};
+
+struct Obstacle
+{
+    double x;
+    double y;
+    double length;
 };
 
 template<class Function>
@@ -55,28 +62,26 @@ class localplanners
 private:
     ros::NodeHandle nh_;
     ros::Publisher pub_traj, pub_viz;
-    ros::Subscriber sub_pos, sub_vel, sub_traj, sub_flag,sub_obj;
+    ros::Subscriber sub_pos, sub_vel, sub_traj, sub_flag, sub_obs;
     
     ros::Timer timer_;
-    bool lc_ing =false;
-    bool lc_flag = false;
-    bool obs_flag = false;
 
+    bool lc_flag = false;
     bool st_flag = false;
-    bool trj_flag = false;
     bool vel_flag = false;
-    
+    bool obs_flag = false;
+    bool go_flag = false;
     Sector current_pos;
-    std::vector<double> X,Y;
-    std::vector<tuple<double,double,double>> pt_xy;
+    Obstacle obs;
+    hmcl_msgs::Lane pub_lane;
+
 
     double min_lc_len, lc_prepare_dur, lc_duration, min_lc_vel, lc_dec, lane_width;
     double lc_prepare_dist, lc_dist, lc_prepare_vel, lc_vel;
-    int lane_index = 0;
+    double obs_len;
     hmcl_msgs::LaneArray range_lane;
-    hmcl_msgs::Lane pub_lane, save_lane;
-    autoware_msgs::DetectedObjectArray obj;
 
+    vector<int> range_index;
 
 public:
     localplanners(ros::NodeHandle& nh_);
@@ -87,15 +92,11 @@ public:
     void wheelCallback(const hmcl_msgs::VehicleStatus& state_msg);
     void flagCallback(const std_msgs::Int16ConstPtr& flag_msg);
     void trajCallback(const hmcl_msgs::LaneArray& lane_msg);
-    void objCallback(const autoware_msgs::DetectedObjectArray& obj_msg);
+    void ObsCallback(const hmcl_msgs::BehaviorFactor& obs_msg);
 
     void PreparePhase();
+    hmcl_msgs::Lane CutoffTraj();
     int FindIndex(const hmcl_msgs::Lane& lane, double dist, geometry_msgs::Pose pose);
     int FindClosest(const hmcl_msgs::Lane& lane, geometry_msgs::Pose pose);
-    void print_XY(std::vector<double> X, std::vector<double> Y);
-    void splinfy();
-    bool valid_lane(const hmcl_msgs::Lane& lane, int lidx, int pidx);
-    bool calculate_dist(const hmcl_msgs::Lane& lane, geometry_msgs::Pose pose);
     void viz_local(const hmcl_msgs::Lane& lane);
-
 };

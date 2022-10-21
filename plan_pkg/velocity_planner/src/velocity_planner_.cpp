@@ -673,8 +673,20 @@ void VelocityPlanner::PredictedObjectsCallback(const autoware_msgs::DetectedObje
     object_y = msg.objects[LeadVehicleInd].pose.position.y;
     double rel_vel = msg.objects[0].velocity.linear.x;
   }
-  // if (Pedestrian){
+
+
+  // ros::Duration tt_ = ros::Time::now() - obj_time;
+  // obj_time = ros::Time::now();
+
+  // object_x = msg.objects[0].pose.position.x;
+  // object_y = msg.objects[0].pose.position.y;
+  // double dist_ = sqrt(pow((object_x - prev_object_x),2)+pow((object_y - prev_object_y),2));
+  // double vel_ = dist_/(tt_.toSec()+1e-9);
+  // if(abs(vel_) < 0.5){
+  //   vel_ = 0.0;
   // }
+  // prev_object_x = object_x;
+  // prev_object_y= object_y;
   
 }
 
@@ -714,6 +726,9 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
     traj.waypoints.push_back(msg.waypoints[i]);
   }
   // std::copy(msg.waypoints.begin()+current_idx,msg.waypoints.end(),traj.waypoints.begin());
+
+
+  
 
   
   std::cout << "Get reference velocity: " << MaxVel << std::endl;

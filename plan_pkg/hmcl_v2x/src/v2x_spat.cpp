@@ -1,12 +1,9 @@
 #include "v2x_spat.h"
-
 using namespace std;
-
-
 V2XSPAT::V2XSPAT(ros::NodeHandle& nh, ros::NodeHandle& nh_local): 
     nh_(nh), nh_local_(nh_local)
 {  
-    pub_spat = nh_.advertise<v2x_msgs::SPAT>("SPAT", 10);
+    pub_spat = nh_.advertise<v2x_msgs::SPAT>("SPAT", 1);
 
     // ros::Rate loop_rate(1);
 
@@ -18,7 +15,7 @@ V2XSPAT::~V2XSPAT()
 {}
 
 void V2XSPAT::whilecallback(){
-ros::Rate loop_rate(50);
+ros::Rate loop_rate(100);
     while(ros::ok())
     {    
         // 소켓이 연결되지 않은 경우(sockFd == -1) , OBU TCP 소켓 연결 시도
@@ -31,7 +28,7 @@ ros::Rate loop_rate(50);
             
             if(sockFd < 0){
                 std::cout <<"DEBUG : connect failed, retry \n"<< std::endl;
-                sleep(1);
+                sleep(0.1);
                 continue;
             } 
         }
@@ -205,7 +202,6 @@ void V2XSPAT::parse_decoded_j2735(MessageFrame_t *msg)
 void V2XSPAT::parse_spat(SPAT_t *spat)
 {
     ROS_INFO(" parse spat");
-
     cout << "count " <<spat -> intersections.list.count << endl;
     for (int i = 0; i < spat->intersections.list.count; i++)
     {
@@ -231,7 +227,7 @@ void V2XSPAT::parse_spat(SPAT_t *spat)
             msg_state.connectionID=ptr->states.list.array[k]->maneuverAssistList->list.array[0]->connectionID;
             msg_state.pedBicycleDetect=ptr->states.list.array[k]->maneuverAssistList->list.array[0]->pedBicycleDetect[0];
             msg.States.push_back(msg_state);
-        }            
+        }
         pub_spat.publish(msg);
     }    
 }

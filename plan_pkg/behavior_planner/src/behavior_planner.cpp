@@ -29,6 +29,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("frontlenEgo", frontlenEgo, 4.180/2);// need to check lidar position in real vehicle
     nh_.param<float>("dFront", dFront, 30);
     nh_.param<float>("dLuggage", dLuggage, 30);
+    nh_.param<float>("thresFrontStop", thresFrontStop, 10);
     nh_.param<int>("nStore", nStore, 20); //need to check
     nh_.param<int>("thresInit2", thresInit2, 40);
     nh_.param<int>("thresStopAtStartPos", thresStopAtStartPos, 20);
@@ -39,14 +40,14 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<int>("thresSpeedBump", thresSpeedBump, 10);
     nh_.param<int>("thresStopAtGoalPos", thresStopAtGoalPos, 20);
     nh_.param<float>("thresObs", thresObs, 7); 
-    nh_.param<float>("thresLC", thresLC, 0.6); // need to check if 1 is sufficient
+    nh_.param<float>("thresLC", thresLC, 1.0); // need to check if 1 is sufficient
     nh_.param<float>("thresStop", thresStop, 0.1); // need to check if 0.01 is sufficient
     nh_.param<float>("thresCW", thresCW, 15);
     nh_.param<float>("thresSB", thresSB, 25);
     nh_.param<float>("thresTurn", thresTurn, 25);
     nh_.param<float>("thresTL", thresTL, 25);
     nh_.param<float>("thresTLtime", thresTLtime, 3);
-    nh_.param<float>("thresDistSG", thresDistSG, 7);
+    nh_.param<float>("thresDistSG", thresDistSG, 15);
     nh_.param<float>("successDistSG", successDistSG, 5); //need to check 
 
     // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
@@ -117,6 +118,8 @@ BehaviorPlanner::BehaviorPlanner(){
     yObstacle = -1;
     xSBsign = -1;
     ySBsign = -1;
+    prev_object_x = -1;
+    prev_object_y = -1;
 
     unknown_id = -1;
 
@@ -258,7 +261,6 @@ void BehaviorPlanner::updateFactors(){
         // to velocity planner
         front_id = -1;
         front_dist = 100;
-        front_vel = -1;
         stop_line_stop = false;
 
         unknown_id = -1;
@@ -377,7 +379,8 @@ void BehaviorPlanner::updateFactors(){
 
         
         float distToStart = sqrt(pow(egoPose.position.x-startX,2)+pow(egoPose.position.y-startY,2));
-        if(targetID == (int)startX && globalLaneArray.lanes[0].lane_id == (int)startID && distToStart < thresDistSG){
+        ROS_INFO("targetID: %d start_idx: %d lane_id: %d startID: %d  distToStart: %f thresDistSG: %f", targetID, (int)start_idx, globalLaneArray.lanes[0].lane_id, (int)startID, distToStart, thresDistSG);
+        if(targetID == (int)start_idx && globalLaneArray.lanes[0].lane_id == (int)startID && distToStart < thresDistSG){
             approachToStartPos = true;
         }
         if(distToStart < successDistSG && stopCheck){
@@ -386,7 +389,7 @@ void BehaviorPlanner::updateFactors(){
         ROS_INFO("dist to START: %f, %d, %f", distToStart,globalLaneArray.lanes[0].lane_id, startID);
 
         float distToGoal = sqrt(pow(egoPose.position.x-goalX,2)+pow(egoPose.position.y-goalY,2));
-        if(targetID == (int)goalX && globalLaneArray.lanes[0].lane_id == (int)goalID && distToGoal < thresDistSG){
+        if(targetID == (int)goal_idx && globalLaneArray.lanes[0].lane_id == (int)goalID && distToGoal < thresDistSG){
             approachToGoalPos = true;
         }
         if(distToGoal < successDistSG && stopCheck){
@@ -597,7 +600,25 @@ void BehaviorPlanner::updateFactors(){
             }
             frontCar = true;
         }
+
+        // if(frontCar && luggageDrop){
+        //     ros::Duration tt_ = ros::Time::now() - obj_time;
+        //     obj_time = ros::Time::now();
+
+        //     double object_x = luggage.objects[lug_id].pose.position.x;
+        //     double object_y = luggage.objects[lug_id].pose.position.y;
+        //     double dist_ = sqrt(pow((object_x - prev_object_x),2)+pow((object_y - prev_object_y),2));
+        //     front_vel = dist_/(tt_.toSec()+1e-9);
+        //     if(abs(front_vel) < 0.5){
+        //         front_vel = 0.0;
+        //     }
+        //     prev_object_x = object_x;
+        //     prev_object_y = object_y;
+        // }
+        
         // store front car for nStore time steps
+
+
         if(frontCar == false && frontPrev){
             countFront++;
             if(countFront < nStore){
@@ -643,6 +664,9 @@ void BehaviorPlanner::updateFactors(){
             if(globalLaneArray.lanes[i].lane_id == 1000){
                 luggageDrop = false;
             }
+        }
+        if(globalLaneArray.lanes.size()==2){
+            if(globalLaneArray.lanes[0].lane_id == globalLaneArray.lanes[1].lane_id)luggageDrop = false;
         }
 
         // ROS_INFO("front car : %d , stationary : %d", frontCar, stationaryFrontCar);
@@ -743,13 +767,18 @@ void BehaviorPlanner::updateFactors(){
                 prevLaneID = globalLaneArray.lanes[0].lane_id;
             }
         }
+        if(essentialLaneChange == true) luggageDrop = false;
+        if(unknownFront > thresFrontStop){
+            luggageDrop = false;
+        }
+
         // ROS_INFO("prev: %d, lane_id: %d", prevLaneID, globalLaneArray.lanes[0].lane_id);
         // determine doneLC
         if(prevLaneID != -1 && prevLaneID != globalLaneArray.lanes[0].lane_id && abs(lEgo) < thresLC){
             laneChangeDone = true;
             prevLaneID = -1;
         }
-        ROS_INFO("lEgo : %f", lEgo);
+        // ROS_INFO("lEgo : %f", lEgo);
         if(abs(lEgo)>wLane*0.7) frontCar = false;
         if(abs(lEgo)>wLane*0.7) checkObstacle = true;
         // if(!checkObstacle && abs(lEgo)>wLane*0.6){
@@ -1260,11 +1289,13 @@ void BehaviorPlanner::luggageCallback(const autoware_msgs::DetectedObjectArray& 
 
 void BehaviorPlanner::v2xStartGoalCallback(const hmcl_msgs::MissionWaypoint& msg){
     getSGpos = true;
-    startX = msg.start.x;
-    startY = msg.start.y;
+    start_idx = msg.start.x;
+    startX = msg.node_wpts[(int)start_idx].x;
+    startY = msg.node_wpts[(int)start_idx].y;
     startID = msg.start.z;
-    goalX = msg.end.x;
-    goalY = msg.end.y;
+    goal_idx =  msg.end.x;
+    goalX = msg.node_wpts[(int)goal_idx].x;
+    goalY = msg.node_wpts[(int)goal_idx].y;
     goalID = msg.end.z;
     targetID = msg.target_idx;
 }

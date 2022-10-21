@@ -93,13 +93,14 @@ class BehaviorPlanner
         ros::Publisher b_factor_pub, b_state_pub, light_pub;
         // ros::Timer behavior_timer;
         double runRate;
-        float wLane, lenEgo, frontlenEgo, dFront, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
+        float wLane, lenEgo, frontlenEgo, dFront,thresFrontStop, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
-        double egoSpeed;
+        double egoSpeed, prev_object_x, prev_object_y;
         float xObstacle, yObstacle, xSBsign, ySBsign;
         autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage;
-        double startX, startY, startID, goalX, goalY, goalID;
+        double startX, startY, startID, start_idx, goalX, goalY, goalID, goal_idx;
         int targetID;
+        ros::Time obj_time;
         //startpos info 
         //goalpos
         //traffic_signal
