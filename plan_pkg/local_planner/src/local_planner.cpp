@@ -13,6 +13,7 @@ localplanners::localplanners(ros::NodeHandle& nh):
 
     pub_traj = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 1);
     pub_viz = nh_.advertise<visualization_msgs::MarkerArray>("/local_traj_viz", 1);
+    pub_bool = nh_.advertise<std_msgs::Bool>("/local_return", 1);
     timer_ = nh_.createTimer(ros::Duration(0.05), &localplanners::connect_handler,this);
 
     //parameter
@@ -22,8 +23,6 @@ localplanners::localplanners(ros::NodeHandle& nh):
     nh_.param<double>("minimum_lane_change_velocity", min_lc_vel, 3.0);
     nh_.param<double>("lane_width", lane_width, 1.75);
     nh_.param<double>("obstacle_length", obs_len, 8.00);
-
-
 }
 
 localplanners::~localplanners()
@@ -50,7 +49,6 @@ void localplanners::flagCallback(const std_msgs::Int16ConstPtr& flag_msg){
     }
     else{
         obs_flag = false;
-        
     }
 }
 void localplanners::trajCallback(const hmcl_msgs::LaneArray& lane_msg){   
@@ -62,11 +60,14 @@ void localplanners::trajCallback(const hmcl_msgs::LaneArray& lane_msg){
     range_lane = lane_msg;
 }
 void localplanners::ObsCallback(const hmcl_msgs::BehaviorFactor& obs_msg){   
-    obs.x = obs_msg.xObstacle;
-    obs.y = obs_msg.yObstacle;
-    obs.length = obs_len;
+    if (obs_flag == true)
+    {
+        obs.x = obs_msg.xObstacle;
+        obs.y = obs_msg.yObstacle;
+        obs.length = obs_msg.front_dist;
+        obs.exist =true;
+    }
 }
-
 
 void localplanners::connect_handler(const ros::TimerEvent& time){
     if ( st_flag = false || vel_flag == false){
@@ -96,7 +97,11 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
         return;
     }
 
-    if ((lc_flag ==false || range_lane.lanes.size()<2 ) && obs_flag ==false){
+    if (return_flag == true){
+        ROS_INFO("RETURN Flag");
+    }
+
+    if ((lc_flag ==false || range_lane.lanes.size()<2 ) && obs_flag ==false && return_flag==false){
         ROS_INFO("One Lane");
         pub_lane = CutoffTraj();
 
@@ -106,94 +111,54 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
         //     pub_lane.waypoints.push_back(range_lane.lanes[0].waypoints[i]);          
         // }
     }
-    // else if(go_flag == true){
-    //     ROS_INFO("Following");
-    //     hmcl_msgs::Lane follow_lane = pub_lane;
-    //     pub_lane.waypoints.clear();
+    else if (return_flag ==true && obs_flag == false){
+        pub_lane.waypoints.clear();
 
-    //     int endidx = FindIndex(follow_lane, lc_dist +lc_prepare_dist+lane_width, current_pos.section);
-    //     Eigen::Vector3d pt_e(follow_lane.waypoints[endidx].pose.pose.position.x, follow_lane.waypoints[endidx].pose.pose.position.y, 0);
-    //     pt_e = tf3x3.inverse()*(pt_e - t);
-    //     int nn = abs(int(pt_e[0]));
-
-    //     X.push_back(0);
-    //     Y.push_back(0);
+        int lane_idx = 0;
+        for (int i=0; i< range_lane.lanes.size();i++){
+            if (range_lane.lanes[i].lane_id =1000){
+                lane_idx = i;
+            }
+        }
+        int startidx = FindIndex(range_lane.lanes[lane_idx], 0, current_pos.section);
         
-    //     X.push_back(lc_prepare_dist);
-    //     Y.push_back(pt_e[1]/nn);
+        for (int i=startidx; i<range_lane.lanes[lane_idx].waypoints.size(); i++){
+            hmcl_msgs::Waypoint wpt;
+            wpt = range_lane.lanes[lane_idx].waypoints[i];
+            pub_lane.waypoints.push_back(wpt);
+        }
 
-    //     X.push_back(lc_prepare_dist+lc_dist);
-    //     Y.push_back(pt_e[1]- pt_e[1]/nn);
-
-    //     X.push_back(max(lc_prepare_dist+lc_dist+2, pt_e[0]));
-    //     Y.push_back(pt_e[1]);
-
-    //     tk::spline::spline_type type = tk::spline::cspline;
-    //     tk::spline s;
-    //     s.set_boundary(tk::spline::second_deriv, 0.0,tk::spline::second_deriv, 0.0);
-    //     s.set_points(X, Y, type);     // this calculates all spline coefficients
-    //     s.make_monotonic();     // adjusts spline coeffs to be monotonic
-        
-    //     int n = int(X.size()*4);    // number of grid points to plot the spline
-    //     double xmin = X[0] - 0.5;
-    //     double xmax = X.back() + 0.5;
-
-    //     for(int i=0; i<n; i++) {
-    //         double x = xmin + (double)i*(xmax-xmin)/(n-1);
-    //         pt_xy.push_back(make_tuple(x,s(x),atan2(fderiv(s,1,x), s.deriv(1,x))));
-    //     }
-
-    //     for (int j =0; j <pt_xy.size(); j++){
-    //         hmcl_msgs::Waypoint wpt;
-    //         Eigen::Vector3d pt(get<0>(pt_xy[j]), get<1>(pt_xy[j]),0);
-    //         pt = tf3x3*pt + t ;
-    //         wpt.pose.pose.position.x = pt[0];
-    //         wpt.pose.pose.position.y = pt[1];
-    //         wpt.pose.pose.position.z = 0;
-            
-    //         const auto yaw = (yaw_+get<2>(pt_xy[j]))*M_PI / 180;
-    //         const auto pitch = 0;
-    //         const auto roll = 0;
-    //         Eigen::Quaternion<float> q_ = Eigen::AngleAxisf(roll, Eigen::Vector3f::UnitX()) *
-    //                                         Eigen::AngleAxisf(pitch, Eigen::Vector3f::UnitY()) *
-    //                                         Eigen::AngleAxisf(yaw, Eigen::Vector3f::UnitZ());
-
-    //         wpt.pose.pose.orientation.x = q_.x();
-    //         wpt.pose.pose.orientation.y = q_.y();
-    //         wpt.pose.pose.orientation.z = q_.z();
-    //         wpt.pose.pose.orientation.w = q_.w();
-    //         pub_lane.waypoints.push_back(wpt);
-    //     }
-    //     for (int j = endidx+1; j <follow_lane.waypoints.size(); j++){
-    //         hmcl_msgs::Waypoint wpt;
-    //         wpt.pose.pose.position.x = follow_lane.waypoints[j].pose.pose.position.x;
-    //         wpt.pose.pose.position.y = follow_lane.waypoints[j].pose.pose.position.y;
-    //         wpt.pose.pose.position.z = 0;
-            
-    //         wpt.pose.pose.orientation.x = follow_lane.waypoints[j].pose.pose.orientation.x;
-    //         wpt.pose.pose.orientation.y = follow_lane.waypoints[j].pose.pose.orientation.y;
-    //         wpt.pose.pose.orientation.z = follow_lane.waypoints[j].pose.pose.orientation.z;
-    //         wpt.pose.pose.orientation.w = follow_lane.waypoints[j].pose.pose.orientation.w;
-    //         pub_lane.waypoints.push_back(wpt);
-    //     }
-    //     geometry_msgs::Pose geo_obs;
-    //     // geo_obs.position.x;
-    //     // go flag condition
-    //     // if (condition){
-    //         // go_flag == false
-    //     // }
-    // }
+        double dis = sqrt(pow(current_pos.section.position.x- obs.x,2) + pow(current_pos.section.position.y-obs.y,2));
+        ROS_WARN("DIST :: %.4f", dis);
+        if (dis > 13){
+            std_msgs::Bool msg;
+            msg.data = true;
+            pub_bool.publish(msg);
+        }
+        if (dis > 15){
+            return_flag = false;
+        }
+    }
     else if ( lc_flag == true && range_lane.lanes.size()>1  || obs_flag == true){
         pub_lane.waypoints.clear();
         ROS_INFO("Lane Change");
         int lane_idx=1;
-        if (obs_flag ==true ){
+        if (obs_flag ==true){
             for (int i=0; i<range_lane.lanes.size(); i++){
             if (range_lane.lanes[i].lane_id =1000){
                 lane_idx = i;
-                go_flag=true;
+                if (return_flag == false && obs.exist == true){
+                    double min1 = calculate_min(range_lane.lanes[lane_idx],obs.x,obs.y);
+                    double min2 = calculate_min(range_lane.lanes[0],obs.x,obs.y);
+                    
+                    if (min1 > min2){
+                        return_flag = true;
+                    }
+                    else{
+                        return_flag = false;
+                    }
                 }
-            }
+            }}
         }
         else if(range_lane.lanes[1].lane_id ==1000){
             lane_idx = 0;
@@ -324,6 +289,22 @@ int localplanners::FindIndex(const hmcl_msgs::Lane& lane, double dist, geometry_
     }
     return idx;
 }
+
+double localplanners::calculate_min(const hmcl_msgs::Lane& lane, double x, double y ){
+
+    double min =100;
+    for (int i=0; i< lane.waypoints.size(); i++){
+        double x_ = lane.waypoints[i].pose.pose.position.x;
+        double y_ = lane.waypoints[i].pose.pose.position.y;
+        double dis = sqrt(pow(x_-x,2) + pow(y_ -y,2));
+        
+        if (min  > dis){
+            min = dis;
+        }
+    }
+    return min;
+}
+
 
 hmcl_msgs::Lane localplanners::CutoffTraj(){
     hmcl_msgs::Lane lane;

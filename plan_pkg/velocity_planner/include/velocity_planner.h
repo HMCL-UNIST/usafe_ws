@@ -98,7 +98,7 @@ class VelocityPlanner
 private:
     ros::NodeHandle nh_;
     ros::Publisher vel_pub, vel_debug, vel_vis_pub, motionstate_vis_pub;
-    ros::Subscriber v2x_spat_sub, pose_sub, wheel_sub, acc_sub, predicted_objects_sub, start_end_sub,
+    ros::Subscriber target_sub, v2x_spat_sub, pose_sub, wheel_sub, acc_sub, predicted_objects_sub, start_end_sub,
                     traffic_sign_sub, behavior_state_sub, behavior_state_condition_sub, local_traj_sub;
     
     double runtime;
@@ -115,12 +115,13 @@ private:
     std::string motionstate_debug;
     bool misson_stop=false;
     bool getLocalTraj;
-    bool LeadVehicle=false, Pedestrian, PassStopLine;
+    bool LeadVehicle=false, Mobileye = false, Pedestrian, PassStopLine;
     bool new_behavior_mode, find_stopline, find_crosswalk, find_judgeline;
     bool passcrosswalk, passjudgeline;
     bool stop = false;
     float LeadVehicleVel, LeadVehicleDist;
-    double wait_tt;
+    float LeadVehicleVel_m, LeadVehicleDist_m;
+    double wait_tt, mob_tt=0;
     short LeadVehicleInd;
     double MaxVel;
     bool getBehavior=false, getMission=false;
@@ -210,6 +211,7 @@ void BehaviorStateFactorCallback(const hmcl_msgs::BehaviorFactor& msg); //from B
 void startendCallback(const hmcl_msgs::MissionWaypoint& msg);
 void checkTrafficSignal(const bool& leftTurn);
 void viz_vel_prof(std::vector<double> profile);
+void objectCallback(const autoware_msgs::DetectedObjectArray& msg);
 void viz_motionstate();
 
 };

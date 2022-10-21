@@ -88,7 +88,7 @@ class BehaviorPlanner
 {
     private:
         ros::NodeHandle nh_;
-        ros::Subscriber pose_sub, vel_sub, objs_sub, sb_sub, lug_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub, ped_sub;
+        ros::Subscriber target_sub, pose_sub, vel_sub, objs_sub, sb_sub, lug_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub, ped_sub, ret_sub;
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
         ros::Publisher b_factor_pub, b_state_pub, light_pub;
         // ros::Timer behavior_timer;
@@ -97,7 +97,7 @@ class BehaviorPlanner
         geometry_msgs::Pose egoPose;
         double egoSpeed, prev_object_x, prev_object_y;
         float xObstacle, yObstacle, xSBsign, ySBsign;
-        autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage;
+        autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage, mobObj;
         double startX, startY, startID, start_idx, goalX, goalY, goalID, goal_idx;
         int targetID;
         ros::Time obj_time;
@@ -113,12 +113,13 @@ class BehaviorPlanner
         bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
         short front_id, prevLaneID, unknown_id;
         int nStore, countFront, countStationary, countSB, countLuggage, countObs;
-        bool stop_line_stop;
-        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3;
+        bool stop_line_stop, localRet;
+        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3,getRet;
         bool inCW, frontPrev, stationaryPrev, sbPrev, luggagePrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
         std_msgs::Float64 light_msg;
+        hmcl_msgs::MissionWaypoint target_msg;
         bool NormalDrive, LaneFollowing, Turn;
         int countInit2, countStopAtStartPos, countStartArrival;
         int countPedestrian, countFrontLuggage, countFrontCarStop, countSpeedBump, countStopAtGoalPos;
@@ -148,5 +149,8 @@ class BehaviorPlanner
         void routeCallback(const hmcl_msgs::LaneArray &msg);
         void missionCallback(const std_msgs::Int16::ConstPtr& msg);
         void pedestrianCallback(const std_msgs::Bool::ConstPtr& msg);
+        void localRetCallback(const std_msgs::Bool::ConstPtr& msg);
+        void objectCallback(const autoware_msgs::DetectedObjectArray& msg);
+
 
 };

@@ -9,7 +9,7 @@
         <param name = "Q_vel" value = "2.0"/> 
         <param name = "Q_dis" value =" 20.0"/>
         <param name = "R_weight" value = "0.5"/>
-        <param name = "d_time" value ="3.0"/>
+        <param name = "d_time" value ="4.0"/>
         <param name = "d_safe" value ="15.0"/>
     </node>
 </launch>

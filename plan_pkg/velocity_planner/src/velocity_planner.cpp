@@ -36,7 +36,7 @@ VelocityPlanner::VelocityPlanner()
   nh_.param<double>("Q_vel", Q_vel, 20.0); 
   nh_.param<double>("Q_dis", Q_dis, 50.0); 
   nh_.param<double>("R_weight", r_weight, 1);
-  nh_.param<double>("d_time", d_time, 2.0);
+  nh_.param<double>("d_time", d_time, 4.0);
   nh_.param<double>("d_safe", d_safe, 15.0);
   delay_step = (int)(delay_in_sec/dt);
   runtime = 20;
@@ -52,7 +52,8 @@ VelocityPlanner::VelocityPlanner()
   pose_sub = nh_.subscribe("/pose_estimate", 1, &VelocityPlanner::poseCallback, this);
   wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityPlanner::wheelCallback, this);
   acc_sub = nh_.subscribe("/nav/filtered_imu/data", 1, &VelocityPlanner::accCallback, this);
-  predicted_objects_sub = nh_.subscribe("/tracking_car/object",1, &VelocityPlanner::PredictedObjectsCallback, this);
+  // predicted_objects_sub = nh_.subscribe("/tracking_car/object",1, &VelocityPlanner::PredictedObjectsCallback, this);
+  target_sub = nh_.subscribe("/detected_objs",1, &VelocityPlanner::objectCallback,this);
 
   // traffic_sign_sub = nh_.subscribe("", 1, &VelocityPlanner::TrafficSignCallback, this);    
   behavior_state_sub = nh_.subscribe("/behavior_state", 1, &VelocityPlanner::BehaviorStateCallback, this);
@@ -93,6 +94,10 @@ void VelocityPlanner::PlanVel()
   }
   else if (!getMission){
     ROS_INFO("NO MISSON NODE");
+  }
+  mob_tt ++;
+  if (mob_tt >= 20){
+    Mobileye = false;
   }
   CheckMotionState();
   VelocitySmoother();
@@ -301,23 +306,45 @@ void VelocityPlanner::CheckMotionState()
 
   else if (CurrentMode ==  BehaviorState::Follow){
     //Adaptive Cruise Control
-     double DesiredDis = current_vel*d_time + d_safe;
-    Dis = LeadVehicleDist;
+    double DesiredDis = current_vel*d_time + d_safe;
+    if (Mobileye){
+      ROS_INFO("********Mobileye************");
+      Dis = LeadVehicleDist_m;
+      DesiredVel = LeadVehicleVel_m + current_vel; //- current_vel; 
+    }
+    else{
+      Dis = LeadVehicleDist;
+      DesiredVel = 0.0; //- current_vel;  
+    }
+     
+    
     Dis = std::min(Dis, 150.0); 
-    double DesiredVel = LeadVehicleVel;// + current_vel; //- current_vel;    
-    ROS_INFO("Obastcle velocity is %f", LeadVehicleVel);
-    ROS_INFO("**Desired velocity is %f", DesiredVel);
-    if (isinf(LeadVehicleVel)){
+
+    ROS_INFO("-------Current Distance is %f", Dis);   
+    ROS_INFO("-------Current velocity is %f", current_vel);
+    ROS_INFO("--------Desired velocity is %f", DesiredVel);
+    
+    if (isinf(DesiredVel) || isnan(DesiredVel)){
+      DesiredVel = 0.0;
+    }
+    if (DesiredVel <= 0.5){
       DesiredVel = 0.0;
     }
     // velocity difference is not greater than the speed limit ... 
     if(DesiredVel > 0){
-      DesiredVel = std::min(DesiredVel, MaxVel);
+      DesiredVel = std::min(DesiredVel, 15/3.6);
     }    
     if(DesiredVel < 0){
-      DesiredVel = std::max(DesiredVel, -MaxVel);
+      DesiredVel = std::max(DesiredVel, -15/3.6);
     }
-    targetVel = ACC();
+
+
+    if (Dis <= 15 && DesiredVel <= 0.8){
+      targetVel = 0.0;
+    }
+    else{
+      targetVel = ACC();
+    }
     MotionMode = MotionState::ACC;
     motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
 
@@ -925,21 +952,44 @@ double VelocityPlanner::CheckLeadVehicle(){
   //Adaptive Cruise Control
   
   double DesiredDis = current_vel*d_time + d_safe;
-  Dis = LeadVehicleDist;
+  if (Mobileye){
+    ROS_INFO("********Mobileye************");
+    Dis = LeadVehicleDist_m;
+    DesiredVel = LeadVehicleVel_m + current_vel; //- current_vel; 
+  }
+  else{
+    Dis = LeadVehicleDist;
+    DesiredVel = 0.0; //- current_vel;  
+  }
+     
   Dis = std::min(Dis, 150.0); 
-  double DesiredVel = LeadVehicleVel;// + current_vel; //- current_vel;    
-  ROS_INFO("Obastcle velocity is %f", LeadVehicleVel);
-  ROS_INFO("**Desired velocity is %f", DesiredVel);
 
+
+  ROS_INFO("-------Current Distance is %f", Dis);   
+  ROS_INFO("-------Current velocity is %f", current_vel);
+  ROS_INFO("--------Desired velocity is %f", DesiredVel);
+  
+  if (isinf(DesiredVel) || isnan(DesiredVel)){
+    DesiredVel = 0.0;
+  }
+  if (DesiredVel <= 0.5){
+    DesiredVel = 0.0;
+  }
 
   // velocity difference is not greater than the speed
   if(DesiredVel > 0){
-    DesiredVel = std::min(DesiredVel, MaxVel);
+    DesiredVel = std::min(DesiredVel, 15/3.6);
   }    
   if(DesiredVel < 0){
-    DesiredVel = std::max(DesiredVel, 0.0);
+    DesiredVel = std::max(DesiredVel, 15/3.6);
   }
-  targetVel = ACC();
+
+  if (Dis <= 15 && DesiredVel <= 0.8){
+    targetVel = 0.0;
+  }
+  else{
+    targetVel = ACC();
+  }
   return targetVel;
 }
 //ACC FUNCTION
@@ -963,6 +1013,13 @@ double VelocityPlanner::ACC()
     if ( elapsed_seconds.count() > dt){
       ROS_ERROR("computing control gain takes too much time");
       std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
+    }
+
+    if (vel_cmd >= 15/3.6){
+      vel_cmd = 15/3.6;
+    }
+    else if(vel_cmd <= 0.5){
+      vel_cmd = 0;
     }
     return vel_cmd;
 }
@@ -1555,6 +1612,29 @@ void VelocityPlanner::viz_vel_prof(std::vector<double> profile)
   vel_vis_pub.publish(vel_prof);
 }
 
+void VelocityPlanner::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
+{
+  
+
+  if( msg.objects.size() <= 0){    
+    return;    
+  }
+
+  // ROS_INFO("Mobileye Detected!!!!!!");
+  object_x = msg.objects[0].pose.position.x;
+  object_y = msg.objects[0].pose.position.y;
+  LeadVehicleDist_m = sqrt(pow((object_x - current_x),2)+pow((object_y - current_y),2));
+
+  LeadVehicleVel_m = msg.objects[0].velocity.linear.x;
+  // debug_msg.pose.position.z = LeadVehicleVel_m;
+
+  if ( abs(LeadVehicleVel_m) <= 0.5 )
+  {
+    LeadVehicleVel_m = 0;
+  } 
+  Mobileye = true;
+  mob_tt = 0;
+}
 
 int main (int argc, char** argv)
 {

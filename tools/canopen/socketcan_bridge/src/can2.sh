@@ -1,9 +1,10 @@
 #!/bin/sh
 # echo hmc2020 | sudo -S modprobe can
-# echo hmc2020 | sudo -S modprobe kvaser_usb
+echo hmc2020 | sudo -S modprobe kvaser_usb
 echo hmc2020 | sudo -S modprobe can
 echo hmc2020 | sudo -S ip link set can0 type can bitrate 500000
 echo hmc2020 | sudo -S ifconfig can0 up
+
 
 
 

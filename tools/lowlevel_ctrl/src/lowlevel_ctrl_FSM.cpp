@@ -130,9 +130,11 @@ void LowlevelCtrl::Test(){
     if(lc == 0) {      
       drivingState = DrivingState::Parking;      
     }
-    if (drivingState == DrivingState::Parking)
+     if(lc > 0 && lc < 5) {      
+      drivingState = DrivingState::Parking;      
+    }
 
-      ROS_INFO("ParKING");
+
     // if(lc > 0 && lc < 50) {      
     //   drivingState = DrivingState::Parking;      
     // }

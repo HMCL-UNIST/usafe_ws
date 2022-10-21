@@ -4,8 +4,9 @@
         <!-- <remap from="AA" to="BB"/> -->
         <remap from="/received_messages" to="/a_can_l2h"/>
         <remap from="/sent_messages" to="/a_can_h2l"/>
+        <param name="can_device" type="string" value="can0" />
         
-  </node>
+  </node> 
 </launch>
 
                                                                           

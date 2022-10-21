@@ -82,6 +82,8 @@ class SystemManager():
         self.fix2pose = None
         self.estimator = None
         self.lowlevel = None
+        self.fast = None
+        self.lidar = None
 
         self.imu_switch = False
         self.can_switch = False
@@ -185,11 +187,11 @@ class SystemManager():
 
     def initFastlio(self):
         self.qfast=Queue()
-        self.fast = Popen(['rosclean','purge','-y'],stdout=PIPE, stderr=PIPE)
-        self.t_fast= Thread(target=enque_output, args=(self.clean.stdout,self.qclean))
-        self.t_fast.daemon = True            
-        self.t_fast.start()            
-        rospy.logwarn("ROS Log Clean process open")
+        self.fast = Popen(['roslaunch','fast_lio','high_mapping_ouster64.launch'])
+        # self.t_fast= Thread(target=enque_output, args=(self.fast.stdout,self.qfast))
+        # self.t_fast.daemon = True            
+        # self.t_fast.start()            
+        rospy.logwarn("Fastlio process power on")
 
     def cleanROSLog(self):
         self.qclean=Queue()
@@ -203,10 +205,10 @@ class SystemManager():
         if self.estimator is None:
             self.qestimator=Queue()
             # self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'],stdout=PIPE, stderr=PIPE)
-            self.estimator = Popen(['roslaunch','speedy_estimator','newSE.launch'],stdout=PIPE, stderr=PIPE)
-            self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
-            self.t_estimator.daemon = True            
-            self.t_estimator.start()            
+            self.estimator = Popen(['roslaunch','speedy_estimator','high_newSE.launch'])
+            # self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
+            # self.t_estimator.daemon = True            
+            # self.t_estimator.start()            
             rospy.loginfo("Estimator process open")
 
 
@@ -300,6 +302,22 @@ class SystemManager():
             # self.t_lowlevel.start()            
             rospy.loginfo("lowlevel Ctrl process open")
     
+        
+    def killFastLio(self):
+        if self.fast is not None:
+            try:
+                self.fast.communicate(timeout=1)
+            except TimeoutExpired:
+                print('communicate pass')
+            
+            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
+            self.fast.send_signal(SIGINT)
+            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
+            self.fast.communicate()
+            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
+            rospy.loginfo("Fastlio process END")
+            self.fast = None
+
        
     def killLowCtrl(self):
         if self.lowlevel is not None:
@@ -516,7 +534,17 @@ class SystemManager():
         rospy.logwarn("Lidar point cloud received")
 
         ## FAST LIO turn on 
-
+        self.initFastlio()
+        fastlio_msg = None 
+        while fastlio_msg is None:
+            try:
+                fastlio_msg = rospy.wait_for_message('/Odometry', Odometry, timeout=1)
+            except:
+                pass
+        
+        rospy.logwarn("FastLio on")
+        
+        
         #######################################
         
         self.initTDR()        
@@ -641,6 +669,8 @@ class SystemManager():
         self.killV2X()
         self.killEstimator()
         self.killFix2pose()
+        self.killFastLio()
+        
 
     # def mainCallback(self, timer):
 

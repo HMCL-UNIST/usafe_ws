@@ -18,6 +18,7 @@
 #include <hmcl_msgs/BehaviorFactor.h>
 
 #include <std_msgs/Int16.h>
+#include <std_msgs/Bool.h>
 #include <hmcl_msgs/VehicleStatus.h>
 
 #include <visualization_msgs/Marker.h>
@@ -39,6 +40,7 @@ struct Obstacle
     double x;
     double y;
     double length;
+    bool exist = false;
 };
 
 template<class Function>
@@ -61,7 +63,7 @@ class localplanners
 {
 private:
     ros::NodeHandle nh_;
-    ros::Publisher pub_traj, pub_viz;
+    ros::Publisher pub_traj, pub_viz, pub_bool;
     ros::Subscriber sub_pos, sub_vel, sub_traj, sub_flag, sub_obs;
     
     ros::Timer timer_;
@@ -70,7 +72,7 @@ private:
     bool st_flag = false;
     bool vel_flag = false;
     bool obs_flag = false;
-    bool go_flag = false;
+    bool return_flag = false;
     Sector current_pos;
     Obstacle obs;
     hmcl_msgs::Lane pub_lane;
@@ -93,6 +95,8 @@ public:
     void flagCallback(const std_msgs::Int16ConstPtr& flag_msg);
     void trajCallback(const hmcl_msgs::LaneArray& lane_msg);
     void ObsCallback(const hmcl_msgs::BehaviorFactor& obs_msg);
+
+    double calculate_min(const hmcl_msgs::Lane& lane, double x, double y );
 
     void PreparePhase();
     hmcl_msgs::Lane CutoffTraj();
