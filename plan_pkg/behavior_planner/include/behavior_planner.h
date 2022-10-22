@@ -114,7 +114,7 @@ class BehaviorPlanner
         short front_id, prevLaneID, unknown_id;
         int nStore, countFront, countStationary, countSB, countLuggage, countObs;
         bool stop_line_stop, localRet;
-        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3,getRet;
+        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3,getRet, getMob;
         bool inCW, frontPrev, stationaryPrev, sbPrev, luggagePrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;

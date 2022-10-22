@@ -204,8 +204,8 @@ class SystemManager():
     def initEstimator(self):
         if self.estimator is None:
             self.qestimator=Queue()
-            # self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'],stdout=PIPE, stderr=PIPE)
-            self.estimator = Popen(['roslaunch','speedy_estimator','high_newSE.launch'])
+            self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'])
+            # self.estimator = Popen(['roslaunch','speedy_estimator','high_newSE.launch'])
             # self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
             # self.t_estimator.daemon = True            
             # self.t_estimator.start()            
@@ -523,27 +523,7 @@ class SystemManager():
     
     def init_process(self):
         
-        self.initLidar()
-        lidar_msg = None 
-        while lidar_msg is None:
-            try:
-                lidar_msg = rospy.wait_for_message('/os_cloud_node/points', PointCloud2, timeout=1)
-            except:
-                pass
-        
-        rospy.logwarn("Lidar point cloud received")
-
-        ## FAST LIO turn on 
-        self.initFastlio()
-        fastlio_msg = None 
-        while fastlio_msg is None:
-            try:
-                fastlio_msg = rospy.wait_for_message('/Odometry', Odometry, timeout=1)
-            except:
-                pass
-        
-        rospy.logwarn("FastLio on")
-        
+             
         
         #######################################
         

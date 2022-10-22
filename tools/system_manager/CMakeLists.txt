@@ -167,7 +167,7 @@ include_directories(
 
 
 install(
-  PROGRAMS src/system_manager.py
+  PROGRAMS src/system_manager.py src/gnss_system_manager.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
   )
 

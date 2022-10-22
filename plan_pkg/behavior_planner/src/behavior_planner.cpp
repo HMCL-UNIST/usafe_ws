@@ -112,6 +112,7 @@ BehaviorPlanner::BehaviorPlanner(){
     getSPAT3 = false;
     getMission = false;
     getRet = false;
+    getMob =false;
 
     // to velocity planner
     front_id = -1;
@@ -315,6 +316,10 @@ void BehaviorPlanner::updateFactors(){
         }
         if(!getSPAT1 || !getSPAT2 || !getSPAT3){
             ROS_INFO("Can not receive SPAT data");
+            break;
+        }
+        if(!getMob){
+            ROS_INFO{"cannnot receive mobileye"};
             break;
         }
 
@@ -1188,12 +1193,6 @@ void BehaviorPlanner::updateBehaviorState(){
                 countFrontCarStop = 0;
                 goToNormalDrive = true;
             }
-            else if(approachToStartPos){
-                currentBehavior = BehaviorState::StopAtStartPos;
-            }
-            else if(approachToGoalPos){
-                currentBehavior = BehaviorState::StopAtGoalPos;
-            }
             else if(brokenFrontCar){
                 countFrontCarStop = 0;
                 currentBehavior = BehaviorState::ObstacleLaneChange;
@@ -1408,6 +1407,7 @@ void BehaviorPlanner::localRetCallback(const std_msgs::Bool::ConstPtr& msg){
 }
 void BehaviorPlanner::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
 {
+    getMob = true;
     if( msg.objects.size() <= 0){    
         return;    
     }
