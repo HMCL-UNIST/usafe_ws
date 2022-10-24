@@ -84,6 +84,7 @@ class SystemManager():
         self.v2x = None
         self.fix2pose = None
         self.estimator = None
+        self.estimators = []
         self.lowlevel = None
         self.fast = None
         self.lidar = None
@@ -108,12 +109,12 @@ class SystemManager():
         
 
         self.system_ready = False
-        self.main_timer = rospy.Timer(rospy.Duration(0.5), self.mainCallback)
+        self.main_timer = rospy.Timer(rospy.Duration(0.1), self.mainCallback)
         
         self.cleanROSLog()
         rospy.sleep(1)
         rospy.loginfo("cleaning ros log")
-        # self.init_process()
+        self.init_process()
         self.init_controller()
         self.system_ready = True
         #self.srv = Server(sysConfig, self.dyn_callback)
@@ -209,14 +210,19 @@ class SystemManager():
         rospy.logwarn("ROS Log Clean process open")
     
     def initEstimator(self):
-        if self.estimator is None:
-            self.qestimator=Queue()
-            self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'],stdout=PIPE, stderr=PIPE)
-            # self.estimator = Popen(['roslaunch','speedy_estimator','  high_newSE.launch'])
-            self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
-            self.t_estimator.daemon = True            
-            self.t_estimator.start()            
-            rospy.loginfo("Estimator process open")
+        if len(self.estimators) > 0:
+            if self.estimators[-1].poll() is None:
+                # p.subprocess is alive
+                return
+        # if self.estimator is None:
+            # self.qestimator=Queue()
+        estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'])
+        # self.estimator = Popen(['roslaunch','speedy_estimator','  high_newSE.launch'])
+        # self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
+        # self.t_estimator.daemon = True            
+        # self.t_estimator.start() 
+        self.estimators.append(estimator)           
+        rospy.loginfo("Estimator process open")
 
 
     def initFix2pose(self):
@@ -250,6 +256,12 @@ class SystemManager():
 
     def initPREVIEW(self):
         # if self.preview is None:
+        if len(self.previews) > 0:
+            if self.previews[-1].poll() is None:
+                # p.subprocess is alive
+                return
+ 
+         
         qpreview=Queue()
         preview = Popen(['roslaunch','highspeed_ctrl','highspeed_ctrl.launch'])
         # t_preview= Thread(target=enque_output, args=(preview.stdout,qpreview))
@@ -321,210 +333,9 @@ class SystemManager():
             rospy.loginfo("lowlevel Ctrl process open")
     
         
-    def killFastLio(self):
-        if self.fast is not None:
-            try:
-                self.fast.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.fast.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.fast.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("Fastlio process END")
-            self.fast = None
+  
 
-       
-    def killLowCtrl(self):
-        if self.lowlevel is not None:
-            try:
-                self.lowlevel.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.lowlevel.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.lowlevel.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("Lowlevel Ctrl process END")
-            self.lowlevel = None
-    
-    def killFix2pose(self):
-        if self.fix2pose is not None:
-            try:
-                self.fix2pose.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.fix2pose.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.fix2pose.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("Fix2pose process END")
-            self.fix2pose = None
-
-
-    def killEstimator(self):
-        if self.estimator is not None:
-            try:
-                self.estimator.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.estimator.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.estimator.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("Estimator process END")
-            self.estimator = None
-
-    def killV2X(self):
-        if self.v2x is not None:
-            try:
-                self.v2x.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.v2x.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.v2x.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("V2X process END")
-            self.v2x = None
-
-    def killUSAFE(self):
-        if self.usafe is not None:
-            try:
-                self.usafe.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.usafe.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.usafe.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("USAFE process END")
-            self.usafe = None
-
-    def killPREVIEW(self):
-
-        if len(self.previews) != 0:            
-            preview = self.previews[-1]        
-            poll = preview.poll()
-            if poll is None:     
-                rospy.logwarn("poll is none --> process alive")
-                preview_debug_msg = None
-                try:
-                    preview_debug_msg = rospy.wait_for_message('/preview_debug', PoseStamped, timeout=0.5)            
-                except:   
-                    # process not responding   --> kill                
-                    pass                
-                if preview_debug_msg is not None:
-                    # msg is working now --> no kill 
-                    return
-            else:                
-                rospy.logwarn("poll is not none --> process end")
-                return
-                
-        
-
-        if len(self.previews) == 0:
-            preview = None
-            return
-        else:
-            preview = self.previews[-1]        
-            poll = preview.poll()
-            if poll is None:                
-            #     # subprocess is alive 
-                rospy.loginfo("poll is none")    
-            #     return        
-            # else:
-            #     # subprocess is not alive
-            #     rospy.loginfo("poll is not none")
-            #     return
-                
-        
-        if preview is not None:            
-            try:
-                preview.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-                print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-                preview.send_signal(SIGINT)
-                print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-                preview.communicate()
-                print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-                rospy.loginfo("Highspeed Ctrl process END")
-                self.previews.pop()                  
-            
-
-    def killPID(self):
-        if self.pid is not None:
-            try:
-                self.pid.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.pid.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.pid.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("PID process END")
-            self.pid = None
-
-    def killCAN(self):
-        if self.can is not None:
-            try:
-                self.can.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.can.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.can.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("CAN process END")
-            self.can = None
-
-    def killIMU(self):
-        if self.imu is not None:
-            try:
-                self.imu.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.imu.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.imu.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("IMU process END")
-            self.imu = None
-
-    def killTDR(self):
-        if self.tdr is not None:
-            try:
-                self.tdr.communicate(timeout=1)
-            except TimeoutExpired:
-                print('communicate pass')
-            
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.tdr.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.tdr.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("TDR process END")
-            self.tdr = None
-
+ 
 
     
 
@@ -592,19 +403,19 @@ class SystemManager():
                 pass
             
         rospy.logwarn("GNSS received")
-        rospy.sleep(1)
+        # rospy.sleep(1)
         
-        self.initCAN()
+        # self.initCAN()
         
 
-        can_msg = None
-        while can_msg is None:
-            try:
-                can_msg = rospy.wait_for_message('/a_can_l2h', Frame, timeout=1)
-            except:
-                pass
+        # can_msg = None
+        # while can_msg is None:
+        #     try:
+        #         can_msg = rospy.wait_for_message('/a_can_l2h', Frame, timeout=1)
+        #     except:
+        #         pass
 
-        rospy.logwarn("CAN received")
+        # rospy.logwarn("CAN received")
 
         
         
@@ -688,23 +499,38 @@ class SystemManager():
         rospy.logwarn("USAFE Planner Activated")
             
         
+    
+
+        
+    def checkEstimate(self):
+        # if gnss fix2pose lat and lon is too faraway --> reset pose-estimate
+        fix2pos_msg = None        
+        try:
+            fix2pos_msg = rospy.wait_for_message('/gnss_pose_world', PoseStamped, timeout=0.5)  
+        except:                                           
+            if fix2pos_msg is None:   
+                rospy.logwarn("Fix2pose error")                              
+                # self.killPREVIEW()
+                rospy.sleep(0.01)                
+                self.initFix2pose()      
+                rospy.sleep(1)                     
+                rospy.logwarn("Fix2pose Re-Activated")
 
 
+        pose_debug_msg = None
         
+        try:
+            pose_debug_msg = rospy.wait_for_message('/pose_estimate', Odometry, timeout=0.5)  
+        except:                                           
+            if pose_debug_msg is None:   
+                rospy.logwarn("no Pose estimate message received ")                              
+                # self.killPREVIEW()
+                rospy.sleep(0.01)                
+                self.initEstimator()      
+                rospy.sleep(1)                     
+                rospy.logwarn("PoseEstimator Re-Activated")
+
         
-        
-    def killProcesses(self):
-        self.killLowCtrl() 
-        self.killTDR()
-        self.killIMU()
-        self.killCAN()
-        self.killPID()
-        self.killPREVIEW()
-        self.killUSAFE()
-        self.killV2X()
-        self.killEstimator()
-        self.killFix2pose()
-        self.killFastLio()
         
     def checkPreview(self):
         # if(self.preview_recount > 0):
@@ -716,10 +542,10 @@ class SystemManager():
             if preview_debug_msg is None:   
                 rospy.logwarn("no preview message received ")
                 rospy.sleep(0.01)                
-                self.killPREVIEW()
+                # self.killPREVIEW()
                 rospy.sleep(0.01)                
                 self.initPREVIEW()           
-                rospy.sleep(0.5)    
+                rospy.sleep(1)    
                 self.preview_recount = self.preview_recount-1
                 rospy.logwarn("Preview Ctrl Re-Activated")
 
@@ -729,6 +555,7 @@ class SystemManager():
         if self.system_ready is False:
             return
         self.checkPreview()
+        self.checkEstimate()
         
 
   

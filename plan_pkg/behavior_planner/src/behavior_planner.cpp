@@ -323,7 +323,6 @@ void BehaviorPlanner::updateFactors(){
         }
         if(!getMob){
             ROS_INFO("cannnot receive mobileye");
-            break;
         }
 
         ROS_INFO("global lanes size: %d", globalLaneArray.lanes.size());
@@ -336,7 +335,7 @@ void BehaviorPlanner::updateFactors(){
                     if(globalLaneArray.lanes[i].waypoints.size() != 0 && globalLaneArray.lanes[i].lane_id != 1000){
                         float tmpx = globalLaneArray.lanes[i].waypoints[globalLaneArray.lanes[i].waypoints.size()-1].pose.pose.position.x - globalLaneArray.lanes[i].waypoints[0].pose.pose.position.x;
                         float tmpy = globalLaneArray.lanes[i].waypoints[globalLaneArray.lanes[i].waypoints.size()-1].pose.pose.position.y - globalLaneArray.lanes[i].waypoints[0].pose.pose.position.y;
-                        if(sqrt(pow(tmpx,2)+pow(tmpy,2)) > 5) checker = true;
+                        if(sqrt(pow(tmpx,2)+pow(tmpy,2)) > thresDistSG) checker = true;
                         ROS_INFO("tmpx %f, tmpy %f", tmpx, tmpy);
                     }
                 }
@@ -442,7 +441,7 @@ void BehaviorPlanner::updateFactors(){
         }
         if(distToGoal < successDistSG && stopCheck){
             goalArrivalCheck = true;
-        }
+        }    
         ROS_INFO("dist to STOP: %f, %d, %f", distToGoal, globalLaneArray.lanes[0].lane_id, goalID);
 
         //calculate yaw angle
@@ -1359,29 +1358,39 @@ void BehaviorPlanner::updateBehaviorState(){
     }
 
     //light cmd
+    float tmpx0 =0;
+    float tmpy0 =0;
+    float tmpx1 =0;
+    float tmpy1 =0; 
     if(currentBehavior == BehaviorState::LaneChange && globalLaneArray.lanes.size() >= 2){
         if(localRet == false){
-            float tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-            float tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
-            float tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-            float tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            if(prevBehavior!=BehaviorState::LaneChange){
+                tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+                tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+                tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+                tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            }
             if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) light_msg.data = -1;
             else light_msg.data = 1;
         }
         else{
-            float tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-            float tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
-            float tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-            float tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            if(prevBehavior!=BehaviorState::LaneChange){
+                tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+                tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+                tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+                tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            }
             if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) light_msg.data = 1;
             else light_msg.data = -1;
         }
     }
     else if(currentBehavior == BehaviorState::ObstacleLaneChange && globalLaneArray.lanes.size() >= 2){
-        float tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-        float tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
-        float tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
-        float tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+        if(prevBehavior!=BehaviorState::ObstacleLaneChange){
+            tmpx0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+            tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
+            tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+        }
         if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) light_msg.data = -1;
         else light_msg.data = 1;
     }
