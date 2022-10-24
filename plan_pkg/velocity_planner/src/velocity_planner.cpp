@@ -26,8 +26,10 @@ VelocityPlanner::VelocityPlanner()
   nh_.param<double>("max_lateral_acc", max_lat_acc, 4.0);
   nh_.param<double>("max_longitudinal_acc", max_long_acc, 1.5);
   nh_.param<double>("stopline_margin", stopline_margin, 0);
-  nh_.param<double>("crosswalk_margin", crosswalk_margin, 15);
+  nh_.param<double>("mission_margin", mission_margin, 5);
+  nh_.param<double>("crosswalk_margin", crosswalk_margin, 20);
   nh_.param<double>("stop_margin", stop_margin, 10);
+   nh_.param<double>("judge_margin", judge_margin, 15);
   nh_.param<double>("vehicle_length", vehicle_length, 2);
 
   nh_.param<double>("delay_in_sec", delay_in_sec, 1);
@@ -94,6 +96,7 @@ void VelocityPlanner::PlanVel()
   }
   else if (!getMission){
     ROS_INFO("NO MISSON NODE");
+    return;
   }
   mob_tt ++;
   if (mob_tt >= 20){
@@ -357,20 +360,13 @@ void VelocityPlanner::CheckMotionState()
     checkTrafficSignal(0);
     double vel = intersection_velocity/3.6;
     // double vel = Curvature();
-    
-    // if ((7)/3.6 <= vel || isnan(vel)){
-    //   vel = (7)/3.6;
-    // }
-    // else if (vel <= 3/3.6){
-    //   vel = 3/3.6;
-    // }
 
     if (eventState == -1 || timing_min_End_Time == -1){
       MotionMode = MotionState::GO;
       motionstate_debug = "No traffic light";
       targetVel1 = vel;
       if (lane_id == 7){
-        targetVel1 = speedbump_velocity/3.6;
+        targetVel1 = intersection_velocity/3.6;
       }
     }
     else{
@@ -457,7 +453,7 @@ void VelocityPlanner::CheckMotionState()
           DesiredDis = 0;
           DesiredVel = speedbump_velocity/3.6;
 
-          if (eventState == 5 || eventState == 6){
+          if (Dis <= judge_margin && eventState == 5 || eventState == 6){
             if (timing_min_End_Time >= 7) {
               passcrosswalk = true;
             }
@@ -565,7 +561,7 @@ void VelocityPlanner::CheckMotionState()
           DesiredDis = 0;
           DesiredVel = 0;
 
-          if (eventState == 5 || eventState == 6){
+          if (Dis <= judge_margin && eventState == 5 || eventState == 6){
             if (timing_min_End_Time >= 7) {
               passcrosswalk = true;
             }
@@ -630,64 +626,58 @@ void VelocityPlanner::CheckMotionState()
   else if(CurrentMode == BehaviorState::StopAtStartPos ){
     Dis = sqrt(pow(current_x-start.x,2) + pow(current_y-start.y,2));
     targetVel = 0;
-    // if (Dis <= stop_margin || misson_stop){
-    //   MotionMode = MotionState::STOP;
-    //   motionstate_debug = "At the start position";
-    //   targetVel1 = 0;
-    //   misson_stop = true;
-    // }
-    // else{
-    //   Dis = std::min(Dis, 10.0);
-    //   motionstate_debug = "Before the start position: Distance is" + to_string(Dis);
-    //   MotionMode = MotionState::DECELERATE;
-    //   targetVel1 = ACC();
-    // }
+    if (Dis <= mission_margin || mission_stop){
       MotionMode = MotionState::STOP;
       motionstate_debug = "At the start position";
       targetVel1 = 0;
-      misson_stop = true;
-    if (LeadVehicle){
-      targetVel2 = CheckLeadVehicle();
-      targetVel = std::min(targetVel1, targetVel2);
-      if (targetVel2 <= targetVel1){
-        MotionMode = MotionState::ACC;
-        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
-      }  
+      mission_stop = true;
     }
     else{
-      targetVel = targetVel1;
+      Dis = std::min(Dis, 10.0);
+      motionstate_debug = "Before the start position: Distance is" + to_string(Dis);
+      MotionMode = MotionState::DECELERATE;
+      targetVel1 = ACC();
     }
+    // if (LeadVehicle){
+    //   targetVel2 = CheckLeadVehicle();
+    //   targetVel = std::min(targetVel1, targetVel2);
+    //   if (targetVel2 <= targetVel1){
+    //     MotionMode = MotionState::ACC;
+    //     motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+    //   }  
+    // }
+    // else{
+    //   targetVel = targetVel1;
+    // }
     
   }
   else if(CurrentMode == BehaviorState::StopAtGoalPos ){
     Dis = sqrt(pow(current_x-end.x,2) + pow(current_y-end.y,2));
     targetVel = 0;
-    // if (Dis <= stop_margin || misson_stop){
-    //   MotionMode = MotionState::STOP;
-    //   motionstate_debug = "At the goal position";
-    //   targetVel1 = 0;
-    // }
-    // else{
-    //   Dis = std::min(Dis, 30.0);
-    //   MotionMode = MotionState::DECELERATE;
-    //   motionstate_debug = "Before the goal position: Distance is" + to_string(Dis);
-    //   targetVel1 = ACC();
-    // }
-    MotionMode = MotionState::STOP;
-    motionstate_debug = "At the goal position";
-    targetVel1 = 0;
-    
-    if (LeadVehicle){
-      targetVel2 = CheckLeadVehicle();
-      targetVel = std::min(targetVel1, targetVel2);
-      if (targetVel2 <= targetVel1){
-        MotionMode = MotionState::ACC;
-        motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
-      }  
+    if (Dis <= mission_margin || mission_stop){
+      MotionMode = MotionState::STOP;
+      motionstate_debug = "At the goal position";
+      targetVel1 = 0;
+      mission_stop = true;
     }
     else{
-      targetVel = targetVel1;
+      Dis = std::min(Dis, 10.0);
+      MotionMode = MotionState::DECELERATE;
+      motionstate_debug = "Before the goal position: Distance is" + to_string(Dis);
+      targetVel1 = ACC();
     }
+
+    // if (LeadVehicle){
+    //   targetVel2 = CheckLeadVehicle();
+    //   targetVel = std::min(targetVel1, targetVel2);
+    //   if (targetVel2 <= targetVel1){
+    //     MotionMode = MotionState::ACC;
+    //     motionstate_debug = "Lead vehicle exists: Distance is" + to_string(Dis);
+    //   }  
+    // }
+    // else{
+    //   targetVel = targetVel1;
+    // }
   }
   else if (CurrentMode ==  BehaviorState::LaneChange){
     targetVel = speedbump_velocity/3.6;
@@ -1356,7 +1346,7 @@ void VelocityPlanner::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg)
 
 void VelocityPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
     //traffic_signal
-
+    // if(traffic_signal)
     if(msg.id == 1){
         getSPAT1 = true;
         junc1Signal = msg;
@@ -1375,12 +1365,16 @@ void VelocityPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
 void VelocityPlanner::startendCallback(const hmcl_msgs::MissionWaypoint& msg)
 {
   // std::cout << "Get velocity: " << state_msg.twist.twist.linear.x << std::endl;
-  if (!getMission){
+  if (msg.node_wpts.size()<=1){
+    return;
+  }
+  if(!getMission){
     getMission = true;
   }
+
   int start_id = msg.start.x;
   int end_id  = msg.end.x;
-
+  
   start = msg.node_wpts[start_id];
   end = msg.node_wpts[end_id];
 }
@@ -1441,13 +1435,30 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
     //No initialize Paramter
     new_behavior_mode = true;
     PreviousMode = CurrentMode;
-    misson_stop = false;
+    mission_stop = false;
+    return;
+  }
+  else if (CurrentMode == BehaviorState::FrontCarStop && PreviousMode != CurrentMode)
+  { 
+    //No initialize Paramter
+    new_behavior_mode = true;
+    PreviousMode = CurrentMode;
+    mission_stop = false;
+    return;
+  }
+
+  else if (PreviousMode == BehaviorState::FrontCarStop && PreviousMode != CurrentMode)
+  { 
+    //No initialize Paramter
+    new_behavior_mode = true;
+    PreviousMode = CurrentMode;
+    mission_stop = false;
     return;
   }
   else if (PreviousMode == BehaviorState::Pedestrian && PreviousMode != CurrentMode){
     new_behavior_mode = true;
     PreviousMode = CurrentMode;
-    misson_stop = false;
+    mission_stop = false;
   }
   else if (PreviousMode == BehaviorState::StopAtStartPos && PreviousMode != CurrentMode){
     new_behavior_mode = true;
@@ -1476,7 +1487,7 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
     find_judgeline = false;
     passcrosswalk = false;
     passjudgeline = false;
-    misson_stop = false;
+    mission_stop = false;
     wait_tt = 0;
     stop == false;
   }
@@ -1615,7 +1626,6 @@ void VelocityPlanner::viz_vel_prof(std::vector<double> profile)
 void VelocityPlanner::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
 {
   
-
   if( msg.objects.size() <= 0){    
     return;    
   }

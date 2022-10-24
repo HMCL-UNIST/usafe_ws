@@ -191,6 +191,14 @@ void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
 
   /////////////////////////
   for(int i=0; i< msg->States.size(); i++){    
+    //Override boost waypoint as goal
+    if(msg->States[i].item_type ==3){
+      mtx.lock();
+      race_planner_->overwriteGoal(msg->States[i].pos_lat, msg->States[i].pos_long);
+      mtx.unlock();
+    }
+
+    //
     if(msg->States[i].item_type ==3 && msg->States[i].item_status == 1){      
       if(boost_enable_idx.size() > 0){
         if(std::find(boost_enable_idx.begin(), boost_enable_idx.end(), msg->States[i].item_id) != boost_enable_idx.end()){

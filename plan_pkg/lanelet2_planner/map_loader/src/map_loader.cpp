@@ -539,15 +539,25 @@ void MapLoader::lane_in_range(){
         }
       }
     }
-    if (previous_idx != cl_lane_idx && previous_idx == nodes[0].first){
+    if (previous_idx != cl_lane_idx){
       if (!pass_target){
-        find_new_target = false;
-        // ROS_INFO("*********JUST  PASSING****");
-        target_id ++;
-        nodes.erase(nodes.begin());
+        if (previous_idx == nodes[0].first){
+          find_new_target = false;
+          // ROS_INFO("*********JUST  PASSING****");
+          target_id ++;
+          nodes.erase(nodes.begin());
+          pass_target = false;
+        }
+      
+        double dis2ego =  sqrt(pow(xyz[target_id].first-odom_x,2)+pow(xyz[target_id].second-odom_y,2));
+        if (!pass_target && dis2ego <= 5){
+          target_id ++;
+          nodes.erase(nodes.begin());
+          pass_target = false;
+        }
       }
-      pass_target = false;
     }
+
     mission_pt.target_idx = total_node_num-nodes.size();
   }
   // mission_pt.remain = nodes.size();
@@ -906,6 +916,38 @@ void MapLoader::ped_inCw(){
   }
   
   if(ped_available && os_tf){
+    double cross_wpt_x,  cross_wpt_y;
+    
+    std::vector<int> cross_id;
+
+    // for (int w=0; w< lir_array.lanes.size(); w++){
+    //   bool cross_is = false;
+    //   for (int j=0; j < lir_array.lanes[w].waypoints.size()-2; j++){
+    //     if (lir_array.lanes[w].waypoints[j].Crosswalk = true){
+    //       cross_wpt_x = lir_array.lanes[w].waypoints[j+2].pose.pose.position.x;
+    //       cross_wpt_y = lir_array.lanes[w].waypoints[j+2].pose.pose.position.y;
+    //       cross_is =true;
+    //       ROS_INFO("********CROSSWALK*************");
+    //       break;
+    //     }
+    //   }
+    //   if (cross_is){
+    //     for(int j=0; j<crosswalk.size(); j++){
+    //       lanelet::Area cross_tmp = crosswalk[j];
+    //       if(lanelet::geometry::inside(cross_tmp,lanelet::BasicPoint2d(cross_wpt_x,cross_wpt_y))){
+    //         cross_id.push_back(j);
+    //         ROS_INFO("********CROSSWALK ID %d:", j);
+    //         break;
+    //       }
+    //     }
+    //   }
+    // }
+
+    // if (cross_id.size() <= 0){
+    //   return;
+    // }
+
+
     for(int i=0; i < ped_array.objects.size(); i++){
       // ROS_INFO("HERE:::::::::::oject size is %d", ped_array.objects.size());
       float x,y;
@@ -926,11 +968,10 @@ void MapLoader::ped_inCw(){
 
       double dis2ego = sqrt(pow(x-odom_x,2)+pow(y-odom_y,2));
       // ROS_INFO("Distance to Ego is:::::  %f", dis2ego);
-      if (dis2ego >= 30){
-        continue;
-      }
-    
-
+      // if (dis2ego >= 30){
+      //   continue;
+      // }
+      
       for(int j=0; j<crosswalk.size(); j++){
         lanelet::Area cross_tmp = crosswalk[j];
         if(lanelet::geometry::inside(cross_tmp,lanelet::BasicPoint2d(x,y))){
@@ -938,22 +979,36 @@ void MapLoader::ped_inCw(){
           ROS_INFO("HERE:::::::::::pedestrain is in");
           break;
         }
-        else{
-          ped_in = false;
-          if (dis2ego <= 5){
-            ped_in = true;
-          }
-        }
       }
-      if(ped_in){
+
+      if (ped_in){
         break;
       }
+
+      // for(int j=0; j<crosswalk.size(); j++){
+      //   lanelet::Area cross_tmp = crosswalk[j];
+      //   if(lanelet::geometry::inside(cross_tmp,lanelet::BasicPoint2d(x,y))){
+      //     ped_in = true;
+      //     ROS_INFO("HERE:::::::::::pedestrain is in");
+      //     break;
+      //   }
+      //   else{
+      //     ped_in = false;
+      //     if (dis2ego <= 5){
+      //       ped_in = true;
+      //     }
+      //   }
+      // }
+      // if(ped_in){
+      //   break;
+      // }
     }
   }
   else{
     ped_in = false;
   }
   ped_available = false;
+  
 }
 
 void MapLoader::ped_inCw_handler(const ros::TimerEvent& time){

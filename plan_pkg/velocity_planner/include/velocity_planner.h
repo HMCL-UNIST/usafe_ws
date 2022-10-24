@@ -101,7 +101,7 @@ private:
     ros::Subscriber target_sub, v2x_spat_sub, pose_sub, wheel_sub, acc_sub, predicted_objects_sub, start_end_sub,
                     traffic_sign_sub, behavior_state_sub, behavior_state_condition_sub, local_traj_sub;
     
-    double runtime;
+    double runtime, mission_margin, judge_margin;
     
     double current_acc, current_vel, current_x, current_y;
     double object_x, object_y, object_vel;
@@ -113,7 +113,7 @@ private:
     int timing_min_End_Time =-1;
 
     std::string motionstate_debug;
-    bool misson_stop=false;
+    bool mission_stop=false;
     bool getLocalTraj;
     bool LeadVehicle=false, Mobileye = false, Pedestrian, PassStopLine;
     bool new_behavior_mode, find_stopline, find_crosswalk, find_judgeline;

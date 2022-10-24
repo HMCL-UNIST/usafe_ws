@@ -88,16 +88,16 @@ class BehaviorPlanner
 {
     private:
         ros::NodeHandle nh_;
-        ros::Subscriber target_sub, pose_sub, vel_sub, objs_sub, sb_sub, lug_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub, ped_sub, ret_sub;
+        ros::Subscriber target_sub, pose_sub, vel_sub, objs_sub, ped_obj_sub, sb_sub, lug_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub, ped_sub, ret_sub;
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
         ros::Publisher b_factor_pub, b_state_pub, light_pub;
         // ros::Timer behavior_timer;
         double runRate;
-        float wLane, lenEgo, frontlenEgo, dFront,thresFrontStop, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
+        float wLane, lenEgo, frontlenEgo, dFront,thresFrontStop, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn,thresMinTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed, prev_object_x, prev_object_y;
         float xObstacle, yObstacle, xSBsign, ySBsign;
-        autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage, mobObj;
+        autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage, mobObj, pedObj;
         double startX, startY, startID, start_idx, goalX, goalY, goalID, goal_idx;
         int targetID;
         ros::Time obj_time;
@@ -110,11 +110,11 @@ class BehaviorPlanner
         BehaviorState currentBehavior;
         bool missionStart, approachToStartPos, startArrivalCheck, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
         bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone, checkObstacle;
-        bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
+        bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck, startChecker;
         short front_id, prevLaneID, unknown_id;
         int nStore, countFront, countStationary, countSB, countLuggage, countObs;
         bool stop_line_stop, localRet;
-        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3,getRet, getMob;
+        bool getGlobal, getPose, getSpeed, getObject, getPedObj, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3,getRet, getMob;
         bool inCW, frontPrev, stationaryPrev, sbPrev, luggagePrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
@@ -151,6 +151,8 @@ class BehaviorPlanner
         void pedestrianCallback(const std_msgs::Bool::ConstPtr& msg);
         void localRetCallback(const std_msgs::Bool::ConstPtr& msg);
         void objectCallback(const autoware_msgs::DetectedObjectArray& msg);
+        void pedObjectCallback(const autoware_msgs::DetectedObjectArray& msg);
+
 
 
 };

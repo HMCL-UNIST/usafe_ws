@@ -16,7 +16,9 @@
 
 
 #include "vehicle_model_dynamics.h"
+#include<iostream>
 
+using namespace std;
 
 void VehicleModel::initModel(double& dt, double&  wheelbase, double& lf, double& lr, double& mass){
         
@@ -57,6 +59,11 @@ void VehicleModel::setWeight(std::vector<double> q_weight, double r_weight){
         mcQ(i,i) = q_weight[i];
     }
     mcR(0,0) = r_weight; 
+    for (auto i:q_weight) {
+        cout << i << " ";
+    }
+    cout << endl;
+
 }
 
 void VehicleModel::reintMatrices(){

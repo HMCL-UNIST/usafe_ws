@@ -115,7 +115,8 @@ void LowlevelCtrl::InitCanmsg(){
   light_frame.is_rtr = false;
   light_frame.data[0] = (unsigned int)0 & 0b11111111;  
   light_frame.data[1] = (unsigned int)0 & 0b11111111;  
-  light_frame.data[2] = (unsigned int)0 & 0b11111111;  
+  light_frame.data[2] = (unsigned int)0 & 0b11111111;
+  AcanPub.publish(light_frame); 
   usleep(2000000);
   ROS_INFO("Init complete");
 }
@@ -166,20 +167,16 @@ void LowlevelCtrl::AcanSender()
         ROS_INFO("SCC On");
       }
      
-      
-        usleep(1000);
-       AcanPub.publish(scc_frame);
       usleep(1000);
-       AcanPub.publish(gear_frame);
+      AcanPub.publish(scc_frame);
       usleep(1000);
-       AcanPub.publish(steering_frame);
-      
-      
-     
+      AcanPub.publish(gear_frame);
+      usleep(1000);
+      AcanPub.publish(steering_frame);
       usleep(1000);     
       AcanPub.publish(light_frame);  
       usleep(1000);     
-            // publish vehicle info 
+      // publish vehicle info 
       steerPub.publish(steering_info_);
       statusPub.publish(vehicle_status_);
       sccPub.publish(scc_info_);  

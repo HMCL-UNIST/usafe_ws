@@ -200,20 +200,14 @@ void PreviewCtrl::reschedule_weight(double speed){
         R_weight = 2500.0;
         std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
       VehicleModel_.setWeight( Qweight, R_weight);
-      }else{
-        std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+      }else{ //curve
+        std::vector<double> Qweight = {30.0, 40.0, 10.0, 5.0};
         R_weight = 500;
         VehicleModel_.setWeight( Qweight, R_weight);
       }
         // For Low speed  
         // ROS_WARN("low speed tune");       
       // std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
-
-      
-      
-      
-  
-
 }
 
 void PreviewCtrl::steering_rate_reset(double speed){
@@ -262,10 +256,6 @@ void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
     wheel_speed = msg->wheelspeed.wheel_speed;
     reschedule_weight(wheel_speed);
     steering_rate_reset(wheel_speed);
-    
-   
-    
-  
       // if(wheel_speed > 0){
         // vehicle_status_.twist.linear.x = wheel_speed;
         // if(fabs(vehicle_status_.twist.linear.x - wheel_speed) > 3){
@@ -319,7 +309,6 @@ void PreviewCtrl::ControlLoop()
           continue;
         }
         double delta_cmd = VehicleModel_.computeGain(); 
-        
         
         // if(fabs(delta_cmd) > 0.5){
         //    loop_rate.sleep();
@@ -428,9 +417,9 @@ void PreviewCtrl::ControlLoop()
 bool PreviewCtrl::stateSetup(){
 
   current_yaw = tf2::getYaw(vehicle_status_.pose.orientation);
-  debug_msg.pose.orientation.x = current_yaw;        
+  // debug_msg.pose.orientation.x = current_yaw;        
   yaw_filter.filter(current_yaw);
-  debug_msg.pose.orientation.y = current_yaw; 
+  // debug_msg.pose.orientation.y = current_yaw; 
   debug_yaw = current_yaw;
   /* calculate nearest point on reference trajectory (used as initial state) */
   unsigned int nearest_index = 0;
@@ -445,7 +434,7 @@ bool PreviewCtrl::stateSetup(){
   double err_x = vehicle_status_.pose.position.x - nearest_pose.position.x;
   double err_y = vehicle_status_.pose.position.y - nearest_pose.position.y;
   double sp_yaw = tf2::getYaw(nearest_pose.orientation);
-  double err_lat = -sin(sp_yaw) * err_x + cos(sp_yaw) * err_y;  
+  double err_lat = -sin(sp_yaw) * err_x + cos(sp_yaw) * err_y + 0.1;  
   double steer = vehicle_status_.tire_angle_rad;
   state_time = vehicle_status_.header.stamp;
    /* get steering angle */
@@ -487,10 +476,10 @@ bool PreviewCtrl::stateSetup(){
       }
 
       debug_msg.header.stamp = ros::Time::now();    
-      // debug_msg.pose.orientation.x = err_lat;  
-      // debug_msg.pose.orientation.y = eydot;  
-      // debug_msg.pose.orientation.z = yaw_err*180.0/3.14195;    
-      // debug_msg.pose.orientation.w = epsidot; 
+      debug_msg.pose.orientation.x = err_lat;  
+      debug_msg.pose.orientation.y = eydot;  
+      debug_msg.pose.orientation.z = yaw_err*180.0/3.14195;    
+      debug_msg.pose.orientation.w = epsidot; 
       // debug_msg.pose.position.z = debug_yaw*180/PI;
       // debug_msg.pose.orientation.x = VehicleModel_.debug_preview_feedback; // ;
       // debug_msg.pose.orientation.y = Xk(0); // ;        

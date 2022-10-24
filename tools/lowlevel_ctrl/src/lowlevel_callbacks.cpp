@@ -34,17 +34,37 @@
 
 using namespace std;
 
-void LowlevelCtrl::LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg){
-  light_frame.header.stamp = ros::Time::now();
-  light_frame.id = 0x306;
-  light_frame.dlc = 3;
-  light_frame.is_error = false;
-  light_frame.is_extended = false;
-  light_frame.is_rtr = false;
-  light_frame.data[0] = (unsigned int)msg->left_light & 0b11111111;  
-  light_frame.data[1] = (unsigned int)msg->right_light & 0b11111111;  
-  light_frame.data[2] = (unsigned int)msg->hazard_light & 0b11111111;  
-}
+// void LowlevelCtrl::LightCmdCallback(std_msgs::Float64ConstPtr msg){
+//   light_frame.header.stamp = ros::Time::now();
+//   light_frame.id = 0x306;
+//   light_frame.dlc = 3;
+//   light_frame.is_error = false;
+//   light_frame.is_extended = false;
+//   light_frame.is_rtr = false;
+//   if (msg->data == -1.0) {
+//     AD_LEFT_TURNLAMP_STAT = 1;
+//     AD_RIGHT_TURNLAMP_STAT = 0;
+//     AD_HAZARD_STAT = 0;
+//   }
+//   else if (msg->data == 1.0) {
+//     AD_RIGHT_TURNLAMP_STAT = 1;
+//     AD_LEFT_TURNLAMP_STAT = 0;
+//     AD_HAZARD_STAT = 0;
+//   }
+//   else if (msg->data == 2.0) {
+//     AD_HAZARD_STAT = 1;
+//     AD_LEFT_TURNLAMP_STAT = 0;
+//     AD_RIGHT_TURNLAMP_STAT = 0;
+//   }
+//   else if (msg->data == 0.0) {
+//     AD_HAZARD_STAT = 0;
+//     AD_LEFT_TURNLAMP_STAT = 0;
+//     AD_RIGHT_TURNLAMP_STAT = 0;
+//   }
+//   light_frame.data[0] = (unsigned int)AD_LEFT_TURNLAMP_STAT & 0b11111111;  
+//   light_frame.data[1] = (unsigned int)AD_RIGHT_TURNLAMP_STAT & 0b11111111;  
+//   light_frame.data[2] = (unsigned int)AD_HAZARD_STAT & 0b11111111;  
+// }
 
 void LowlevelCtrl::TargetVelocityCallback(std_msgs::Float64ConstPtr msg){
   target_vel = msg->data;
@@ -99,14 +119,13 @@ void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort
 }
 
 void LowlevelCtrl::LightCallback(std_msgs::Float64ConstPtr msg){  
-  return;
   light_frame.header.stamp = ros::Time::now();
   light_frame.id = 0x306;
   light_frame.dlc = 3;
   light_frame.is_error = false;
   light_frame.is_extended = false;
   light_frame.is_rtr = false;
-  if(msg->data >= 1){
+  if(msg->data == 1.0){
     light_frame.data[0] = (unsigned int)0 & 0b11111111;  
     light_frame.data[1] = (unsigned int)1 & 0b11111111;    
     light_frame.data[2] = (unsigned int)0 & 0b11111111;  
@@ -114,7 +133,7 @@ void LowlevelCtrl::LightCallback(std_msgs::Float64ConstPtr msg){
     light_frame.data[0] = (unsigned int)0 & 0b11111111;  
     light_frame.data[1] = (unsigned int)0 & 0b11111111;    
     light_frame.data[2] = (unsigned int)0 & 0b11111111;  
-  }else if(msg->data <= -1){
+  }else if(msg->data == -1.0){
     light_frame.data[0] = (unsigned int)1 & 0b11111111;  
     light_frame.data[1] = (unsigned int)0 & 0b11111111;    
     light_frame.data[2] = (unsigned int)0 & 0b11111111;    

@@ -207,7 +207,7 @@ public:
 RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p); 
 ~RacingLinePlanner();
 
-
+double goal_x, goal_y;
 double vel_constant;
 bool Mission_start;
 bool Mission_complete;
@@ -234,7 +234,7 @@ void convert_v2x_data();
 
 void viz_pub(const ros::TimerEvent& time);
 bool compute_best_route(int src_idx);
-
+void overwriteGoal(double pos_lat, double pos_long);
 void curve_fitting(hmcl_msgs::Lane& local_traj_msg,std::vector<double> speed_lim);
 PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
 

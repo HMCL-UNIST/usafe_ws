@@ -19,7 +19,7 @@ PidObject::PidObject() : error_(3, 0), filtered_error_(3, 0), error_deriv_(3, 0)
   node_priv.param<double>("Kp", Kp_, 1.0);
   node_priv.param<double>("Ki", Ki_, 0.0);
   node_priv.param<double>("Kd", Kd_, 0.0);
-    Kp_launch = Kp_;
+  Kp_launch = Kp_;
   Ki_launch = Ki_;
   Kd_launch = Kd_;
   node_priv.param<double>("upper_limit", upper_limit_, 1000.0);
@@ -205,18 +205,18 @@ void PidObject::doCalcs()
   // Do fresh calcs if knowledge of the system has changed.
   if (new_state_or_setpt_)
   { 
-    //  if (plant_state_ >= 0 && plant_state_ <= 20) {
-    //   // gain scheduling
-    //   Kp_ = Kp_launch;
-    //   Ki_ = 0.0;
-    //   Kd_ = Kd_launch;
-    // }
-    // else if (plant_state_ > 20 && plant_state_ <= 40) {
-    //   // gain scheduling
-    //   Kp_ = Kp_launch;
-    //   Ki_ = Ki_launch;
-    //   Kd_ = Kd_launch;
-    // }
+     if (plant_state_ <= 22/3.6) {
+      // gain scheduling
+      Kp_ = 0.5;
+      Ki_ = 0.001;
+      Kd_ = 0.1;
+    }
+    else if (plant_state_ > 22/3.6 && plant_state_ <= 120/3.6) {
+      // gain scheduling
+      Kp_ = 1;
+      Ki_ = 0.001;
+      Kd_ = 0.1;
+    }
     // else if (plant_state_ > 40 && plant_state_ <= 60) {
     //   // gain scheduling
     //   Kp_ = Kp_launch;
@@ -374,5 +374,5 @@ void PidObject::doCalcs()
       error_integral_ = 0.0;
   }
 
-  new_state_or_setpt_ = false;
+  // new_state_or_setpt_ = false;
 }

@@ -147,12 +147,9 @@ void dyn_callback(lowlevel_ctrl::testConfig& config, uint32_t level);
 // Vehicle commands Callbacks
 void SteeringCmdCallback(hmcl_msgs::VehicleSteeringConstPtr msg);
 void AccCmdCallback(hmcl_msgs::VehicleSCCConstPtr msg);
-void LightCmdCallback(hmcl_msgs::VehicleLightConstPtr msg);
+// void LightCmdCallback(std_msgs::Float64ConstPtr msg);
 void controlEffortCallback(const std_msgs::Float64& control_effort_input);
 void emergencyRemoteCallback(std_msgs::Float64ConstPtr msg);
-
-
-
 };
 
 

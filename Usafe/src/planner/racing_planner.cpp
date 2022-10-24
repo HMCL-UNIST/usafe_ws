@@ -25,7 +25,8 @@ namespace planner{
   
 RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p):nh_(nh),nh_p_(nh_p)
 {
-
+    goal_x = -72.7966308594; // goal_point.x(); // -205.89;
+    goal_y = 273.854370117; // goal_point.y(); //426.2;  
     nh_p_.param<std::string>("osm_file_name", osm_file_name, "Town01.osm");
     nh_p_.getParam("osm_file_name", osm_file_name);    
     nh_p_.param<std::string>("osm_file_name_for_driving", osm_file_name_for_driving, "Town01.osm");
@@ -112,6 +113,15 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
 
 RacingLinePlanner::~RacingLinePlanner()
 {}
+
+void RacingLinePlanner::overwriteGoal(double pos_lat, double pos_long){   
+    lanelet::GPSPoint goal_gnss_point{pos_lat, pos_long, 0.};
+    lanelet::BasicPoint3d goal_point = projector->forward(goal_gnss_point);        
+    goal_x = goal_point.x();
+    goal_y = goal_point.y();
+
+}
+
 
 void RacingLinePlanner::callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg){
   double local_path_scale = 1.0;
@@ -644,14 +654,15 @@ void RacingLinePlanner::insertDefaultWaypoints(int scenario_num){
     // waypoints_pose.clear();
     // Insert Start and Goal waypoint
      
-    lanelet::GPSPoint goal_gnss_point{35.649286, 128.4013599, 0.};
-    lanelet::BasicPoint3d goal_point = projector->forward(goal_gnss_point);        
+    // lanelet::GPSPoint goal_gnss_point{35.649286, 128.4013599, 0.};
+    // lanelet::BasicPoint3d goal_point = projector->forward(goal_gnss_point);        
 
     lanelet::GPSPoint start_gnss_point{35.6451557, 128.4031224, 0.};
     lanelet::BasicPoint3d start_point = projector->forward(start_gnss_point);        
 
-    double goal_x = -72.7966308594; // goal_point.x(); // -205.89;
-    double goal_y = 273.854370117; // goal_point.y(); //426.2;  
+ 
+    //  goal_x = -72.7966308594; // goal_point.x(); // -205.89;
+    //  goal_y = 273.854370117; // goal_point.y(); //426.2;  
     inserWaypoints(waypoint_max_id+1,goal_x, goal_y, 0, true);    
     double start_x = start_point.x();
     double start_y = start_point.y();
