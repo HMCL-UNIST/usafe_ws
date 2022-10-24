@@ -26,6 +26,7 @@ V2xSimulation::V2xSimulation(const ros::NodeHandle& nh,const ros::NodeHandle& nh
 {
   nh_p_.param<double>("map_origin_lat", origin_lat, 0.0);
   nh_p_.param<double>("map_origin_lon", origin_lon, 0.0);
+  boost_enable = false;
   // nh_p_.param<double>("map_origin_att", origin_att, 0.0);
   v2xPub = nh_.advertise<v2x_msgs::Mission2>("/Mission2", 2);  
   v2xVizPub = nh_.advertise<visualization_msgs::MarkerArray>("/Mission2_Viz", 2);  
@@ -251,13 +252,20 @@ void V2xSimulation::callbackGetGoalPose(const geometry_msgs::PoseStampedConstPtr
 }
 
 void V2xSimulation::simulationCallback(){
-    ros::Rate loop_rate(1); // rate  
+    ros::Rate loop_rate(5); // rate  
       while (ros::ok()){
+              
                v2x_msgs::Mission2 v2x_msgs_;
                v2x_msgs_.header.stamp = ros::Time::now();
                v2x_msgs_.mission_status = Mission_status;
                v2x_msgs_.item_count = mission_waypoints.size();
                for(int i=0; i < mission_waypoints.size(); i++){
+                 if(boost_enable && mission_waypoints[i].item_type ==3){
+                    mission_waypoints[i].item_status = 1;
+                 }
+                 if(!boost_enable && mission_waypoints[i].item_type ==3){
+                    mission_waypoints[i].item_status = 0;
+                 }
                 v2x_msgs_.States.push_back(mission_waypoints[i]);                
                }
                v2xPub.publish(v2x_msgs_);
@@ -271,13 +279,14 @@ void V2xSimulation::simulationCallback(){
 
 
 
+
 void V2xSimulation::dyn_callback(v2x_simulation::testConfig &config, uint32_t level)
 {
    Mission_status    =  config.Mission_Status;
    waypoint_select   = config.Waypoint_Select;
    waypoint_edit     = config.Waypoint_editting;
    boost_duration = config.Boost_duration;
-  
+   boost_enable = config.Boost_enable;
 }
 
 

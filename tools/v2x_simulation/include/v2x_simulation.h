@@ -69,6 +69,7 @@ class V2xSimulation
 private:
 ros::NodeHandle nh_, nh_p_;
 std::mutex mtx_;
+bool boost_enable;
 
 ros::Publisher v2xPub, v2xVizPub;
 ros::Subscriber point_sub;
