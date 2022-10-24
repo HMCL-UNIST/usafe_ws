@@ -14,7 +14,7 @@
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/unist_outv1_path_vel.osm"/>  -->
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/r_Town03_hj_traffic.osm"/> -->
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/ad_road_cw_h.osm"/>  -->
-      <param name="osm_file_name" value="$(find map_loader)/maps/ad_road_1021.osm"/> 
+      <param name="osm_file_name" value="$(find map_loader)/maps/house_test_local_path_1024.osm"/> 
       <!-- <param name="osm_file_name" value="$(find map_loader)/maps/ad_road.osm"/>  -->
 
       

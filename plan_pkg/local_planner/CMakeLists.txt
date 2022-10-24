@@ -46,6 +46,9 @@ add_executable(local_planners src/local_planner.cpp)
 target_link_libraries(local_planners ${catkin_LIBRARIES})
 add_dependencies(local_planners ${catkin_EXPORTED_TARGETS})
 
+add_executable(rollout_planner src/rolloutplanner.cpp)
+target_link_libraries(rollout_planner ${catkin_LIBRARIES})
+add_dependencies(rollout_planner ${catkin_EXPORTED_TARGETS})
 
 add_executable(lirplanner src/lir.cpp)
 target_link_libraries(lirplanner ${catkin_LIBRARIES})
@@ -55,6 +58,7 @@ install(
   TARGETS    
   lirplanner
   local_planners
+  rollout_planner
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

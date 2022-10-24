@@ -54,13 +54,13 @@ VelocityPlanner::VelocityPlanner()
   pose_sub = nh_.subscribe("/pose_estimate", 1, &VelocityPlanner::poseCallback, this);
   wheel_sub = nh_.subscribe("/vehicle_status", 1, &VelocityPlanner::wheelCallback, this);
   acc_sub = nh_.subscribe("/nav/filtered_imu/data", 1, &VelocityPlanner::accCallback, this);
-  // predicted_objects_sub = nh_.subscribe("/tracking_car/object",1, &VelocityPlanner::PredictedObjectsCallback, this);
+          // predicted_objects_sub = nh_.subscribe("/tracking_car/object",1, &VelocityPlanner::PredictedObjectsCallback, this);
   target_sub = nh_.subscribe("/detected_objs",1, &VelocityPlanner::objectCallback,this);
 
-  // traffic_sign_sub = nh_.subscribe("", 1, &VelocityPlanner::TrafficSignCallback, this);    
+  //         // traffic_sign_sub = nh_.subscribe("", 1, &VelocityPlanner::TrafficSignCallback, this);    
   behavior_state_sub = nh_.subscribe("/behavior_state", 1, &VelocityPlanner::BehaviorStateCallback, this);
   behavior_state_condition_sub = nh_.subscribe("/behavior_factor", 1, &VelocityPlanner::BehaviorStateFactorCallback, this);
-  // lanelet_map_sub = nh_.subscribe("", 1, &VelocityPlanner::LaneletCallback, this);
+  //         // lanelet_map_sub = nh_.subscribe("", 1, &VelocityPlanner::LaneletCallback, this);
   local_traj_sub =  nh_.subscribe("/local_traj", 1, &VelocityPlanner::trajCallback,this);
   start_end_sub =  nh_.subscribe("/start_goal_pose", 1, &VelocityPlanner::startendCallback,this);
   v2x_spat_sub = nh_.subscribe("/SPAT",1, &VelocityPlanner::v2xSPATCallback, this);
@@ -75,11 +75,12 @@ VelocityPlanner::VelocityPlanner()
 
 void VelocityPlanner::callbackthread()
 {   
-    ros::Rate loop_rate(runtime); // rate  
-    while(ros::ok()){
-        PlanVel();
-        loop_rate.sleep();
-    }
+  ros::Rate loop_rate(runtime); // rate  
+  while(ros::ok()){
+    PlanVel();
+    // ROS_INFO("11111");
+    loop_rate.sleep();
+  }
 }
 
 void VelocityPlanner::PlanVel()
@@ -90,11 +91,11 @@ void VelocityPlanner::PlanVel()
     ROS_INFO("NO LOCAL TRAJECTORY");
     return;
   }
-  else if (!getBehavior){
+  if (!getBehavior){
     ROS_INFO("NO Behavior PLANNER");
     return;
   }
-  else if (!getMission){
+  if (!getMission){
     ROS_INFO("NO MISSON NODE");
     return;
   }
@@ -342,7 +343,7 @@ void VelocityPlanner::CheckMotionState()
     }
 
 
-    if (Dis <= 15 && DesiredVel <= 0.8){
+    if (Dis <= 20 && DesiredVel <= 0.5){
       targetVel = 0.0;
     }
     else{
@@ -974,7 +975,7 @@ double VelocityPlanner::CheckLeadVehicle(){
     DesiredVel = std::max(DesiredVel, 15/3.6);
   }
 
-  if (Dis <= 15 && DesiredVel <= 0.8){
+  if (Dis <= 20 && DesiredVel <= 0.5){
     targetVel = 0.0;
   }
   else{
@@ -1300,12 +1301,17 @@ void VelocityPlanner::VelocitySmoother()
 //CALLBACK FUNCTION
 void VelocityPlanner::poseCallback(const nav_msgs::Odometry& state_msg)
 {
+
+  if(!get_pose){
+    get_pose = true;
+  }
   current_x = state_msg.pose.pose.position.x;
   current_y = state_msg.pose.pose.position.y;
 }
 
 void VelocityPlanner::accCallback(const sensor_msgs::Imu& msg)
 { 
+  // ROS_INFO("acc is");
   current_acc = msg.linear_acceleration.x;
     // Physically our vehicle shouldnt move above or below threadhold acc +-5m/s^2
   if (current_acc > 0){
@@ -1314,6 +1320,7 @@ void VelocityPlanner::accCallback(const sensor_msgs::Imu& msg)
   if (current_acc < 0){
     current_acc  = std::max(current_acc,-5.0);
   }
+  // ROS_INFO("acc is");
 }
 
 void VelocityPlanner::PredictedObjectsCallback(const autoware_msgs::DetectedObjectArray& msg)
@@ -1321,8 +1328,7 @@ void VelocityPlanner::PredictedObjectsCallback(const autoware_msgs::DetectedObje
   if( msg.objects.size() <= 0){    
     return;    
   }
-
-  // ros::Duration tt_ = ros::Time::now() - obj_time;
+  // ros::Duration tt_ = ros::;Time::now() - obj_time;
   // obj_time = ros::Time::now();
 
   // if (LeadVehicle){
@@ -1347,6 +1353,8 @@ void VelocityPlanner::wheelCallback(const hmcl_msgs::VehicleStatus& state_msg)
 void VelocityPlanner::v2xSPATCallback(const v2x_msgs::SPAT& msg){
     //traffic_signal
     // if(traffic_signal)
+
+    // ROS_INFO("v2x spot id is %d", msg.id);
     if(msg.id == 1){
         getSPAT1 = true;
         junc1Signal = msg;
@@ -1382,8 +1390,9 @@ void VelocityPlanner::startendCallback(const hmcl_msgs::MissionWaypoint& msg)
 void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
 {  
   if(msg.waypoints.size() < 1){
-      return;
+    return;
   }
+  // ROS_INFO("trajectory is");
   getLocalTraj = true;
   MaxVel = 24/3.6;
 
@@ -1462,23 +1471,11 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
   }
   else if (PreviousMode == BehaviorState::StopAtStartPos && PreviousMode != CurrentMode){
     new_behavior_mode = true;
-    find_stopline = false;
-    find_crosswalk = false;
-    find_judgeline = false;
-    passcrosswalk = false;
-    passjudgeline = false;
     wait_tt = 0;
-    stop == false;
   }
   else if (PreviousMode == BehaviorState::StopAtGoalPos && PreviousMode != CurrentMode){
     new_behavior_mode = true;
-    find_stopline = false;
-    find_crosswalk = false;
-    find_judgeline = false;
-    passcrosswalk = false;
-    passjudgeline = false;
     wait_tt = 0;
-    stop == false;
   } 
   else if (PreviousMode != CurrentMode){
     new_behavior_mode = true;
@@ -1489,7 +1486,6 @@ void VelocityPlanner::BehaviorStateCallback(const std_msgs::Int16& msg){
     passjudgeline = false;
     mission_stop = false;
     wait_tt = 0;
-    stop == false;
   }
   else{
     new_behavior_mode = false;
@@ -1626,7 +1622,7 @@ void VelocityPlanner::viz_vel_prof(std::vector<double> profile)
 void VelocityPlanner::objectCallback(const autoware_msgs::DetectedObjectArray& msg)
 {
   
-  if( msg.objects.size() <= 0){    
+  if( msg.objects.size() <= 0 || !get_pose){    
     return;    
   }
 

@@ -92,11 +92,12 @@ class BehaviorPlanner
         // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
         ros::Publisher b_factor_pub, b_state_pub, light_pub;
         // ros::Timer behavior_timer;
+        // std::mutex
         double runRate;
         float wLane, lenEgo, frontlenEgo, dFront,thresFrontStop, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn,thresMinTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed, prev_object_x, prev_object_y;
-        float xObstacle, yObstacle, xSBsign, ySBsign;
+        float xObstacle, yObstacle, xSBsign, ySBsign, lightPrev;
         autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage, mobObj, pedObj;
         double startX, startY, startID, start_idx, goalX, goalY, goalID, goal_idx;
         int targetID;

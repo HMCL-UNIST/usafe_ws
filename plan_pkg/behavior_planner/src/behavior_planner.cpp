@@ -51,25 +51,7 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("thresDistSG", thresDistSG, 15);
     nh_.param<float>("successDistSG", successDistSG, 5); //need to check 
 
-    // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
-    pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::odometryCallback, this);
-    // vel_sub = nh_.subscribe("/current_velocity", 1, &BehaviorPlanner::twistCallback,this);
-    vel_sub = nh_.subscribe("/vehicle_status", 1, &BehaviorPlanner::vehicleStatusCallback, this);
-    // objs_sub = nh_.subscribe("/detection/lidar_tracker/objects",1, &BehaviorPlanner::objsCallback,this);
-    objs_sub = nh_.subscribe("/tracking_car/objects",1, &BehaviorPlanner::objsCallback,this);
-    // objs_sub = nh_.subscribe("/detected_objs",1, &BehaviorPlanner::objsCallback,this);
-    sb_sub = nh_.subscribe("/tracking_traffic_sign/objects",1, &BehaviorPlanner::sbCallback,this);
-    lug_sub = nh_.subscribe("/tracking_unknown/objects",1, &BehaviorPlanner::luggageCallback,this);
-    //goal_sub = nh_.subscribe("move_base_simple/goal", 1, &BehaviorPlanner::callbackGetGoalPose, this);
-    start_goal_sub = nh_.subscribe("/start_goal_pose", 1, &BehaviorPlanner::v2xStartGoalCallback, this);
-    v2x_spat_sub = nh_.subscribe("/SPAT",1, &BehaviorPlanner::v2xSPATCallback, this);
-    // route_sub = nh_.subscribe("/global_traj", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
-    route_sub = nh_.subscribe("/lane_in_range", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
-    mission_sub = nh_.subscribe("/mission_state", 1, &BehaviorPlanner::missionCallback, this);
-    ped_sub = nh_.subscribe("/Ped_in_Crosswalk", 1 , &BehaviorPlanner::pedestrianCallback, this);
-    ret_sub = nh_.subscribe("/local_return", 1, &BehaviorPlanner::localRetCallback, this);
-    target_sub = nh_.subscribe("/detected_objs",1, &BehaviorPlanner::objectCallback,this);
-    ped_obj_sub = nh_.subscribe("/tracking_pedestrian/objects",1, &BehaviorPlanner::pedObjectCallback,this);
+
 
     b_factor_pub = nh_.advertise<hmcl_msgs::BehaviorFactor>("/behavior_factor",1,true);
     b_state_pub = nh_.advertise<std_msgs::Int16>("/behavior_state",1,true);
@@ -157,6 +139,27 @@ BehaviorPlanner::BehaviorPlanner(){
     countStopAtGoalPos = 0;
     prevLaneID = -1;
     pedestrian = false;
+    lightPrev = 0;
+    
+    // pose_sub = nh_.subscribe("/current_pose",1,&BehaviorPlanner::poseCallback,this);
+    pose_sub = nh_.subscribe("/pose_estimate", 1, &BehaviorPlanner::odometryCallback, this);
+    // vel_sub = nh_.subscribe("/current_velocity", 1, &BehaviorPlanner::twistCallback,this);
+    vel_sub = nh_.subscribe("/vehicle_status", 1, &BehaviorPlanner::vehicleStatusCallback, this);
+    // objs_sub = nh_.subscribe("/detection/lidar_tracker/objects",1, &BehaviorPlanner::objsCallback,this);
+    objs_sub = nh_.subscribe("/tracking_car/objects",1, &BehaviorPlanner::objsCallback,this);
+    // objs_sub = nh_.subscribe("/detected_objs",1, &BehaviorPlanner::objsCallback,this);
+    sb_sub = nh_.subscribe("/tracking_traffic_sign/objects",1, &BehaviorPlanner::sbCallback,this);
+    lug_sub = nh_.subscribe("/tracking_unknown/objects",1, &BehaviorPlanner::luggageCallback,this);
+    //goal_sub = nh_.subscribe("move_base_simple/goal", 1, &BehaviorPlanner::callbackGetGoalPose, this);
+    start_goal_sub = nh_.subscribe("/start_goal_pose", 1, &BehaviorPlanner::v2xStartGoalCallback, this);
+    v2x_spat_sub = nh_.subscribe("/SPAT",1, &BehaviorPlanner::v2xSPATCallback, this);
+    // route_sub = nh_.subscribe("/global_traj", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
+    route_sub = nh_.subscribe("/lane_in_range", 1, &BehaviorPlanner::routeCallback, this);//need to fix topic name
+    mission_sub = nh_.subscribe("/mission_state", 1, &BehaviorPlanner::missionCallback, this);
+    ped_sub = nh_.subscribe("/Ped_in_Crosswalk", 1 , &BehaviorPlanner::pedestrianCallback, this);
+    ret_sub = nh_.subscribe("/local_return", 1, &BehaviorPlanner::localRetCallback, this);
+    target_sub = nh_.subscribe("/detected_objs",1, &BehaviorPlanner::objectCallback,this);
+    ped_obj_sub = nh_.subscribe("/tracking_pedestrian/objects",1, &BehaviorPlanner::pedObjectCallback,this);
 
     boost::thread callbackhandler(&BehaviorPlanner::callbackthread,this); 
 }
@@ -234,23 +237,27 @@ void BehaviorPlanner::updateFactors(){
     std::cout<< "--BEHAVIOR--BEHAVIOR--BEHAVIOR--BEHAVIOR-- " <<std::endl;
     // ROS_INFO("---------------BEHAVIOR_PLANNER----------------");
     while(1){
+        ROS_INFO("Checker111111111111");
         if(!getPose){
             ROS_INFO("Can not receive pose");
             break;
         }
+        ROS_INFO("Checker222222222222222");
         if(!getSpeed){
             ROS_INFO("Can not receive speed");
             break;
         }
+        ROS_INFO("Checker3333333333");
         if(!getSGpos){
             ROS_INFO("Can not receive start and goal pos");
             break;
         }
-
+        ROS_INFO("Checker333333333");
         if(target_msg.node_wpts.size()<1){
             ROS_INFO("Empty mission node waypoints");
             break;
         }
+        ROS_INFO("Checker44444444444");
         // behavior factors
         missionStart = true; //for test
         // leftTurn = false;
@@ -404,7 +411,7 @@ void BehaviorPlanner::updateFactors(){
         }
 
 
-
+        float velMob = -1;
         float xObj[on], yObj[on], vxObj[on], vyObj[on], velObj[on];
         float sObj[on], lObj[on], dsObj[on], dlObj[on];
         float xSB[sbn], ySB[sbn], vxSB[sbn], vySB[sbn], sSB[sbn], lSB[sbn];
@@ -485,7 +492,11 @@ void BehaviorPlanner::updateFactors(){
                 idxtmp++;
             }
         }
-    
+        if(mobObj.objects.size()>0){
+            float vxMob = mobObj.objects[0].velocity.linear.x*cos(yaw) - mobObj.objects[0].velocity.linear.y*sin(yaw);
+            float vyMob = mobObj.objects[0].velocity.linear.x*sin(yaw) + mobObj.objects[0].velocity.linear.y*cos(yaw);
+            velMob = sqrt(pow(vxMob,2)+pow(vyMob,2));
+        }
 
         // calculate Frenet longitudinal length of egolane            
         psarr = sarr0;
@@ -655,6 +666,10 @@ void BehaviorPlanner::updateFactors(){
                 frontCar = true;
                 frontPrev = true;
                 front_dist = mob_dist;
+                if (velMob != -1 && velMob < thresStop){
+                    stationaryFrontCar = true;
+                    stationaryPrev = true;
+                }
                 ROS_INFO("mobileye frontcar!!");
             } 
         }
@@ -1031,18 +1046,18 @@ void BehaviorPlanner::updateFactors(){
         }
 
 
-        if(countInit2 > runRate*thresInit2){
-            missionStart = true;
-            ROS_INFO("Init2 Time Out!!!");
-        }
+        // if(countInit2 > runRate*thresInit2){
+        //     missionStart = true;
+        //     ROS_INFO("Init2 Time Out!!!");
+        // }
         if(countStopAtStartPos > runRate*thresStopAtStartPos){
             startArrivalCheck = true;
             ROS_INFO("StopAtStartPos Time Out!!!");
         }
-        if(countStartArrival > runRate*thresStartArrival){
-            startArrivalSuccess = true;
-            ROS_INFO("StartArrival Time Out!!!");
-        }
+        // if(countStartArrival > runRate*thresStartArrival){
+        //     startArrivalSuccess = true;
+        //     ROS_INFO("StartArrival Time Out!!!");
+        // }
         // if(countPedestrian >= runRate*thresPedestrian){
         //     pedestrianOnCrosswalk = false;
         //     countPedestrian++;
@@ -1369,9 +1384,10 @@ void BehaviorPlanner::updateBehaviorState(){
                 tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
                 tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
                 tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+                if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) lightPrev = -1;
+                else lightPrev = 1;
             }
-            if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) light_msg.data = -1;
-            else light_msg.data = 1;
+            light_msg.data = lightPrev;
         }
         else{
             if(prevBehavior!=BehaviorState::LaneChange){
@@ -1379,9 +1395,10 @@ void BehaviorPlanner::updateBehaviorState(){
                 tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
                 tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
                 tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+                if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) lightPrev = 1;
+                else lightPrev = -1;
             }
-            if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) light_msg.data = 1;
-            else light_msg.data = -1;
+            light_msg.data = lightPrev;
         }
     }
     else if(currentBehavior == BehaviorState::ObstacleLaneChange && globalLaneArray.lanes.size() >= 2){
@@ -1390,9 +1407,10 @@ void BehaviorPlanner::updateBehaviorState(){
             tmpy0 = globalLaneArray.lanes[0].waypoints[1].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
             tmpx1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.x - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.x;
             tmpy1 = globalLaneArray.lanes[1].waypoints[0].pose.pose.position.y - globalLaneArray.lanes[0].waypoints[0].pose.pose.position.y;
+            if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) lightPrev = -1;
+            else lightPrev = 1;
         }
-        if(tmpx0*tmpy1-tmpx1*tmpy0 > 0) light_msg.data = -1;
-        else light_msg.data = 1;
+        light_msg.data = lightPrev;
     }
     else if(currentBehavior == BehaviorState::LeftTurn) light_msg.data = -1;
     else if(currentBehavior == BehaviorState::RightTurn) light_msg.data = 1;
