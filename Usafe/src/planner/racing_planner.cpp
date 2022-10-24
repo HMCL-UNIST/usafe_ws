@@ -77,8 +77,8 @@ RacingLinePlanner::RacingLinePlanner(const ros::NodeHandle& nh,const ros::NodeHa
     boost_duration_pub = nh_.advertise<std_msgs::Float64>("/boost_duration", 2, true);      
     local_lane_statePub = nh_.advertise<std_msgs::Float64>("/local_lane_state", 2, true);      
     
-    curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
-    // curpose_sub = nh_.subscribe("/initialpose", 1, &RacingLinePlanner::currentposeCallback, this);
+    // curpose_sub = nh_.subscribe("/pose_estimate", 1, &RacingLinePlanner::currentposeCallback, this);
+    curpose_sub = nh_.subscribe("/initialpose", 1, &RacingLinePlanner::currentposeCallback, this);
     vehicle_status_sub = nh_.subscribe("/vehicle_status", 1, &RacingLinePlanner::callbackVehicleStatus, this);
     
 
@@ -306,13 +306,29 @@ void RacingLinePlanner::localPathGenCallback() {
         cur_projected_pose.position.x = cur_projected_point.x();
         cur_projected_pose.position.y = cur_projected_point.y();        
         ///////////////////////////
-          int current_closest_lanelet_id = get_closest_lanelet(road_lanelets_const_for_driving,cur_pose.pose);      
+          int current_closest_lanelet_index = get_closest_lanelet(road_lanelets_const_for_driving,cur_pose.pose);      
+          int current_closest_lanelet_id = road_lanelets_const_for_driving.at(current_closest_lanelet_index).id();
         bool canLanechange = false;
-        if(trafficRules->canChangeLane(road_lanelets_const_for_driving.at(wp_closest_lane_idx), road_lanelets_const_for_driving.at(current_closest_lanelet_id)))
-        {
-            canLanechange = true;
-            ROS_INFO(" lane changable");
+        std::vector<int> no_lanechange_id = {29068,32707,25618,44981,32706,45257,47798};
+        
+        if(std::find(no_lanechange_id.begin(), no_lanechange_id.end(), current_closest_lanelet_id) != no_lanechange_id.end()){
+                // ROS_INFO(" Impossible to lane change");
+                    canLanechange = false;
+        }else{
+                canLanechange = true;
+            // ROS_INFO(" lane changable");
+          
         }
+        
+
+
+        // if(trafficRules->canChangeLane(road_lanelets_const_for_driving.at(wp_closest_lane_idx), road_lanelets_const_for_driving.at(current_closest_lanelet_id)))
+        // {
+        //     canLanechange = true;
+        //     ROS_INFO(" lane changable");
+        // }else{
+        //     ROS_INFO(" Impossible to lane change");
+        // }
         
 
 
@@ -354,7 +370,7 @@ void RacingLinePlanner::localPathGenCallback() {
                 // lane change offset computing //////////////
                  double shift_distance = 0.0;
                 //  shift_distance = cur_pose_cord.distance*shift_speed_ratio;                
-                 ROS_WARN("cur_pose_cord.distance = %f", cur_pose_cord.distance);
+                 ROS_WARN("cur_pose_cord.distance lane change = %f", cur_pose_cord.distance);
                 //  ROS_WARN("shift_distance_amount = %f", shift_distance_amount);
                  
                     // if(fabs(cur_pose_cord.distance) > 1.0){
@@ -364,10 +380,10 @@ void RacingLinePlanner::localPathGenCallback() {
                         // ROS_INFO("Amount change");            
                         if(cur_pose_cord.distance > 0){                            
                             shift_distance = cur_pose_cord.distance - shift_distance_amount;
-                            shift_distance = std::max(shift_distance,0.0);                    
+                            shift_distance = std::max(shift_distance,-0.2);                    
                         }else{                           
                             shift_distance = cur_pose_cord.distance + shift_distance_amount;
-                            shift_distance = std::min(shift_distance,0.0);                                        
+                            shift_distance = std::min(shift_distance,0.2);                                        
                         } 
                     //  }
                  
@@ -473,6 +489,16 @@ void RacingLinePlanner::Compute_and_pub_Velocity(std::vector<double> &speed_limi
     
     if(Mission_complete){
         vel_msg.data = 0.0;
+    }
+     
+    std::vector<int> stop_lane_idx = {36488,36489, 47798};
+    int current_closest_lanelet_index = get_closest_lanelet(road_lanelets_const_for_driving,cur_pose.pose);      
+    int current_closest_lanelet_id = road_lanelets_const_for_driving.at(current_closest_lanelet_index).id();
+    
+    if(std::find(stop_lane_idx.begin(), stop_lane_idx.end(), current_closest_lanelet_id) != stop_lane_idx.end()){
+       if(global_path_wps.size()== 0){
+           vel_msg.data = 0.0;
+       }         
     }
     velPub.publish(vel_msg);
     
@@ -837,8 +863,8 @@ void RacingLinePlanner::sortGlobalWaypoints(){
 }
 
 
-// void RacingLinePlanner::currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg){    
-void RacingLinePlanner::currentposeCallback(const nav_msgs::OdometryConstPtr &msg){
+void RacingLinePlanner::currentposeCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &msg){    
+// void RacingLinePlanner::currentposeCallback(const nav_msgs::OdometryConstPtr &msg){
     mu_mtx.lock();
     cur_pose.header = msg->header;
     cur_pose.pose = msg->pose.pose;

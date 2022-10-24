@@ -154,6 +154,30 @@ void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
   if( msg->States.size() < 1){
     return;
   }
+     for(int i=0; i< msg->States.size(); i++){    
+    //Override boost waypoint as goal
+    // if(msg->States[i].item_type ==3){
+    //   mtx.lock();
+    //   race_planner_->overwriteGoal(msg->States[i].pos_lat, msg->States[i].pos_long);
+      
+    //   mtx.unlock();
+    // }
+
+    //
+    if(msg->States[i].item_type ==3 && msg->States[i].item_status == 1){      
+      if(boost_enable_idx.size() > 0){
+        if(std::find(boost_enable_idx.begin(), boost_enable_idx.end(), msg->States[i].item_id) != boost_enable_idx.end()){
+            continue; // Found element in the history 
+        }
+      }
+        boost_enable_idx.push_back(msg->States[i].item_id);
+        ros::Time boost_time = ros::Time::now();  
+        mtx.lock();    
+        race_planner_->setup_boostup(boost_time, msg->States[i].speed, msg->States[i].duration);
+        mtx.unlock();
+    }
+  }
+
   if(!v2x_received){
     mtx.lock();
     prev_v2x_msg = *msg;
@@ -174,6 +198,8 @@ void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
   mtx.lock(); 
   race_planner_->v2x_data=v2x_msg; 
   mtx.unlock(); 
+ 
+
  ////////////// Update waypoints if so
   if(mission_state == MissionState::InitialSetup || mission_state == MissionState::WaitforCue){
     mtx.lock(); 
@@ -190,28 +216,7 @@ void Usafe::callbackV2X(const v2x_msgs::Mission2ConstPtr &msg){
   prev_v2x_msg = v2x_msg;
 
   /////////////////////////
-  for(int i=0; i< msg->States.size(); i++){    
-    //Override boost waypoint as goal
-    if(msg->States[i].item_type ==3){
-      mtx.lock();
-      race_planner_->overwriteGoal(msg->States[i].pos_lat, msg->States[i].pos_long);
-      mtx.unlock();
-    }
 
-    //
-    if(msg->States[i].item_type ==3 && msg->States[i].item_status == 1){      
-      if(boost_enable_idx.size() > 0){
-        if(std::find(boost_enable_idx.begin(), boost_enable_idx.end(), msg->States[i].item_id) != boost_enable_idx.end()){
-            continue; // Found element in the history 
-        }
-      }
-        boost_enable_idx.push_back(msg->States[i].item_id);
-        ros::Time boost_time = ros::Time::now();  
-        mtx.lock();    
-        race_planner_->setup_boostup(boost_time, msg->States[i].speed, msg->States[i].duration);
-        mtx.unlock();
-    }
-  }
 }
 
 void Usafe::dyn_callback(usafe::testConfig &config, uint32_t level)

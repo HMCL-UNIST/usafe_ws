@@ -16,6 +16,7 @@
       <param name="map_origin_lon" value="128.401913578"/>  
       <param name="map_origin_att" value="25.797"/>  
 
+      
        <!-- <param name="map_origin_lat" value="35.64698633754966"/> 
       <param name="map_origin_lon" value="128.40112675332395"/>  
       <param name="map_origin_att" value="25.797"/>  -->
@@ -32,10 +33,10 @@
       
 
       <!-- <param name="osm_file_name" value="$(find path_recorder)/maps/unist_outv1.osm"/>  -->
-      <param name="osm_file_name" value="$(find path_recorder)/maps/ctrl_test.osm"/> 
+      <param name="osm_file_name" value="$(find path_recorder)/maps/new_highspeed.osm"/> 
       <param name="visualize_path" value="True"/> 
       <param name="line_resolution" value="150.0"/> 
-      <param name="point_resolution" value="5.0"/> 
+      <param name="point_resolution" value="1.0"/> 
 
       
 

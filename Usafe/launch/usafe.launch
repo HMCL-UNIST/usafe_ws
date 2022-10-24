@@ -3,14 +3,14 @@
 <launch>
 
 
-  <node name="usafe" pkg="usafe" type="usafe" output="log">      
+  <node name="usafe" pkg="usafe" type="usafe" output="screen">      
       
       <remap from="/current_pose" to="/gnss_pose_world"/>  
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
       <param name="osm_file_name" value="$(find usafe)/maps/race_track_v18_fix.osm"/> 
-      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v19_continue_fix.osm"/> 
+      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v20_continue_fix.osm"/> 
       <!-- <param name="osm_file_name_for_driving" value="$(find usafe)/maps/ad_road_hj_v6_fix.osm"/>  -->
       
       
@@ -65,7 +65,7 @@
 
       <param name="lane_change_in_sec" value="5.0"/> 
       <param name="lanechange_fsm_period" value="0.1"/> 
-      <param name="shift_distance_amount" value="1.4"/> 
+      <param name="shift_distance_amount" value="1.6"/> 
       
       
       
