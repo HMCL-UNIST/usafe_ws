@@ -102,14 +102,16 @@ class SystemManager():
         self.process_stop_sub = rospy.Subscriber("/usafe/stopper",Bool,self.stoppercallback)
         
 
-
-        # self.main_timer = rospy.Timer(rospy.Duration(0.1), self.mainCallback)
+        self.system_ready = False
+        self.main_timer = rospy.Timer(rospy.Duration(0.1), self.mainCallback)
         self.cleanROSLog()
         rospy.sleep(1)
         rospy.loginfo("cleaning ros log")
+        
         self.init_process()
 
         self.init_controller()   
+        self.system_ready = True
 
         #self.srv = Server(sysConfig, self.dyn_callback)
     
@@ -675,10 +677,27 @@ class SystemManager():
         self.killFastLio()
         
 
-    # def mainCallback(self, timer):
+    def mainCallback(self, timer):
+        if self.system_ready is False:
+            return
+        preview_debug_msg = None
+        try:
+            preview_debug_msg = rospy.wait_for_message('/preview_debug', PoseStamped, timeout=0.1)            
+        except:
+            print(preview_debug_msg)
+            if preview_debug_msg is None:
+                rospy.logwarn("no preview message received ")
+                self.killPREVIEW()
+                rospy.sleep(0.01)                
+                self.initPREVIEW()
+                rospy.logwarn("Preview Ctrl Re-Activated")
+        
+        
+        
 
-        # if self.sensor_ready is not True:
-        #     self.init_setup():
+        
+
+        
         
 
   

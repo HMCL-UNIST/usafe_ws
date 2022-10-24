@@ -77,6 +77,9 @@ class SystemManager():
         self.tdr = None
         self.pid = None
         self.preview = None
+        self.previews = []
+        self.t_previews = []
+
         self.usafe = None
         self.v2x = None
         self.fix2pose = None
@@ -84,6 +87,8 @@ class SystemManager():
         self.lowlevel = None
         self.fast = None
         self.lidar = None
+
+        self.preview_recount=1
 
         self.imu_switch = False
         self.can_switch = False
@@ -102,14 +107,15 @@ class SystemManager():
         self.process_stop_sub = rospy.Subscriber("/usafe/stopper",Bool,self.stoppercallback)
         
 
-
-        # self.main_timer = rospy.Timer(rospy.Duration(0.1), self.mainCallback)
+        self.system_ready = False
+        self.main_timer = rospy.Timer(rospy.Duration(0.5), self.mainCallback)
+        
         self.cleanROSLog()
         rospy.sleep(1)
         rospy.loginfo("cleaning ros log")
-        self.init_process()
+        # self.init_process()
         self.init_controller()
-
+        self.system_ready = True
         #self.srv = Server(sysConfig, self.dyn_callback)
     
     # def dyn_callback(self,config, level):
@@ -205,11 +211,11 @@ class SystemManager():
     def initEstimator(self):
         if self.estimator is None:
             self.qestimator=Queue()
-            self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'])
-            # self.estimator = Popen(['roslaunch','speedy_estimator','high_newSE.launch'])
-            # self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
-            # self.t_estimator.daemon = True            
-            # self.t_estimator.start()            
+            self.estimator = Popen(['roslaunch','gnss_estimator','gnss_stateEstimator.launch'],stdout=PIPE, stderr=PIPE)
+            # self.estimator = Popen(['roslaunch','speedy_estimator','  high_newSE.launch'])
+            self.t_estimator= Thread(target=enque_output, args=(self.estimator.stdout,self.qestimator))
+            self.t_estimator.daemon = True            
+            self.t_estimator.start()            
             rospy.loginfo("Estimator process open")
 
 
@@ -243,13 +249,24 @@ class SystemManager():
             rospy.loginfo("Usafe process open")
 
     def initPREVIEW(self):
-        if self.preview is None:
-            self.qpreview=Queue()
-            self.preview = Popen(['roslaunch','highspeed_ctrl','highspeed_ctrl.launch'],stdout=PIPE, stderr=PIPE)
-            self.t_preview= Thread(target=enque_output, args=(self.preview.stdout,self.qpreview))
-            self.t_preview.daemon = True            
-            self.t_preview.start()            
-            rospy.loginfo("Highspeed Ctrl process open")
+        # if self.preview is None:
+        qpreview=Queue()
+        preview = Popen(['roslaunch','highspeed_ctrl','highspeed_ctrl.launch'])
+        # t_preview= Thread(target=enque_output, args=(preview.stdout,qpreview))
+        # t_preview.daemon = True            
+        # t_preview.start()            
+        # self.t_previews.append(t_preview)
+        rospy.loginfo("Highspeed Ctrl process open")
+        self.previews.append(preview)
+        
+    
+    def reinitPREVIEW(self):
+        self.qpreview2=Queue()
+        self.preview2 = Popen(['roslaunch','highspeed_ctrl','highspeed_ctrl.launch'],stdout=PIPE, stderr=PIPE)
+        self.t_preview2= Thread(target=enque_output, args=(self.preview2.stdout,self.qpreview2))
+        self.t_preview2.daemon = True            
+        self.t_preview2.start()            
+        rospy.loginfo("Highspeed Ctrl process reopen")
 
     def initPID(self):
         if self.pid is None:
@@ -397,19 +414,56 @@ class SystemManager():
             self.usafe = None
 
     def killPREVIEW(self):
-        if self.preview is not None:
+
+        if len(self.previews) != 0:            
+            preview = self.previews[-1]        
+            poll = preview.poll()
+            if poll is None:     
+                rospy.logwarn("poll is none --> process alive")
+                preview_debug_msg = None
+                try:
+                    preview_debug_msg = rospy.wait_for_message('/preview_debug', PoseStamped, timeout=0.5)            
+                except:   
+                    # process not responding   --> kill                
+                    pass                
+                if preview_debug_msg is not None:
+                    # msg is working now --> no kill 
+                    return
+            else:                
+                rospy.logwarn("poll is not none --> process end")
+                return
+                
+        
+
+        if len(self.previews) == 0:
+            preview = None
+            return
+        else:
+            preview = self.previews[-1]        
+            poll = preview.poll()
+            if poll is None:                
+            #     # subprocess is alive 
+                rospy.loginfo("poll is none")    
+            #     return        
+            # else:
+            #     # subprocess is not alive
+            #     rospy.loginfo("poll is not none")
+            #     return
+                
+        
+        if preview is not None:            
             try:
-                self.preview.communicate(timeout=1)
+                preview.communicate(timeout=1)
             except TimeoutExpired:
                 print('communicate pass')
+                print('sending sigint',datetime.now().strftime("%H:%M:%S"))
+                preview.send_signal(SIGINT)
+                print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
+                preview.communicate()
+                print('turned off!',datetime.now().strftime("%H:%M:%S"))      
+                rospy.loginfo("Highspeed Ctrl process END")
+                self.previews.pop()                  
             
-            print('sending sigint',datetime.now().strftime("%H:%M:%S"))
-            self.preview.send_signal(SIGINT)
-            print('subprocess.communicate',datetime.now().strftime("%H:%M:%S"))
-            self.preview.communicate()
-            print('turned off!',datetime.now().strftime("%H:%M:%S"))      
-            rospy.loginfo("Highspeed Ctrl process END")
-            self.preview = None
 
     def killPID(self):
         if self.pid is not None:
@@ -509,17 +563,17 @@ class SystemManager():
 
         
 
-        rospy.sleep(1)
-        self.initLowCtrl()
+        # rospy.sleep(1)
+        # self.initLowCtrl()
 
-        can_receive_msg = None
-        while can_receive_msg is None:
-            try:
-                can_receive_msg = rospy.wait_for_message('/driving_gui', String, timeout=1)
-            except:
-                pass
-        rospy.logwarn("Lowlevel received")
-        rospy.logwarn("SYSTEM IS READY!!!!!!!!!!!!!!!!!!!")
+        # can_receive_msg = None
+        # while can_receive_msg is None:
+        #     try:
+        #         can_receive_msg = rospy.wait_for_message('/driving_gui', String, timeout=1)
+        #     except:
+        #         pass
+        # rospy.logwarn("Lowlevel received")
+        # rospy.logwarn("SYSTEM IS READY!!!!!!!!!!!!!!!!!!!")
 
     
     def init_process(self):
@@ -652,11 +706,29 @@ class SystemManager():
         self.killFix2pose()
         self.killFastLio()
         
+    def checkPreview(self):
+        # if(self.preview_recount > 0):
+        preview_debug_msg = None
+        # try:
+        try:
+            preview_debug_msg = rospy.wait_for_message('/preview_debug', PoseStamped, timeout=0.2)  
+        except:                                           
+            if preview_debug_msg is None:   
+                rospy.logwarn("no preview message received ")
+                rospy.sleep(0.01)                
+                self.killPREVIEW()
+                rospy.sleep(0.01)                
+                self.initPREVIEW()           
+                rospy.sleep(0.5)    
+                self.preview_recount = self.preview_recount-1
+                rospy.logwarn("Preview Ctrl Re-Activated")
 
-    # def mainCallback(self, timer):
 
-        # if self.sensor_ready is not True:
-        #     self.init_setup():
+    def mainCallback(self, timer):
+        
+        if self.system_ready is False:
+            return
+        self.checkPreview()
         
 
   

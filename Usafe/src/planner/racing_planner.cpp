@@ -310,7 +310,7 @@ void RacingLinePlanner::localPathGenCallback() {
           int current_closest_lanelet_id = road_lanelets_const_for_driving.at(current_closest_lanelet_index).id();
         bool canLanechange = false;
         std::vector<int> no_lanechange_id = {29068,32707,25618,44981,32706,45257,47798};
-        
+        std::vector<int> left_turn_signal_lane_idx = {44981,32706,45257,32707};
         if(std::find(no_lanechange_id.begin(), no_lanechange_id.end(), current_closest_lanelet_id) != no_lanechange_id.end()){
                 // ROS_INFO(" Impossible to lane change");
                     canLanechange = false;
@@ -319,7 +319,8 @@ void RacingLinePlanner::localPathGenCallback() {
             // ROS_INFO(" lane changable");
           
         }
-        
+        ////////////////////
+ 
 
 
         // if(trafficRules->canChangeLane(road_lanelets_const_for_driving.at(wp_closest_lane_idx), road_lanelets_const_for_driving.at(current_closest_lanelet_id)))
@@ -377,13 +378,20 @@ void RacingLinePlanner::localPathGenCallback() {
                     //     shift_distance = cur_pose_cord.distance*shift_speed_ratio;                
                     //     ROS_INFO("Ratio change");
                     // }else{        
-                        // ROS_INFO("Amount change");            
+                        // ROS_INFO("Amount change");      
+                        double jump_shift_distance_amount = 0.5;      
                         if(cur_pose_cord.distance > 0){                            
                             shift_distance = cur_pose_cord.distance - shift_distance_amount;
-                            shift_distance = std::max(shift_distance,-0.2);                    
+                            // if(cur_pose_cord.distance > 3.5){
+                            //     shift_distance = shift_distance - jump_shift_distance_amount;
+                            // }
+                            shift_distance = std::max(shift_distance,-0.3);                    
                         }else{                           
                             shift_distance = cur_pose_cord.distance + shift_distance_amount;
-                            shift_distance = std::min(shift_distance,0.2);                                        
+                            // if(cur_pose_cord.distance < -3.5){
+                            //     shift_distance = shift_distance + jump_shift_distance_amount;
+                            // }
+                            shift_distance = std::min(shift_distance,0.3);                                        
                         } 
                     //  }
                  
@@ -398,7 +406,13 @@ void RacingLinePlanner::localPathGenCallback() {
                 }
             }
 
-        }                 
+        }       
+        
+        if(std::find(left_turn_signal_lane_idx.begin(), left_turn_signal_lane_idx.end(), current_closest_lanelet_id) != left_turn_signal_lane_idx.end()){
+                // Left turn signal on
+                    light_data.data = -1.0;
+        }
+                  
     }else{        
         // No waypoints available --> just laneFollow        
         light_data.data = 0.0;

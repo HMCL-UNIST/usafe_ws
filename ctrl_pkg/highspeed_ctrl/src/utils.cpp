@@ -260,8 +260,8 @@ void convertWaypointsToMPCTrajWithResample(const hmcl_msgs::Lane &path, const st
   {
     if (ref_index[i] < ref_index[i - 1])
     {
-      ROS_ERROR("[convertWaypointsToMPCTrajWithResample] resampling index must be monotonically increasing. idx[%d] = %f, idx[%d+1] = %f",
-                i, ref_index[i], i, ref_index[i + 1]);
+      // ROS_ERROR("[convertWaypointsToMPCTrajWithResample] resampling index must be monotonically increasing. idx[%d] = %f, idx[%d+1] = %f",
+                // i, ref_index[i], i, ref_index[i + 1]);
       return;
     }
   }
@@ -372,7 +372,7 @@ bool calcNearestPoseInterp(const Trajectory &traj, const geometry_msgs::Pose &se
 
   if (traj.size() == 0)
   {
-    ROS_WARN("[calcNearestPoseInterp] trajectory size is zero");
+    ROS_INFO("[calcNearestPoseInterp] trajectory size is zero");
     return false;
   }
   const double my_x = self_pose.position.x;
@@ -401,7 +401,7 @@ bool calcNearestPoseInterp(const Trajectory &traj, const geometry_msgs::Pose &se
   }
   if (nearest_index_tmp == -1)
   {
-    ROS_WARN("[calcNearestPoseInterp] yaw error is over PI/3 for all waypoints. no closest waypoint found.");
+    // ROS_WARN("[calcNearestPoseInterp] yaw error is over PI/3 for all waypoints. no closest waypoint found.");
     return false;
   }
 

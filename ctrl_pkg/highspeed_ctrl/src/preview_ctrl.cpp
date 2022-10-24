@@ -203,7 +203,7 @@ void PreviewCtrl::reschedule_weight(double speed){
         VehicleModel_.setWeight( Qweight, R_weight);
       }
         // For Low speed  
-        // ROS_WARN("low speed tune");       
+        // ROS_INFO("low speed tune");       
       // std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
 
       
@@ -290,12 +290,12 @@ void PreviewCtrl::ControlLoop()
         auto start = std::chrono::steady_clock::now();        
         
         ///////////////////////////////////////////////////////
-
+        debugPub.publish(debug_msg);
         // Prepare current State for state feedback control 
         if(!stateSetup()){
-          ROS_WARN("Path is not close to the current position");
+          ROS_INFO("Path is not close to the current position");
           debug_msg.header.stamp = ros::Time::now();    
-          debugPub.publish(debug_msg);
+          
            loop_rate.sleep();
           continue;
         }
@@ -313,7 +313,7 @@ void PreviewCtrl::ControlLoop()
         
         bool riccati_solved = VehicleModel_.solveRiccati();
         if(!riccati_solved){
-          ROS_WARN("solution not found ~~~!!!!!!! control lost"); 
+          ROS_INFO("solution not found ~~~!!!!!!! control lost"); 
            loop_rate.sleep();
           continue;
         }
@@ -332,7 +332,7 @@ void PreviewCtrl::ControlLoop()
         
         
         if( fabs(diff_delta)/dt > angle_rate_limit ){
-          ROS_WARN("rate limit reached!!! angle_rate_limit = %f",angle_rate_limit);
+          ROS_INFO("rate limit reached!!! angle_rate_limit = %f",angle_rate_limit);
           if(diff_delta>0){
               delta_cmd = prev_delta_cmd + angle_rate_limit*dt;
           }else{
@@ -404,6 +404,7 @@ void PreviewCtrl::ControlLoop()
         steer_msg.steering_angle = delta_cmd;        
 
         steerPub.publish(steer_msg);
+        // debugPub.publish(debug_msg);
         ///////////////////////////////////////////////////////
         // record control inputs 
         delta_buffer.push_back(delta_cmd);
@@ -416,7 +417,7 @@ void PreviewCtrl::ControlLoop()
      loop_rate.sleep();
      std::chrono::duration<double> elapsed_seconds = end-start;
      if ( elapsed_seconds.count() > dt){
-       ROS_ERROR("computing control gain takes too much time");
+       ROS_INFO("computing control gain takes too much time");
        std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
      }
       
@@ -437,7 +438,7 @@ bool PreviewCtrl::stateSetup(){
   geometry_msgs::Pose nearest_pose;
   if (!calcNearestPoseInterp(traj_, vehicle_status_.pose, nearest_pose, nearest_index, dist_err, yaw_err, nearest_traj_time))
   {
-    ROS_WARN("error in calculating nearest pose. stop mpc.");
+    ROS_INFO("error in calculating nearest pose. stop mpc.");
     return false;
   };
 
@@ -486,7 +487,7 @@ bool PreviewCtrl::stateSetup(){
       }
 
       debug_msg.header.stamp = ros::Time::now();    
-      debugPub.publish(debug_msg);
+      // debugPub.publish(debug_msg);
       // debug_msg.pose.orientation.x = err_lat;  
       // debug_msg.pose.orientation.y = eydot;  
       // debug_msg.pose.orientation.z = yaw_err*180.0/3.14195;    
@@ -578,7 +579,7 @@ void PreviewCtrl::callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg)
           !MoveAverageFilter::filt_vector(path_filter_moving_ave_num_, traj.yaw) ||
           !MoveAverageFilter::filt_vector(path_filter_moving_ave_num_, traj.vx))
       {
-        ROS_WARN("path callback: filtering error. stop filtering");
+        ROS_INFO("path callback: filtering error. stop filtering");
         return;
       }
     }
