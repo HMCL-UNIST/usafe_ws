@@ -99,7 +99,7 @@ void LowlevelCtrl::controlEffortCallback(const std_msgs::Float64& control_effort
 }
 
 void LowlevelCtrl::LightCallback(std_msgs::Float64ConstPtr msg){  
-  return;
+  
   light_frame.header.stamp = ros::Time::now();
   light_frame.id = 0x306;
   light_frame.dlc = 3;

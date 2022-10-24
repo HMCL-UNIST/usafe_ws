@@ -116,6 +116,7 @@ void LowlevelCtrl::InitCanmsg(){
   light_frame.data[0] = (unsigned int)0 & 0b11111111;  
   light_frame.data[1] = (unsigned int)0 & 0b11111111;  
   light_frame.data[2] = (unsigned int)0 & 0b11111111;  
+   AcanPub.publish(light_frame); 
   usleep(2000000);
   ROS_INFO("Init complete");
 }

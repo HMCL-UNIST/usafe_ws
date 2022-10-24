@@ -108,6 +108,7 @@ class SystemManager():
         rospy.sleep(1)
         rospy.loginfo("cleaning ros log")
         self.init_process()
+        self.init_controller()
 
         #self.srv = Server(sysConfig, self.dyn_callback)
     

@@ -125,7 +125,7 @@ void LowlevelCtrl::LightCallback(std_msgs::Float64ConstPtr msg){
   light_frame.is_error = false;
   light_frame.is_extended = false;
   light_frame.is_rtr = false;
-  if(msg->data == 1.0){
+  if(msg->data >= 1){
     light_frame.data[0] = (unsigned int)0 & 0b11111111;  
     light_frame.data[1] = (unsigned int)1 & 0b11111111;    
     light_frame.data[2] = (unsigned int)0 & 0b11111111;  
@@ -133,7 +133,7 @@ void LowlevelCtrl::LightCallback(std_msgs::Float64ConstPtr msg){
     light_frame.data[0] = (unsigned int)0 & 0b11111111;  
     light_frame.data[1] = (unsigned int)0 & 0b11111111;    
     light_frame.data[2] = (unsigned int)0 & 0b11111111;  
-  }else if(msg->data == -1.0){
+  }else if(msg->data <= -1){
     light_frame.data[0] = (unsigned int)1 & 0b11111111;  
     light_frame.data[1] = (unsigned int)0 & 0b11111111;    
     light_frame.data[2] = (unsigned int)0 & 0b11111111;    

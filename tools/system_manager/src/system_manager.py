@@ -109,6 +109,8 @@ class SystemManager():
         rospy.loginfo("cleaning ros log")
         self.init_process()
 
+        self.init_controller()   
+
         #self.srv = Server(sysConfig, self.dyn_callback)
     
     # def dyn_callback(self,config, level):
@@ -652,6 +654,7 @@ class SystemManager():
                 pass
         rospy.logwarn("USAFE Planner Activated")
             
+        
         
 
 
