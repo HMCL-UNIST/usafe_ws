@@ -22,7 +22,8 @@ VelocityPlanner::VelocityPlanner()
 
   // Prameter 
   nh_.param<double>("intersection_velocity", intersection_velocity, 7);
-  nh_.param<double>("speedbump_velocity", speedbump_velocity, 10);
+  nh_.param<double>("speedbump_velocity", speedbump_velocity, 8);
+  nh_.param<double>("intersection_velocity1", intersection_velocity1, 10);
   nh_.param<double>("max_lateral_acc", max_lat_acc, 4.0);
   nh_.param<double>("max_longitudinal_acc", max_long_acc, 1.5);
   nh_.param<double>("stopline_margin", stopline_margin, 0);
@@ -144,7 +145,7 @@ void VelocityPlanner::CheckMotionState()
     if (!find_stopline){
       // std::cout << "FAIL TO FIND CROSSWALK in Crosswalk" << std::endl;
       MotionMode = MotionState::FAIL;
-      targetVel1 = speedbump_velocity/3.6;
+      targetVel1 = intersection_velocity1/3.6;
       motionstate_debug = "FAIL TO FIND CROSSWALK in Crosswalk";
     }
     else{
@@ -162,7 +163,7 @@ void VelocityPlanner::CheckMotionState()
       if (Dis <= stop_margin && passcrosswalk){
         MotionMode = MotionState::STOP;
         motionstate_debug = "At the stop line";
-        targetVel1 = speedbump_velocity/3.6;
+        targetVel1 = intersection_velocity1/3.6;
         passcrosswalk = true;
       }
       else{
@@ -336,14 +337,14 @@ void VelocityPlanner::CheckMotionState()
     }
     // velocity difference is not greater than the speed limit ... 
     if(DesiredVel > 0){
-      DesiredVel = std::min(DesiredVel, 15/3.6);
+      DesiredVel = std::min(DesiredVel, 12/3.6);
     }    
     if(DesiredVel < 0){
-      DesiredVel = std::max(DesiredVel, -15/3.6);
+      DesiredVel = std::max(DesiredVel, -12/3.6);
     }
 
 
-    if (Dis <= 20 && DesiredVel <= 0.5){
+    if (Dis <= 16 && DesiredVel <= 0.5){
       targetVel = 0.0;
     }
     else{
@@ -389,7 +390,7 @@ void VelocityPlanner::CheckMotionState()
           Dis = sqrt( pow(current_x-dis_x,2) + pow(current_y-dis_y,2));
           // Dis = std::min(Dis, 150.0); 
           DesiredDis = 0;
-          DesiredVel = speedbump_velocity/3.6;
+          DesiredVel = intersection_velocity1/3.6;
 
           // if (!passjudgeline){
           //   if ( eventState != 5 || eventState != 6){
@@ -452,7 +453,7 @@ void VelocityPlanner::CheckMotionState()
 
           Dis = std::min(Dis, 150.0); 
           DesiredDis = 0;
-          DesiredVel = speedbump_velocity/3.6;
+          DesiredVel = intersection_velocity1/3.6;
 
           if (Dis <= judge_margin && eventState == 5 || eventState == 6){
             if (timing_min_End_Time >= 7) {
@@ -462,13 +463,13 @@ void VelocityPlanner::CheckMotionState()
 
           if (Dis <= stop_margin && passcrosswalk != true){
             MotionMode = MotionState::STOP;
-            targetVel1 = speedbump_velocity/3.6;
+            targetVel1 = intersection_velocity1/3.6;
             motionstate_debug = "At the stop line: Distance is" + to_string(Dis)
             +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
           }
           else if (passcrosswalk){
             MotionMode = MotionState::GO;
-            targetVel1 = speedbump_velocity/3.6;
+            targetVel1 = intersection_velocity1/3.6;
             motionstate_debug = "After the stop line: Distance is" + to_string(Dis);
           }
           else{
@@ -482,9 +483,9 @@ void VelocityPlanner::CheckMotionState()
         }
       }
     }
-    if (targetVel1 >= speedbump_velocity/3.6)
+    if (targetVel1 >= intersection_velocity1/3.6)
     {
-      targetVel1 = speedbump_velocity/3.6;
+      targetVel1 = intersection_velocity1/3.6;
     }
     if (LeadVehicle){
       targetVel2 = CheckLeadVehicle();
@@ -548,7 +549,7 @@ void VelocityPlanner::CheckMotionState()
           // std::cout << "FAIL TO FIND Stopline in LeftTurn" << std::endl;
           motionstate_debug = "FAIL TO FIND Stopline in LeftTurn" + to_string(Dis);
           MotionMode = MotionState::FAIL;
-          targetVel1 = speedbump_velocity/3.6;
+          targetVel1 = intersection_velocity1/3.6;
         }
         else{
           if (find_crosswalk){
@@ -579,7 +580,7 @@ void VelocityPlanner::CheckMotionState()
             MotionMode = MotionState::GO;
             motionstate_debug = "After the stop line: Distance is" + to_string(Dis)
             +" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
-            targetVel1 = speedbump_velocity/3.6;
+            targetVel1 = intersection_velocity1/3.6;
           }
           else{
             // Dis = std::min(Dis, 15.0);
@@ -592,14 +593,14 @@ void VelocityPlanner::CheckMotionState()
       else{
         MotionMode = MotionState::GO;  
         motionstate_debug = "After the stop line: Distance is" + to_string(Dis)+" , Status is" + stateToStringEvent(eventState) + " , Time is" + to_string(timing_min_End_Time);
-        targetVel1 = speedbump_velocity/3.6;
+        targetVel1 = intersection_velocity1/3.6;
 
       }
 
     }
-    if (targetVel1 >= speedbump_velocity/3.6)
+    if (targetVel1 >= intersection_velocity1/3.6)
     {
-      targetVel1 = speedbump_velocity/3.6;
+      targetVel1 = intersection_velocity1/3.6;
     }
     if (LeadVehicle){
       targetVel2 = CheckLeadVehicle();
@@ -681,11 +682,12 @@ void VelocityPlanner::CheckMotionState()
     // }
   }
   else if (CurrentMode ==  BehaviorState::LaneChange){
-    targetVel = speedbump_velocity/3.6;
+    // targetVel = speedbump_velocity/3.6;
+    targetVel = MaxVel;
     MotionMode = MotionState::GO;   
   }
   else if (CurrentMode== BehaviorState::ObstacleLaneChange){
-    targetVel = intersection_velocity/3.6;
+    targetVel = MaxVel;
     MotionMode = MotionState::GO;  
   }
   else{
@@ -837,13 +839,13 @@ double VelocityPlanner::Curvature(){
   double q = (pow(a,2)+pow(b,2)-pow(c,2))/(2*a*b);
   ROS_INFO("q is:: %f", q);
   if (q>=1){
-    return speedbump_velocity /3.6;
+    return intersection_velocity1 /3.6;
   }
 
   double R = c/(2*sqrt(1-pow(q,2)));
 
   if (R <= 0.01 || isnan(R)){
-    return speedbump_velocity/3.6;
+    return intersection_velocity1/3.6;
   }
   double curv = 1/R;
   if (curv <= 0.0001){
@@ -975,7 +977,7 @@ double VelocityPlanner::CheckLeadVehicle(){
     DesiredVel = std::max(DesiredVel, 15/3.6);
   }
 
-  if (Dis <= 20 && DesiredVel <= 0.5){
+  if (Dis <= 16 && DesiredVel <= 0.5){
     targetVel = 0.0;
   }
   else{
@@ -1423,6 +1425,8 @@ void VelocityPlanner::trajCallback(const hmcl_msgs::Lane& msg)
   signal_id = msg.signal_id;
   lane_id = msg.lane_id;
   traj.waypoints = msg.waypoints;
+  MaxVel = msg.speed_limit;
+  MaxVel = MaxVel/3.6;
   // std::cout << "Get reference velocity: " << MaxVel << std::endl;
 }
 

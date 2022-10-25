@@ -133,7 +133,7 @@ private:
 
     // paramter for planning
     double stopline_margin, crosswalk_margin, stop_margin, vehicle_length;
-    double intersection_velocity, speedbump_velocity, max_lat_acc, max_long_acc;
+    double intersection_velocity, intersection_velocity1, speedbump_velocity, max_lat_acc, max_long_acc;
     double dis_x, dis_y;
 
     //parameter for ACC

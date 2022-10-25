@@ -165,7 +165,8 @@ int V2XMission::RecvMissionStage1(unsigned char* buf)
     
     //select mission
     // 0: wait , 1 : start, 2 : stop, 4 : test mode)
-    if(msg.mission_count > 0 && msg.mission_status != 2 )
+    ROS_WARN("mission status %d ", msg.mission_status);
+    if(msg.mission_count > 0 && (msg.mission_status == 1 || msg.mission_status == 4))
     {
         for(int i=0; i<msg.mission_count; i++)
         {
@@ -396,7 +397,7 @@ void V2XMission::writeMissionpos1(MissionListStage1 *msg)
 {
     ofstream finw;
     finw.precision(12);
-    finw.open("/home/xavier2/v2x_ros/mission1_pos.txt");
+    finw.open("/home/usafe/mission1_pos.txt");
     finw <<"[WriteMissionPosition] start\n";
     for(int i=0; i<msg->mission_route_count; i++)
     {
@@ -480,9 +481,9 @@ void V2XMission::PrintMissionStage1(MissionListStage1 *msg)
     }
     printf("[PrintMissionStage1] start\n");
 
-    ofstream fin1;
-    fin1.open("/home/xavier2/v2x_ros/mission1.txt",ios::app);
-    fin1 <<"[PrintMissionStage1] start\n";
+    // ofstream fin1;
+    // fin1.open("/home/xavier2/v2x_ros/mission1.txt",ios::app);
+    // fin1 <<"[PrintMissionStage1] start\n";
 
     //print
     
@@ -495,15 +496,15 @@ void V2XMission::PrintMissionStage1(MissionListStage1 *msg)
     printf("\tmission_count : %d\n", msg->mission_count);
     printf("\tmission_route_count : %d\n", msg->mission_route_count);
     
-    fin1 <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
-    fin1 << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
-    fin1 << "\theader.payload_length : " << msg->header.payload_length<<"\n";
-    fin1 << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
-    fin1 << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
-    fin1 << "\n";
-    fin1 << "\tmission_status : 0x" << (double)(msg->mission_status)<<"\n";
-    fin1 << "\tmission_count : "<<(int)(msg->mission_count)<<"\n";
-    fin1 << "\tmission_route_count : " <<msg->mission_route_count<<"\n";
+    // fin1 <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
+    // fin1 << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
+    // fin1 << "\theader.payload_length : " << msg->header.payload_length<<"\n";
+    // fin1 << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
+    // fin1 << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
+    // fin1 << "\n";
+    // fin1 << "\tmission_status : 0x" << (double)(msg->mission_status)<<"\n";
+    // fin1 << "\tmission_count : "<<(int)(msg->mission_count)<<"\n";
+    // fin1 << "\tmission_route_count : " <<msg->mission_route_count<<"\n";
     
     for(int i=0; i<msg->mission_count; i++)
     {
@@ -517,15 +518,15 @@ void V2XMission::PrintMissionStage1(MissionListStage1 *msg)
         printf("\tmission_list[%d].end_lat : %d\n", i, msg->mission_list[i].end_lat);
         printf("\tmission_list[%d].end_lon : %d\n", i, msg->mission_list[i].end_lon);
 
-        fin1 << "\t"<< i << "th "<< "mission_list.mission_id : " << (int)(msg->mission_list[i].mission_id)<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.status : 0x" << (double)(msg->mission_list[i].status)<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.event_count : " << msg->mission_list[i].event_count<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.distance : " << msg->mission_list[i].distance<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.route_id : " << (int)(msg->mission_list[i].route_id)<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.start_lat : " <<msg->mission_list[i].start_lat<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.start_Lon : " <<msg->mission_list[i].start_lon<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.end_lat : " << msg->mission_list[i].end_lat<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_list.end_lon : " << msg->mission_list[i].end_lon<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.mission_id : " << (int)(msg->mission_list[i].mission_id)<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.status : 0x" << (double)(msg->mission_list[i].status)<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.event_count : " << msg->mission_list[i].event_count<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.distance : " << msg->mission_list[i].distance<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.route_id : " << (int)(msg->mission_list[i].route_id)<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.start_lat : " <<msg->mission_list[i].start_lat<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.start_Lon : " <<msg->mission_list[i].start_lon<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.end_lat : " << msg->mission_list[i].end_lat<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_list.end_lon : " << msg->mission_list[i].end_lon<<"\n";
     }
     for(int i=0; i<msg->mission_route_count; i++)
     {
@@ -536,21 +537,20 @@ void V2XMission::PrintMissionStage1(MissionListStage1 *msg)
         printf("\tmission_route_list[%d].route_node_pos_lat : %d\n", i, msg->mission_route_list[i].route_node_pos_lat);
         printf("\tmission_route_list[%d].route_node_pos_lon : %d\n", i, msg->mission_route_list[i].route_node_pos_lon);
 
-        fin1 << "\t" << i << "th "<< "mission_route_list.mission_route_id : " << (int)(msg->mission_route_list[i].mission_route_id)<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_total_count : " << (int)(msg->mission_route_list[i].route_node_total_count)<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_index : " << (int)(msg->mission_route_list[i].route_node_index)<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_type : " << (int)(msg->mission_route_list[i].route_node_type) <<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_pos_lat : " << msg->mission_route_list[i].route_node_pos_lat<<"\n";
-        fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_pos_lon : " << msg->mission_route_list[i].route_node_pos_lon<<"\n";
+        // fin1 << "\t" << i << "th "<< "mission_route_list.mission_route_id : " << (int)(msg->mission_route_list[i].mission_route_id)<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_total_count : " << (int)(msg->mission_route_list[i].route_node_total_count)<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_index : " << (int)(msg->mission_route_list[i].route_node_index)<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_type : " << (int)(msg->mission_route_list[i].route_node_type) <<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_pos_lat : " << msg->mission_route_list[i].route_node_pos_lat<<"\n";
+        // fin1 << "\t"<< i << "th "<< "mission_route_list.route_node_pos_lon : " << msg->mission_route_list[i].route_node_pos_lon<<"\n";
     }
-    fin1 << "\n";
-    fin1.close();
+    // fin1 << "\n";
+    // fin1.close();
 }
 
 
 void V2XMission::PrintMissionStage2(MissionListStage2 *msg)
 {
-
     if(!DISPLAY_PACKET)
     {
         return;
@@ -562,9 +562,9 @@ void V2XMission::PrintMissionStage2(MissionListStage2 *msg)
     }
     printf("[PrintMissionStage2] start\n");
  
-    ofstream fin2;
-    fin2.open("/home/xavier2/v2x_ros/mission2.txt",ios::app);
-    fin2 <<"[PrintMissionStage1] start\n";
+    // ofstream fin2;
+    // fin2.open("/home/xavier2/v2x_ros/mission2.txt",ios::app);
+    // fin2 <<"[PrintMissionStage1] start\n";
 
     //print
 
@@ -577,14 +577,14 @@ void V2XMission::PrintMissionStage2(MissionListStage2 *msg)
     printf("\tmission_status : 0x%02X\n", msg->mission_status);
     printf("\titem_count : %d\n", msg->item_count);
 
-    fin2 <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
-    fin2 << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
-    fin2 << "\theader.payload_length : " << msg->header.payload_length<<"\n";
-    fin2 << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
-    fin2 << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
-    fin2 << "\n";
-    fin2 << "\tmission_status : 0x" << (int)(msg->mission_status)<<"\n";
-    fin2 << "\tmission_count : "<<(int)(msg->item_count)<<"\n";
+    // fin2 <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
+    // fin2 << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
+    // fin2 << "\theader.payload_length : " << msg->header.payload_length<<"\n";
+    // fin2 << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
+    // fin2 << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
+    // fin2 << "\n";
+    // fin2 << "\tmission_status : 0x" << (int)(msg->mission_status)<<"\n";
+    // fin2 << "\tmission_count : "<<(int)(msg->item_count)<<"\n";
 
     for(int i=0; i<msg->item_count; i++)
     {
@@ -598,18 +598,18 @@ void V2XMission::PrintMissionStage2(MissionListStage2 *msg)
         printf("\titem_list[%d].pos_long : %d\n", i, msg->item_list[i].pos_long);
         printf("\titem_list[%d].extend : %d\n", i, msg->item_list[i].extend);
 
-        fin2 << "\t"<< i << "th "<< "item_list.item_id : " << (int)(msg->item_list[i].item_id)<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.item_type : " << (int)(msg->item_list[i].item_type)<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.item_status : " << (int)(msg->item_list[i].item_status)<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.score : " << msg->item_list[i].score<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.speed : " << (int)(msg->item_list[i].speed)<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.duration : " <<(int)(msg->item_list[i].duration)<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.pos_lat : " <<msg->item_list[i].pos_lat<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.pos_long : " << msg->item_list[i].pos_long<<"\n";
-        fin2 << "\t"<< i << "th "<< "item_list.extend : " << (int) (msg->item_list[i].extend)<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.item_id : " << (int)(msg->item_list[i].item_id)<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.item_type : " << (int)(msg->item_list[i].item_type)<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.item_status : " << (int)(msg->item_list[i].item_status)<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.score : " << msg->item_list[i].score<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.speed : " << (int)(msg->item_list[i].speed)<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.duration : " <<(int)(msg->item_list[i].duration)<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.pos_lat : " <<msg->item_list[i].pos_lat<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.pos_long : " << msg->item_list[i].pos_long<<"\n";
+        // fin2 << "\t"<< i << "th "<< "item_list.extend : " << (int) (msg->item_list[i].extend)<<"\n";
     }
-    fin2 << "\n";
-    fin2.close();
+    // fin2 << "\n";
+    // fin2.close();
 
 }
 void V2XMission::PrintRequestAck(Request_Ack *msg)
@@ -626,9 +626,9 @@ void V2XMission::PrintRequestAck(Request_Ack *msg)
     }
     printf("[PrintRequestAck] start\n");
 
-    ofstream finR;
-    finR.open("/home/xavier2/v2x_ros/request.txt",ios::app);
-    finR <<"[PrintRequestAck] start\n";
+    // ofstream finR;
+    // finR.open("/home/xavier2/v2x_ros/request.txt",ios::app);
+    // finR <<"[PrintRequestAck] start\n";
 
     //print
 
@@ -645,23 +645,22 @@ void V2XMission::PrintRequestAck(Request_Ack *msg)
     printf("\ttemporary : %s\n", msg->temporary);
     printf("\tend_point : 0x%04X\n", msg->end_point);
 
-    finR <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
-    finR << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
-    finR << "\theader.payload_length : " << msg->header.payload_length<<"\n";
-    finR << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
-    finR << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
-    finR << "\n";
-    finR << "\tmission_id : " << (int)(msg->mission_id)<<"\n";
-    finR << "\trequest : "<<(int)(msg->request)<<"\n";
-    finR << "\tresponse : "<<(int)(msg->response)<<"\n";
-    finR << "\tdescription : "<<msg->description<<"\n";
-    finR << "\ttemporary : "<<msg->temporary<<"\n";
-    finR << "\tend_point : "<<(double)(msg->end_point)<<"\n";
-    finR << "\n";
-    finR.close();
-
-
+    // finR <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
+    // finR << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
+    // finR << "\theader.payload_length : " << msg->header.payload_length<<"\n";
+    // finR << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
+    // finR << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
+    // finR << "\n";
+    // finR << "\tmission_id : " << (int)(msg->mission_id)<<"\n";
+    // finR << "\trequest : "<<(int)(msg->request)<<"\n";
+    // finR << "\tresponse : "<<(int)(msg->response)<<"\n";
+    // finR << "\tdescription : "<<msg->description<<"\n";
+    // finR << "\ttemporary : "<<msg->temporary<<"\n";
+    // finR << "\tend_point : "<<(double)(msg->end_point)<<"\n";
+    // finR << "\n";
+    // finR.close();
 }
+
 void V2XMission::PrintItemAck(Item_Ack *msg)
 {
     if(!DISPLAY_PACKET)
@@ -674,9 +673,9 @@ void V2XMission::PrintItemAck(Item_Ack *msg)
         return;
     }
     printf("[PrintItemAck] start\n");
-    ofstream finI;
-    finI.open("/home/xavier2/v2x_ros/item.txt",ios::app);
-    finI <<"[PrintItemAck] start\n";
+    // ofstream finI;
+    // finI.open("/home/xavier2/v2x_ros/item.txt",ios::app);
+    // finI <<"[PrintItemAck] start\n";
  
     printf("\theader.message_type : 0x%04X\n", msg->header.message_type);
     printf("\theader.sequence : %d\n", msg->header.sequence);
@@ -691,20 +690,20 @@ void V2XMission::PrintItemAck(Item_Ack *msg)
     printf("\ttemporary : %s\n", msg->temporary);
     printf("\tend_point : 0x%04X\n", msg->end_point);
 
-    finI <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
-    finI << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
-    finI << "\theader.payload_length : " << msg->header.payload_length<<"\n";
-    finI << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
-    finI << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
-    finI << "\n";
-    finI << "\tmission_id : " << (int)(msg->mission_id)<<"\n";
-    finI << "\trequest : "<<(int)(msg->request)<<"\n";
-    finI << "\tresponse : "<<(int)(msg->response)<<"\n";
-    finI << "\tdescription : "<<msg->description<<"\n";
-    finI << "\ttemporary : "<<msg->temporary<<"\n";
-    finI << "\tend_point : "<<(double)(msg->end_point)<<"\n";
-    finI << "\n";
-    finI.close();
+    // finI <<"\theader.message_type : 0x" << (double)(msg->header.message_type)<<"\n";
+    // finI << "\theader.sequence : " << (int)(msg->header.sequence)<<"\n";
+    // finI << "\theader.payload_length : " << msg->header.payload_length<<"\n";
+    // finI << "\theader.device_type : 0x" << (double)(msg->header.device_type)<<"\n";
+    // finI << "\theader.device_id : 0x"<<(double)(msg->header.device_id[0]) << ", 0x" << (double)(msg->header.device_id[1]) << ", 0x" << (double)(msg->header.device_id[2]) <<"\n";
+    // finI << "\n";
+    // finI << "\tmission_id : " << (int)(msg->mission_id)<<"\n";
+    // finI << "\trequest : "<<(int)(msg->request)<<"\n";
+    // finI << "\tresponse : "<<(int)(msg->response)<<"\n";
+    // finI << "\tdescription : "<<msg->description<<"\n";
+    // finI << "\ttemporary : "<<msg->temporary<<"\n";
+    // finI << "\tend_point : "<<(double)(msg->end_point)<<"\n";
+    // finI << "\n";
+    // finI.close();
 }
 
 int main (int argc, char** argv)

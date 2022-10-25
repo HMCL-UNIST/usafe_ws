@@ -22,9 +22,9 @@
 
 #define PI 3.14159265358979323846264338
 typedef enum{Init = 0, ChooseDifficulty = 1, MissionRequest = 2, DriveToStartPos = 3, StartArrivalRequest = 4, DriveToGoalPos = 5,
-            GoalArrivalRequest = 6, MissionComplete = 7} MissionState;
+            GoalArrivalRequest = 6, MissionComplete = 7, EmergencyStop = 8} MissionState;
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival} BehaviorState;
+            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, EmergencyStop2} BehaviorState;
 
 inline const char* stateToStringMission(MissionState v)
 
@@ -64,14 +64,14 @@ class MissionStateMachine
         std_msgs::Int16 mission_msg;
         // ros::Timer mission_timer;
         //transition conditions
-        bool statusWait, statusStart, missionRequestSuccess, arriveAtStartPos,startArrivalSuccess, arriveAtGoalPos, goalArrivalSuccess;
+        bool statusWait, statusStart, statusEstop, missionRequestSuccess, arriveAtStartPos,startArrivalSuccess, arriveAtGoalPos, goalArrivalSuccess;
         //callback data
         int v2xMissionStat;
         double runRate;
         int countInit, countChooseDifficulty, countMissionRequest, countDriveToStartPos, countStartArrivalRequest, countDriveToGoalPos, countGoalArrivalRequest;
         int thresInit, thresChooseDifficulty, thresMissionRequest, thresDriveToStartPos, thresStartArrivalRequest, thresDriveToGoalPos, thresGoalArrivalRequest;
         BehaviorState currentBehavior;
-        MissionState currentMission;
+        MissionState currentMission, ePrevMission;
     public:
         MissionStateMachine();
         MissionStateMachine(MissionState mstate);

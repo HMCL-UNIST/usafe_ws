@@ -11,7 +11,6 @@ rolloutPlanner::rolloutPlanner(ros::NodeHandle& nh):
     sub_traj = nh_.subscribe("/lane_in_range", 1, &rolloutPlanner::trajCallback, this);
     sub_flag = nh_.subscribe("/behavior_state", 1, &rolloutPlanner::flagCallback, this);
     sub_obs = nh_.subscribe("/detected_objs", 1, &rolloutPlanner::ObsCallback, this);
-    sub_light = nh_.subscribe("/light_cmd", 1, &rolloutPlanner::lightCallback, this);
     
     //publisher 
     pub_traj = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 1);
@@ -30,12 +29,13 @@ rolloutPlanner::rolloutPlanner(ros::NodeHandle& nh):
     nh_.param<double>("vehicle_vel", vel_param, 5);
     nh_.param<double>("discretize_time", dt, 0.1);
     
-    nh_.param<int>("Horizon_prepare", N_, 2);
+    nh_.param<int>("Horizon_prepare", N_, 3);
     nh_.param<int>("Horizon", N, 20);
     nh_.param<int>("Horizon_Plus", M, 20);
     
     nh_.param<int>("number_of_samples", n_samples, 20);
-    nh_.param<double>("max_angle_to_handle", angle, M_PI/2);
+    nh_.param<double>("max_angle_to_handle", ang_obs, M_PI/2);
+    nh_.param<double>("max_angle_to_handle", ang_lc, M_PI/6);
     
     nh_.param<double>("minimum_lane_change_length", min_lc_len, 5.0);
     nh_.param<double>("minimum_lane_change_prepare_length", min_prepare_len, 0.5);
@@ -78,13 +78,12 @@ void rolloutPlanner::trajCallback(const hmcl_msgs::LaneArray& lane_msg){
 }
 void rolloutPlanner::ObsCallback(const autoware_msgs::DetectedObjectArray& obs_msg){   
     if (obs_msg.objects.size() ==0) return;
-    obs.x = obs_msg.objects[0].pose.position.x;
-    obs.y = obs_msg.objects[0].pose.position.y;
-    obs.length = obs_len;
-    obs.exist = true;
-}
-void rolloutPlanner::lightCallback(const std_msgs::Float64& light_msg){
-    light = light_msg.data;
+    if (obs.exist == false){
+        obs.x = obs_msg.objects[0].pose.position.x;
+        obs.y = obs_msg.objects[0].pose.position.y;
+        obs.length = obs_len;
+        obs.exist = true;
+    }
 }
 
 void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
@@ -111,9 +110,13 @@ void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
 
     // initialize 
     int nx =3;
-    double x[nx], x0[nx], u;
+    double x[3], x0[3], u;
     for (int k =0; k<nx; k++) x0[k]=0;
     pts_data.clear();
+    angle = ang_lc;
+    if (obs_flag ==true ){
+        angle = ang_obs;
+    }
 
     for (int i=0; i<n_samples+1; i++){
         for (int k =0; k<nx; k++) x[k]=x0[k];        
@@ -142,6 +145,8 @@ void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
             lane.signal_id = range_lane.lanes[0].signal_id;
             lane.lane_id = range_lane.lanes[0].lane_id;
         }
+
+
         for (int j=0; j < N_+N+M; j++){
             hmcl_msgs::Waypoint wpt;
             Eigen::Vector3d pt(pts_data.at(i).at(j).x, pts_data.at(i).at(j).y ,0);
@@ -171,12 +176,15 @@ void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
         pub_lane = Cutofflane(pub_lane);
         pub_lane.signal_id = range_lane.lanes[0].signal_id;
         pub_lane.lane_id = range_lane.lanes[0].lane_id;
+        pub_lane.speed_limit = 25;
         viz_local(pub_lane);
         pub_traj.publish(pub_lane);
     } 
     else{
-        viz_local(lane_all.lanes[pub_idx]);
-        pub_traj.publish(lane_all.lanes[pub_idx]);
+        hmcl_msgs::Lane pub_lane = lane_all.lanes[pub_idx];
+        pub_lane.speed_limit = 7.5;
+        viz_local(pub_lane);
+        pub_traj.publish(pub_lane);
     }
     viz_all(lane_all);
 }
@@ -190,7 +198,6 @@ void rolloutPlanner::PreparePhase(){
 
 double rolloutPlanner::PurePursuit(double *x, int idx){
     double ld = vel_param*1.5;
-    // double dy = -x[1];
     double dy =  (lane_width/n_samples)*(idx-n_samples/2) -x[1];
     return atan(2*veh_l *dy/(ld*ld));
 }
@@ -233,13 +240,11 @@ int rolloutPlanner::evaluatelane(const hmcl_msgs::LaneArray& lane_arr){
             }   
         
             double dis = sqrt(pow(pos_c.x- obs.x,2) + pow(pos_c.y-obs.y,2));
-            // cout << "pos x : " << pos_c.y << "pos x : " << pos_c.y << endl;
-            // cout << "obs x : " << obs.y << "obs x : " << obs.y << endl;
             if (dis > 15){
                 std_msgs::Bool msg;
                 msg.data = true;
-                obs.exist = false;
                 pub_bool.publish(msg);
+                obs.exist == false;
                 return_flag = false;
             }
         }
@@ -249,6 +254,7 @@ int rolloutPlanner::evaluatelane(const hmcl_msgs::LaneArray& lane_arr){
     if (lc_flag==true){
         if (range_lane.lanes[1].lane_id == 1000) lane_ref = range_lane.lanes[0];
         else  lane_ref = range_lane.lanes[1];
+        obs.exist = false;
     }
 
     if (obs_flag ==true){
@@ -261,10 +267,10 @@ int rolloutPlanner::evaluatelane(const hmcl_msgs::LaneArray& lane_arr){
             }
         }
     }
-
+    
+    int lane_idx = 0;
     for (int i=0; i <lane_arr.lanes.size(); i++){
         double lane_cost = calculate_dist_cost(lane_ref, lane_arr.lanes[i]);
-        int lane_idx = 0;
         if (return_flag == true ){
             for (int i=0; i<range_lane.lanes.size(); i++){
                 if (range_lane.lanes[i].lane_id =1000) {
@@ -273,7 +279,7 @@ int rolloutPlanner::evaluatelane(const hmcl_msgs::LaneArray& lane_arr){
         else lane_idx =0;
 
         cout << i << "th lane cost :: " << lane_cost << ",  handle cost " << sqrt(pow(i-n_samples/2,2)/pow(n_samples/2,2)) <<endl;
-        lane_cost += sqrt(pow(i-n_samples/2,2)/pow(n_samples/2,2))*0.1;  // combine with velocity??
+        lane_cost += sqrt(pow(i-n_samples/2,2)/pow(n_samples/2,2))*0.1*pos_c.vel;  // combine with velocity??
         if (obs_flag ==true){
             double obs_cost = calculate_min(lane_arr.lanes[i],obs.x,obs.y);
             if (obs_cost <lane_width) lane_cost += 10000000;
@@ -282,9 +288,14 @@ int rolloutPlanner::evaluatelane(const hmcl_msgs::LaneArray& lane_arr){
 
         cost.push_back(lane_cost);
     }
+    if (obs_flag ==true){        
+        double dx = range_lane.lanes[lane_idx].waypoints[10].pose.pose.position.x -pos_c.x;
+        double dy = range_lane.lanes[lane_idx].waypoints[10].pose.pose.position.y - pos_c.y;
+        double alpha = atan2(dy,dx);
+        ROS_INFO("alpha 2 :: %.3f", alpha);
+    }
 
     return min_element(cost.begin(), cost.end()) - cost.begin();  
-
 }
 
 hmcl_msgs::Lane rolloutPlanner::Cutofflane(const hmcl_msgs::Lane& lane){
@@ -295,8 +306,6 @@ hmcl_msgs::Lane rolloutPlanner::Cutofflane(const hmcl_msgs::Lane& lane){
     }
     return pub_lane;
 }
-
-
 
 double rolloutPlanner::calculate_min(const hmcl_msgs::Lane& lane, double x, double y ){
 
@@ -354,19 +363,19 @@ void rolloutPlanner::viz_local(const hmcl_msgs::Lane& lane){
     lane_marker.lifetime = ros::Duration(0.1);
 
     lane_marker.color.a = 1.0;
-    lane_marker.color.r = 0.0;
-    lane_marker.color.g = 0.0;
-    lane_marker.color.b = 1.0;
+    lane_marker.color.r = 1.0;
+    lane_marker.color.g = 1.0;
+    lane_marker.color.b = 0.0;
     
     lane_marker.scale.x = 0.3;
-    lane_marker.scale.y = 0.5;
+    lane_marker.scale.y = 1.0;
     lane_marker.scale.z = 0.3;
 
     for (int i = 0; i < lane.waypoints.size(); i++){
         geometry_msgs::Point p;
         p.x = lane.waypoints[i].pose.pose.position.x;
         p.y = lane.waypoints[i].pose.pose.position.y;
-        p.z = 12;
+        p.z = range_lane.lanes[0].waypoints[0].pose.pose.position.z;
         lane_marker.points.push_back(p);
     }
     lane_markers.markers.push_back(lane_marker);
@@ -387,7 +396,7 @@ void rolloutPlanner::viz_all(const hmcl_msgs::LaneArray& lane_arr){
 
         lane_marker.color.a = 0.5;
         lane_marker.color.r = 0.0;
-        lane_marker.color.g = 0.3;
+        lane_marker.color.g = 1.0;
         lane_marker.color.b = 0.0;
         
         lane_marker.scale.x = 0.3;
@@ -398,7 +407,7 @@ void rolloutPlanner::viz_all(const hmcl_msgs::LaneArray& lane_arr){
             geometry_msgs::Point p;
             p.x = lane_arr.lanes[i].waypoints[j].pose.pose.position.x;
             p.y = lane_arr.lanes[i].waypoints[j].pose.pose.position.y;
-            p.z = 10;
+            p.z = range_lane.lanes[0].waypoints[0].pose.pose.position.z;
             lane_marker.points.push_back(p);
         }
     lane_markers.markers.push_back(lane_marker);

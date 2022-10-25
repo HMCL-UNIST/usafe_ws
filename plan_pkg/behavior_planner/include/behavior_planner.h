@@ -32,9 +32,9 @@
 
 #define PI 3.14159265358979323846264338
 typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArrivalRequest, DriveToGoalPos,
-            GoalArrivalRequest, MissionComplete} MissionState;
+            GoalArrivalRequest, MissionComplete, EmergencyStop} MissionState;
 typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange} BehaviorState;
+            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange, EmergencyStop2} BehaviorState;
 
 inline const char* stateToStringBehavior(BehaviorState v)
 
@@ -78,6 +78,8 @@ inline const char* stateToStringBehavior(BehaviorState v)
 
         case BehaviorState::ObstacleLaneChange: return "ObstacleLaneChange";
 
+        case BehaviorState::EmergencyStop2: return "EmergencyStop2";
+
         default:      return "[Unknown BehaviorState]";
 
     }
@@ -108,7 +110,7 @@ class BehaviorPlanner
         hmcl_msgs::LaneArray globalLaneArray;
         v2x_msgs::SPAT junc1Signal, junc2Signal, junc3Signal;
         MissionState currentMission;
-        BehaviorState currentBehavior;
+        BehaviorState currentBehavior, ePrevBehavior;
         bool missionStart, approachToStartPos, startArrivalCheck, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
         bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone, checkObstacle;
         bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck, startChecker;

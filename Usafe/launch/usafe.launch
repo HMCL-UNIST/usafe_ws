@@ -9,12 +9,12 @@
       <!-- <remap from="/local_to_world/gps" to="/carla/ego_vehicle/gnss/gnss1/fix"/>
       <param name="global_sensor_frame" value="ins"/> --> 
        <!-- r_Town03_hj_traffic -->
-      <!-- <param name="osm_file_name" value="$(find usafe)/maps/race_track_v18_fix.osm"/>  -->
-      <param name="osm_file_name" value="$(find usafe)/maps/house_test_local_path_1024.osm"/> 
-      <!-- <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v20_continue_fix.osm"/>  -->
+      <param name="osm_file_name" value="$(find usafe)/maps/race_track_v18_fix.osm"/> 
       
-      <!-- <param name="osm_file_name_for_driving" value="$(find usafe)/maps/ad_road_hj_v6_fix.osm"/>  -->
-      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/house_test_local_path_1024.osm"/> 
+      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v22_continue_fix.osm"/> 
+      
+      
+      
       
       
 
@@ -34,11 +34,6 @@
       <param name="map_origin_lat" value="35.6470671983"/> 
       <param name="map_origin_lon" value="128.401913578"/>  
       <param name="map_origin_att" value="25.797"/>  
- 
-  <!-- for city map -->
-       <param name="map_origin_lat" value="35.64698633754966"/> 
-      <param name="map_origin_lon" value="128.40112675332395"/>  
-      <param name="map_origin_att" value="25.797"/> 
 
 
   
@@ -74,7 +69,9 @@
 
       <param name="lane_change_in_sec" value="5.0"/> 
       <param name="lanechange_fsm_period" value="0.1"/> 
-      <param name="shift_distance_amount" value="1.6"/> 
+      <!-- <param name="shift_distance_amount" value="1.6"/>  -->
+      <param name="shift_distance_amount" value="2.0"/> 
+      
       
       
       

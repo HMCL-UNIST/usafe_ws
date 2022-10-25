@@ -56,7 +56,7 @@ class rolloutPlanner
 private:
     ros::NodeHandle nh_;
     ros::Publisher pub_traj, pub_viz, pub_bool, pub_all;
-    ros::Subscriber sub_pos, sub_vel, sub_traj, sub_flag, sub_obs, sub_light;
+    ros::Subscriber sub_pos, sub_vel, sub_traj, sub_flag, sub_obs;
     ros::Timer timer_;
     
     bool lc_flag = false;
@@ -71,9 +71,9 @@ private:
 
     //vehicle parameter
     double veh_m, veh_mf, veh_mr, veh_l, veh_lf, veh_lr; 
-    double dt, vel_param, angle;
+    double dt, vel_param, angle, ang_obs, ang_lc;
     int N_, N, M;
-    int n_samples, light;
+    int n_samples;
 
     // lane change paramter
     double min_prepare_len, min_lc_len, lc_prepare_dur, lc_duration, lane_width;
@@ -96,7 +96,6 @@ public:
     void flagCallback(const std_msgs::Int16ConstPtr& flag_msg);
     void trajCallback(const hmcl_msgs::LaneArray& lane_msg);
     void ObsCallback(const autoware_msgs::DetectedObjectArray& obs_msg);
-    void lightCallback(const std_msgs::Float64& light_msg);
 
     void PreparePhase();
     hmcl_msgs::Lane Cutofflane();

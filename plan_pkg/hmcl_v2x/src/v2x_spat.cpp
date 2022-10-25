@@ -21,8 +21,8 @@ ros::Rate loop_rate(100);
         // 소켓이 연결되지 않은 경우(sockFd == -1) , OBU TCP 소켓 연결 시도
         if(sockFd < 0)
         {
-            // sockFd = connect_obu_uper_tcp("192.168.10.10",23000); // OBU
-            sockFd = connect_obu_uper_tcp("118.45.183.36",23000); // Test Server
+            sockFd = connect_obu_uper_tcp("192.168.10.10",23000); // OBU
+            // sockFd = connect_obu_uper_tcp("118.45.183.36",23000); // Test Server
 
             storedSize = 0;
             
@@ -50,7 +50,6 @@ ros::Rate loop_rate(100);
             // ASN_STRUCT_FREE(asn_DEF_MessageFrame, msgFrame);
             loop_rate.sleep();
         }
-
         loop_rate.sleep();
     }
 }

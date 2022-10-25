@@ -40,6 +40,7 @@ MissionStateMachine::MissionStateMachine(){
     // mission transition conditions
     statusWait = false;
     statusStart = false;
+    statusEstop = false;
     missionRequestSuccess = false;
     arriveAtStartPos = false;
     startArrivalSuccess = false;
@@ -56,6 +57,7 @@ MissionStateMachine::MissionStateMachine(){
 
 
     currentMission = Init;
+    ePrevMission = Init;
     boost::thread callbackhandler(&MissionStateMachine::callbackthread,this); 
 }
 void MissionStateMachine::callbackthread()
@@ -66,26 +68,26 @@ void MissionStateMachine::callbackthread()
         loop_rate.sleep();
     }
 }
-MissionStateMachine::MissionStateMachine(MissionState mState){
+// MissionStateMachine::MissionStateMachine(MissionState mState){
 
-    v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
-    v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
-    behavior_sub = nh_.subscribe("/behavior_state", 1, &MissionStateMachine::behaviorCallback, this);
+//     v2x_mission_sub = nh_.subscribe("/Mission1", 1, &MissionStateMachine::v2xMissionCallback, this);
+//     v2x_rsp_sub = nh_.subscribe("/Request", 1, &MissionStateMachine::v2xResponseCallback, this);
+//     behavior_sub = nh_.subscribe("/behavior_state", 1, &MissionStateMachine::behaviorCallback, this);
 
-    mission_pub = nh_.advertise<std_msgs::Int16>("/mission_state",1,true);
-    // mission_timer = nh_.createTimer(ros::Duration(0.05), &MissionPlanner::mission_handler,this);
+//     mission_pub = nh_.advertise<std_msgs::Int16>("/mission_state",1,true);
+//     // mission_timer = nh_.createTimer(ros::Duration(0.05), &MissionPlanner::mission_handler,this);
 
-    // mission transition conditions
-    statusWait = false;
-    statusStart = false;
-    missionRequestSuccess = false;
-    arriveAtStartPos = false;
-    startArrivalSuccess = false;
-    arriveAtGoalPos = false;
-    goalArrivalSuccess = false;
+//     // mission transition conditions
+//     statusWait = false;
+//     statusStart = false;
+//     missionRequestSuccess = false;
+//     arriveAtStartPos = false;
+//     startArrivalSuccess = false;
+//     arriveAtGoalPos = false;
+//     goalArrivalSuccess = false;
 
-    currentMission = mState;
-}
+//     currentMission = mState;
+// }
 
 MissionStateMachine::~MissionStateMachine(){
 
@@ -97,10 +99,13 @@ MissionState MissionStateMachine::getCurrentMission(){
 
 void MissionStateMachine::updateFactors(){
 
-    statusWait = true; //for test
+    // statusWait = true; //for test
     arriveAtStartPos = false;
     // arriveAtStartPos = true; //for test
     arriveAtGoalPos = false;
+    statusWait = false;
+    statusStart = false;
+    statusEstop = false;
 
     std::cout<<"--MISSION--MISSION--MISSION--MISSION--"<<std::endl;
 
@@ -111,6 +116,10 @@ void MissionStateMachine::updateFactors(){
         break;
     case 1:
         statusStart = true;
+        break;
+    case 2:
+        statusEstop = true;
+        break;
     default:
         break;
     }
@@ -160,53 +169,64 @@ void MissionStateMachine::updateFactors(){
 
 void MissionStateMachine::updateMissionState(){   
     updateFactors();
-    switch(currentMission)
-    {
-        case MissionState::Init:
-            countInit++;
-            if(statusWait){
-                currentMission = MissionState::ChooseDifficulty;
-            }
-            break;
-        case MissionState::ChooseDifficulty:
-            countChooseDifficulty++;
-            if(statusStart){
-                currentMission = MissionState::MissionRequest;
-            }
-            break;
-        case MissionState::MissionRequest:
-            countMissionRequest++;
-            if(missionRequestSuccess){
-                currentMission = MissionState::DriveToStartPos;
-            }
-            break;
-        case MissionState::DriveToStartPos:
-            countDriveToStartPos++;
-            if(arriveAtStartPos){
-                currentMission = MissionState::StartArrivalRequest;
-            }
-            break;
-        case MissionState::StartArrivalRequest:
-            countStartArrivalRequest++;
-            if(startArrivalSuccess){
-                currentMission = MissionState::DriveToGoalPos;
-            }
-            break;
-        case MissionState::DriveToGoalPos:
-            countDriveToGoalPos++;
-            if(arriveAtGoalPos){
-                currentMission = MissionState::GoalArrivalRequest;
-            }
-            break;
-        case MissionState::GoalArrivalRequest:
-            countGoalArrivalRequest++;
-            if(goalArrivalSuccess){
-                currentMission = MissionState::MissionComplete;
-            }
-            break;
-        default:
-            break;
+    if(statusEstop){
+        if(currentMission != MissionState::EmergencyStop){
+            ePrevMission = currentMission;
+            currentMission = MissionState::EmergencyStop;
+        }
     }
+    else if(currentMission == MissionState::EmergencyStop){
+        currentMission = ePrevMission;
+    }
+    else{
+        switch(currentMission){
+            case MissionState::Init:
+                countInit++;
+                if(statusWait){
+                    currentMission = MissionState::ChooseDifficulty;
+                }
+                break;
+            case MissionState::ChooseDifficulty:
+                countChooseDifficulty++;
+                if(statusStart){
+                    currentMission = MissionState::MissionRequest;
+                }
+                break;
+            case MissionState::MissionRequest:
+                countMissionRequest++;
+                if(missionRequestSuccess){
+                    currentMission = MissionState::DriveToStartPos;
+                }
+                break;
+            case MissionState::DriveToStartPos:
+                countDriveToStartPos++;
+                if(arriveAtStartPos){
+                    currentMission = MissionState::StartArrivalRequest;
+                }
+                break;
+            case MissionState::StartArrivalRequest:
+                countStartArrivalRequest++;
+                if(startArrivalSuccess){
+                    currentMission = MissionState::DriveToGoalPos;
+                }
+                break;
+            case MissionState::DriveToGoalPos:
+                countDriveToGoalPos++;
+                if(arriveAtGoalPos){
+                    currentMission = MissionState::GoalArrivalRequest;
+                }
+                break;
+            case MissionState::GoalArrivalRequest:
+                countGoalArrivalRequest++;
+                if(goalArrivalSuccess){
+                    currentMission = MissionState::MissionComplete;
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
     mission_msg.data = currentMission;
     mission_pub.publish(mission_msg);
     std::cout<< stateToStringMission(currentMission) <<std::endl;

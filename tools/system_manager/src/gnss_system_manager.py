@@ -374,17 +374,17 @@ class SystemManager():
 
         
 
-        # rospy.sleep(1)
-        # self.initLowCtrl()
+        rospy.sleep(1)
+        self.initLowCtrl()
 
-        # can_receive_msg = None
-        # while can_receive_msg is None:
-        #     try:
-        #         can_receive_msg = rospy.wait_for_message('/driving_gui', String, timeout=1)
-        #     except:
-        #         pass
-        # rospy.logwarn("Lowlevel received")
-        # rospy.logwarn("SYSTEM IS READY!!!!!!!!!!!!!!!!!!!")
+        can_receive_msg = None
+        while can_receive_msg is None:
+            try:
+                can_receive_msg = rospy.wait_for_message('/driving_gui', String, timeout=1)
+            except:
+                pass
+        rospy.logwarn("Lowlevel received")
+        rospy.logwarn("SYSTEM IS READY!!!!!!!!!!!!!!!!!!!")
 
     
     def init_process(self):
@@ -403,19 +403,19 @@ class SystemManager():
                 pass
             
         rospy.logwarn("GNSS received")
-        # rospy.sleep(1)
+        rospy.sleep(1)
         
-        # self.initCAN()
+        self.initCAN()
         
 
-        # can_msg = None
-        # while can_msg is None:
-        #     try:
-        #         can_msg = rospy.wait_for_message('/a_can_l2h', Frame, timeout=1)
-        #     except:
-        #         pass
+        can_msg = None
+        while can_msg is None:
+            try:
+                can_msg = rospy.wait_for_message('/a_can_l2h', Frame, timeout=1)
+            except:
+                pass
 
-        # rospy.logwarn("CAN received")
+        rospy.logwarn("CAN received")
 
         
         
