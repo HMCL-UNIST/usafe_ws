@@ -409,7 +409,6 @@ void BehaviorPlanner::updateFactors(){
             }
         }
 
-
         float velMob = -1;
         float xObj[on], yObj[on], vxObj[on], vyObj[on], velObj[on];
         float sObj[on], lObj[on], dsObj[on], dlObj[on];
@@ -828,7 +827,7 @@ void BehaviorPlanner::updateFactors(){
             ROS_INFO("first: %d, last: %d", firstIdJunc, lastIdJunc);
             ROS_INFO("hGap: %f, lflag: %d, rflag: %d", hGap, leftTurn, rightTurn);
         }
-        else if((!isJunc || dJunc != 0)){
+        else if(!isJunc || dJunc != 0){
             leftTurn = false;
             rightTurn = false;
         }

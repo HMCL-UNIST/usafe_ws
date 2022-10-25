@@ -11,7 +11,9 @@
        <!-- r_Town03_hj_traffic -->
       <param name="osm_file_name" value="$(find usafe)/maps/race_track_v18_fix.osm"/> 
       
-      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v22_continue_fix.osm"/> 
+      <!-- <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v22_continue_fix.osm"/>  -->
+      <param name="osm_file_name_for_driving" value="$(find usafe)/maps/race_track_v24_continue_fix.osm"/> 
+      
       
       
       
