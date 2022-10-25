@@ -99,7 +99,7 @@ MissionState MissionStateMachine::getCurrentMission(){
 
 void MissionStateMachine::updateFactors(){
 
-    // statusWait = true; //for test
+    statusWait = true; //for test
     arriveAtStartPos = false;
     // arriveAtStartPos = true; //for test
     arriveAtGoalPos = false;
@@ -124,9 +124,9 @@ void MissionStateMachine::updateFactors(){
         break;
     }
     switch(currentBehavior){
-        case BehaviorState::StopAtStartPos:
+        case BehaviorState::StartArrival:
             arriveAtStartPos = true;
-        case BehaviorState::StopAtGoalPos:
+        case BehaviorState::GoalArrival:
             arriveAtGoalPos = true; 
     }
 

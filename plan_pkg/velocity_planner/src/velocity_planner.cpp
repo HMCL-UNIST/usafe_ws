@@ -161,7 +161,7 @@ void VelocityPlanner::CheckMotionState()
       DesiredVel = 0;
 
       if (Dis <= stop_margin && passcrosswalk){
-        MotionMode = MotionState::STOP;
+        MotionMode = MotionState::GO;
         motionstate_debug = "At the stop line";
         targetVel1 = intersection_velocity1/3.6;
         passcrosswalk = true;
@@ -344,7 +344,7 @@ void VelocityPlanner::CheckMotionState()
     }
 
 
-    if (Dis <= 16 && DesiredVel <= 0.5){
+    if (Dis <= 18 && DesiredVel <= 0.5){
       targetVel = 0.0;
     }
     else{
@@ -977,7 +977,7 @@ double VelocityPlanner::CheckLeadVehicle(){
     DesiredVel = std::max(DesiredVel, 15/3.6);
   }
 
-  if (Dis <= 16 && DesiredVel <= 0.5){
+  if (Dis <= 18 && DesiredVel <= 0.5){
     targetVel = 0.0;
   }
   else{
@@ -1139,6 +1139,13 @@ void VelocityPlanner::VelocitySmoother()
     return;
   }
   else if (MotionMode == MotionState::ACC){
+    if (targetVel <= 0.8){
+      targetVel = 0;
+    }
+    ref_speed = targetVel;
+    return;
+  }
+  else if (MotionMode == MotionState::FAIL){
     if (targetVel <= 0.8){
       targetVel = 0;
     }

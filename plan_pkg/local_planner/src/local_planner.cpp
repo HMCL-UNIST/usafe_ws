@@ -168,7 +168,8 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
         Eigen::Vector3d pt_e(range_lane.lanes[lane_idx].waypoints[endidx].pose.pose.position.x, range_lane.lanes[lane_idx].waypoints[endidx].pose.pose.position.y, 0);
         pt_e = tf3x3.inverse()*(pt_e - t);
         int nn = abs(int(pt_e[0]));
-        
+        double factor = 1.0;
+        if (obs_flag ==true) factor =1.2;
         X.push_back(0);
         Y.push_back(0);
         
@@ -176,10 +177,10 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
         Y.push_back(pt_e[1]/nn);
 
         X.push_back(lc_prepare_dist+lc_dist);
-        Y.push_back(pt_e[1]- pt_e[1]/nn);
+        Y.push_back((pt_e[1]- pt_e[1]/nn)*factor);
 
         X.push_back(max(lc_prepare_dist+lc_dist+2, pt_e[0]));
-        Y.push_back(pt_e[1]);
+        Y.push_back(pt_e[1]*factor);
 
         tk::spline::spline_type type = tk::spline::cspline;
         tk::spline s;
@@ -233,6 +234,12 @@ void localplanners::connect_handler(const ros::TimerEvent& time){
 
     pub_lane.signal_id = range_lane.lanes[0].signal_id;
     pub_lane.lane_id = range_lane.lanes[0].lane_id;
+    if (lc_flag == true  || obs_flag ==true ){
+        pub_lane.speed_limit = 7.5;
+    }
+    else{
+        pub_lane.speed_limit = 25;
+    }
     viz_local(pub_lane);
     pub_traj.publish(pub_lane);
 }

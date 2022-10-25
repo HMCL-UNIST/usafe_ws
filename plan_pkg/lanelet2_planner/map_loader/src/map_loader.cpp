@@ -1,4 +1,3 @@
-
 //   Copyright (c) 2022 Ulsan National Institute of Science and Technology (UNIST)
 //   Licensed under the Apache License, Version 2.0 (the "License");
 //   you may not use this file except in compliance with the License.
@@ -60,9 +59,9 @@ MapLoader::MapLoader(const ros::NodeHandle& nh,const ros::NodeHandle& nh_p, cons
   
   map_loaded = false;
   way_pub = nh_.advertise<hmcl_msgs::LaneArray>("/global_traj", 2, true);
-  //local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);
+  local_traj_pub = nh_.advertise<hmcl_msgs::Lane>("/local_traj", 2, true);
   g_map_pub = nh_.advertise<visualization_msgs::MarkerArray>("/lanelet2_map_viz", 2, true);  
-  //autoware_lane_pub = nh_.advertise<autoware_msgs::Lane>("/local_traj_auto", 2, true);
+  autoware_lane_pub = nh_.advertise<autoware_msgs::Lane>("/local_traj_auto", 2, true);
 
   debug_pub = nh_.advertise<geometry_msgs::PoseStamped>("/maploader_debug", 2, true);
 
@@ -422,9 +421,6 @@ void MapLoader::compute_global_path(){
   mission_pt.end.z = id;
   mission_pt.end.x = end_idx;
 
-  ROS_INFO("start_id is : %d",start_idx);
-  ROS_INFO("start_id is : %d",end_idx);
-
 
   if (!find_check){
     for(int t=1; t<xyz.size()-1; t++){ 
@@ -432,7 +428,7 @@ void MapLoader::compute_global_path(){
       pose_a.position.y = xyz[t].second;
       findnearest_lane_and_point_idx(global_lane_array, pose_a, s_lane_idx, s_pt_idx);
       id = global_lane_array.lanes[s_lane_idx].lane_id;
-      
+      // ROS_INFO("id is : %d",id);
       std::pair<int,int> node = {s_lane_idx, s_pt_idx};
       nodes.push_back(node);
       total_node_num = nodes.size();
@@ -1539,10 +1535,7 @@ PolyFit<double> MapLoader::polyfit(std::vector<double> x, std::vector<double> y)
 }
 
 void MapLoader::v2xMissionCallback(const v2x_msgs::Mission1& msg){
-  
-  if (msg.States.size() > 0){
-    getV2Xinfo = true;
-  }
+  getV2Xinfo = true;
   Mission_msg = msg;
   MissionStates.States = msg.States;
   mission_status = msg.status;

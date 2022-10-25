@@ -29,7 +29,8 @@ BehaviorPlanner::BehaviorPlanner(){
     nh_.param<float>("frontlenEgo", frontlenEgo, 4.180/2);// need to check lidar position in real vehicle
     nh_.param<float>("dFront", dFront, 40);
     nh_.param<float>("dLuggage", dLuggage, 40);
-    nh_.param<float>("thresFrontStop", thresFrontStop, 15);
+    nh_.param<float>("thresFrontStop", thresFrontStop, 20);
+    nh_.param<float>("thresTurnStop", thresTurnStop, 15);    
     nh_.param<int>("nStore", nStore, 20); //need to check
     nh_.param<int>("thresInit2", thresInit2, 40);
     nh_.param<int>("thresStopAtStartPos", thresStopAtStartPos, 20);
@@ -119,6 +120,8 @@ BehaviorPlanner::BehaviorPlanner(){
     Turn = false;
     localRet = false;
     startChecker = false;
+    TLstopCheck = false;
+    firstCWcheck = false;
 
     inCW = false;
     frontPrev = false;
@@ -792,7 +795,7 @@ void BehaviorPlanner::updateFactors(){
             dJunc = sqrt(pow(StrX,2)+pow(StrY,2));
             // ROS_INFO("StrX: %f, StrY: %f", StrX, StrY);
         }
-        if(isJunc && dJunc < thresTurn){
+        if(isJunc && dJunc < thresTurn && dJunc > 0){
             JuncX = globalLaneArray.lanes[0].waypoints[lastIdJunc].pose.pose.position.x-globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.x;
             JuncY = globalLaneArray.lanes[0].waypoints[lastIdJunc].pose.pose.position.y-globalLaneArray.lanes[0].waypoints[firstIdJunc].pose.pose.position.y;
             lenJunc = sqrt(pow(JuncX,2)+pow(JuncY,2));
@@ -825,7 +828,7 @@ void BehaviorPlanner::updateFactors(){
             ROS_INFO("first: %d, last: %d", firstIdJunc, lastIdJunc);
             ROS_INFO("hGap: %f, lflag: %d, rflag: %d", hGap, leftTurn, rightTurn);
         }
-        else{
+        else if((!isJunc || dJunc != 0)){
             leftTurn = false;
             rightTurn = false;
         }
@@ -851,10 +854,17 @@ void BehaviorPlanner::updateFactors(){
             }
         }
         if(essentialLaneChange == true) luggageDrop = false;
-        if(unknownFront > thresFrontStop){
-            luggageDrop = false;
+        if(turn){
+            if(unknownFront > thresTurnStop){
+                luggageDrop = false;
+            }
         }
-
+        else{
+            if(unknownFront > thresFrontStop){
+                luggageDrop = false;
+            }
+        }
+        
         // ROS_INFO("prev: %d, lane_id: %d", prevLaneID, globalLaneArray.lanes[0].lane_id);
         // determine doneLC
         ROS_INFO("local return: %d", localRet);
@@ -1001,7 +1011,7 @@ void BehaviorPlanner::updateFactors(){
                 if(dJunc == 0){
                     trafficLightStop = false;
                 }
-                else if(timing_min_End_Time < thresTLtime){
+                else if(timing_min_End_Time < thresTLtime && dJunc >= 20){
                     trafficLightStop = true;
                 }
                 else{
@@ -1028,16 +1038,9 @@ void BehaviorPlanner::updateFactors(){
             if(!distCheck) pedestrianOnCrosswalk = false;
         }
         if(pedestrianOnCrosswalk && frontCar && lug_id != -1){
-            bool distCheck = false;
-            for(int i = 0; i < pedObj.objects.size(); i++){
-                float tmpx = pedObj.objects[i].pose.position.x - luggage.objects[lug_id].pose.position.x;
-                float tmpy = pedObj.objects[i].pose.position.y - luggage.objects[lug_id].pose.position.y;
-                if(sqrt(pow(tmpx,2)+pow(tmpy,2)) < 1){
-                    frontCar = false;
-                    frontPrev = false;
-                    luggageDrop = false;                    
-                }
-            }
+            frontCar = false;
+            frontPrev = false;
+            luggageDrop = false;                    
         }
 
         if(trafficLightStop){
@@ -1171,7 +1174,7 @@ void BehaviorPlanner::updateBehaviorState(){
         if(luggageDrop){
             currentBehavior = BehaviorState::FrontLuggage;
         }
-        else if(front_dist < thresFrontStop && stationaryFrontCar && prevBehavior != BehaviorState::TrafficLightStop){
+        else if(((!turn && front_dist < thresFrontStop) || (turn && front_dist < thresTurnStop)) && stationaryFrontCar && prevBehavior != BehaviorState::TrafficLightStop){
             currentBehavior = BehaviorState::FrontCarStop;
         }
         else if(speedBumpSign){
@@ -1204,7 +1207,9 @@ void BehaviorPlanner::updateBehaviorState(){
                 else if(trafficLightStop){
                     currentBehavior = BehaviorState::TrafficLightStop;
                 }
-                else if(approachToCrosswalk){
+                else if(firstCWcheck && currentBehavior == BehaviorState::Forward && approachToCrosswalk){
+                    TLstopCheck = false;
+                    firstCWcheck = false;
                     currentBehavior = BehaviorState::Crosswalk;
                 }
                 else{
@@ -1241,22 +1246,7 @@ void BehaviorPlanner::updateBehaviorState(){
                     goToTurn = true;
                 }
             }
-            else if(prevBehavior == BehaviorState::Pedestrian){
-                countPedestrian++;
-                if(pedestrianOnCrosswalk == false && turn){
-                    if(countPedestrian < runRate*thresPedestrian) countPedestrian = 0;
-                    if(trafficLightStop == true){
-                        currentBehavior = BehaviorState::TrafficLightStop;
-                    }
-                    else{
-                        goToTurn = true;
-                    }
-                }
-                else if(pedestrianOnCrosswalk == false){
-                    if(countPedestrian < runRate*thresPedestrian) countPedestrian = 0;
-                    currentBehavior = BehaviorState::Crosswalk;
-                }
-            }
+
 
         }
     }
@@ -1287,6 +1277,22 @@ void BehaviorPlanner::updateBehaviorState(){
             if(goalArrivalCheck){
                 countStopAtGoalPos = 0;
                 currentBehavior = BehaviorState::GoalArrival;
+            }
+        }
+        else if(prevBehavior == BehaviorState::Pedestrian){
+            countPedestrian++;
+            if(pedestrianOnCrosswalk == false && turn){
+                if(countPedestrian < runRate*thresPedestrian) countPedestrian = 0;
+                if(trafficLightStop == true){
+                    currentBehavior = BehaviorState::TrafficLightStop;
+                }
+                else{
+                    goToTurn = true;
+                }
+            }
+            else if(pedestrianOnCrosswalk == false){
+                if(countPedestrian < runRate*thresPedestrian) countPedestrian = 0;
+                currentBehavior = BehaviorState::Crosswalk;
             }
         }
         else if(prevBehavior == BehaviorState::FrontLuggage){
@@ -1355,13 +1361,18 @@ void BehaviorPlanner::updateBehaviorState(){
             else if(stopCheck && stationaryFrontCar){
                 currentBehavior = BehaviorState::FrontCarStop;
             }
+            else if(trafficLightStop){
+                currentBehavior = BehaviorState::TrafficLightStop;
+            }
         }
     }
     if(goToNormalDrive){
         if(turn){
             goToTurn = true;
         }
-        else if(approachToCrosswalk){
+        else if(firstCWcheck && currentBehavior == BehaviorState::Forward && approachToCrosswalk){
+            TLstopCheck = false;
+            firstCWcheck = false;
             currentBehavior = BehaviorState::Crosswalk;
         }
         else{
@@ -1384,6 +1395,13 @@ void BehaviorPlanner::updateBehaviorState(){
             currentBehavior = BehaviorState::LeftTurn;
         }
     }
+    if(currentBehavior == BehaviorState::TrafficLightStop){
+        TLstopCheck = true;
+    }
+    if(TLstopCheck && inCW){
+        firstCWcheck = true;
+    }
+
     NormalDrive = false;
     LaneFollowing = false;
     Turn = false;
@@ -1395,7 +1413,7 @@ void BehaviorPlanner::updateBehaviorState(){
         Turn = true;
         NormalDrive = true;
     }
-    if(currentBehavior == BehaviorState::TrafficLightStop || currentBehavior == BehaviorState::Crosswalk || currentBehavior == BehaviorState::Pedestrian){
+    if(currentBehavior == BehaviorState::TrafficLightStop || currentBehavior == BehaviorState::Crosswalk){
         NormalDrive = true;
     }
 

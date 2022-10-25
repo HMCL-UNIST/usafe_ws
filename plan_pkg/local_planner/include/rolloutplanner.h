@@ -72,7 +72,7 @@ private:
     //vehicle parameter
     double veh_m, veh_mf, veh_mr, veh_l, veh_lf, veh_lr; 
     double dt, vel_param, angle, ang_obs, ang_lc;
-    int N_, N, M;
+    int N_, N, M, N_pre;
     int n_samples;
 
     // lane change paramter
@@ -107,6 +107,7 @@ public:
     int evaluatelane(const hmcl_msgs::LaneArray& lane_arr);
     hmcl_msgs::Lane Cutofflane(const hmcl_msgs::Lane& lane);
 
+    double calculate_dist_cost_short(const hmcl_msgs::Lane& ref, const hmcl_msgs::Lane& lane);
     double calculate_dist_cost(const hmcl_msgs::Lane& ref, const hmcl_msgs::Lane& lane);
     double calculate_min(const hmcl_msgs::Lane& lane, double x, double y );
     int calculate_min_idx(const hmcl_msgs::Lane& ref, double x1, double y1);

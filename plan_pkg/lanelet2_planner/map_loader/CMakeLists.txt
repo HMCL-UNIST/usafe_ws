@@ -76,12 +76,14 @@ add_executable(map_loader src/Amathutils.cpp src/map_loader.cpp src/kalman_filte
 target_link_libraries(map_loader ${catkin_LIBRARIES} ${GeographicLib_LIBRARY_DIRS}/libGeographic.so)
 add_dependencies(map_loader ${catkin_EXPORTED_TARGETS})
 
-
+# add_executable(map_loader_test src/Amathutils.cpp src/map_loader_test.cpp src/kalman_filter.cpp src/route_planner.cpp)
+# target_link_libraries(map_loader_test ${catkin_LIBRARIES} ${GeographicLib_LIBRARY_DIRS}/libGeographic.so)
+# add_dependencies(map_loader_test ${catkin_EXPORTED_TARGETS})
 
 
 install(
   TARGETS
-  map_loader  
+  map_loader 
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

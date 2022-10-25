@@ -29,13 +29,13 @@ rolloutPlanner::rolloutPlanner(ros::NodeHandle& nh):
     nh_.param<double>("vehicle_vel", vel_param, 5);
     nh_.param<double>("discretize_time", dt, 0.1);
     
-    nh_.param<int>("Horizon_prepare", N_, 3);
+    nh_.param<int>("Horizon_prepare", N_pre, 2);
     nh_.param<int>("Horizon", N, 20);
     nh_.param<int>("Horizon_Plus", M, 20);
     
     nh_.param<int>("number_of_samples", n_samples, 20);
     nh_.param<double>("max_angle_to_handle", ang_obs, M_PI/2);
-    nh_.param<double>("max_angle_to_handle", ang_lc, M_PI/6);
+    nh_.param<double>("max_angle_to_handle", ang_lc, M_PI/9);
     
     nh_.param<double>("minimum_lane_change_length", min_lc_len, 5.0);
     nh_.param<double>("minimum_lane_change_prepare_length", min_prepare_len, 0.5);
@@ -89,7 +89,7 @@ void rolloutPlanner::ObsCallback(const autoware_msgs::DetectedObjectArray& obs_m
 void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
     if ( st_flag = false || vel_flag == false) return;
     else if(range_lane.lanes.size() == 0){
-        ROS_INFO("Error");
+        ROS_INFO("Error");   
         std::cout <<" no waypoints here with size : " << range_lane.lanes.size() << std::endl;
         return;
     }
@@ -98,6 +98,7 @@ void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
         std::cout <<" only "<< range_lane.lanes[0].lane_id <<"lane is here with size : "<< range_lane.lanes.size() << std::endl;
         return;
     }
+
 
     Eigen::Quaterniond q;
     q.x() = pos_c.q_x;
@@ -114,8 +115,13 @@ void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
     for (int k =0; k<nx; k++) x0[k]=0;
     pts_data.clear();
     angle = ang_lc;
+
     if (obs_flag ==true ){
         angle = ang_obs;
+        N_ = N_pre;
+    }
+    else{
+        N_ = 5;
     }
 
     for (int i=0; i<n_samples+1; i++){
@@ -145,7 +151,6 @@ void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
             lane.signal_id = range_lane.lanes[0].signal_id;
             lane.lane_id = range_lane.lanes[0].lane_id;
         }
-
 
         for (int j=0; j < N_+N+M; j++){
             hmcl_msgs::Waypoint wpt;
@@ -181,7 +186,24 @@ void rolloutPlanner::connect_handler(const ros::TimerEvent& time){
         pub_traj.publish(pub_lane);
     } 
     else{
-        hmcl_msgs::Lane pub_lane = lane_all.lanes[pub_idx];
+        hmcl_msgs::Lane pub_lane;
+        int lane_idx = 1;
+        if (obs_flag == true){
+            for (int i=0; i<range_lane.lanes.size(); i++){
+                if (range_lane.lanes[i].lane_id == 1000){
+                    cout << "lane id " << range_lane.lanes[i].lane_id <<endl;
+                    lane_idx = i;
+                    break;
+                    }
+                }
+                
+            std::cout << "lane idx " << lane_idx <<endl;
+            pub_lane = range_lane.lanes[lane_idx];
+            pub_lane = Cutofflane(pub_lane);
+        }
+        else{
+            pub_lane = lane_all.lanes[pub_idx];    
+        }
         pub_lane.speed_limit = 7.5;
         viz_local(pub_lane);
         pub_traj.publish(pub_lane);
@@ -220,7 +242,6 @@ Point rolloutPlanner::fill_out_state(const double *x){
     pt.y = x[1];
     pt.psi = x[2];
     pt.vel = vel_param;
-
     return pt;
 }
 
@@ -267,7 +288,8 @@ int rolloutPlanner::evaluatelane(const hmcl_msgs::LaneArray& lane_arr){
             }
         }
     }
-    
+
+    cost.clear();
     int lane_idx = 0;
     for (int i=0; i <lane_arr.lanes.size(); i++){
         double lane_cost = calculate_dist_cost(lane_ref, lane_arr.lanes[i]);
@@ -277,24 +299,15 @@ int rolloutPlanner::evaluatelane(const hmcl_msgs::LaneArray& lane_arr){
                     lane_idx = i;
                 }}}
         else lane_idx =0;
-
-        cout << i << "th lane cost :: " << lane_cost << ",  handle cost " << sqrt(pow(i-n_samples/2,2)/pow(n_samples/2,2)) <<endl;
+        
         lane_cost += sqrt(pow(i-n_samples/2,2)/pow(n_samples/2,2))*0.1*pos_c.vel;  // combine with velocity??
         if (obs_flag ==true){
+            lane_cost = calculate_dist_cost_short(lane_ref, lane_arr.lanes[i]);
             double obs_cost = calculate_min(lane_arr.lanes[i],obs.x,obs.y);
-            if (obs_cost <lane_width) lane_cost += 10000000;
+            if (obs_cost < lane_width) lane_cost += 10000000;
         }
-        // need to add the cost for arriving the node
-
         cost.push_back(lane_cost);
     }
-    if (obs_flag ==true){        
-        double dx = range_lane.lanes[lane_idx].waypoints[10].pose.pose.position.x -pos_c.x;
-        double dy = range_lane.lanes[lane_idx].waypoints[10].pose.pose.position.y - pos_c.y;
-        double alpha = atan2(dy,dx);
-        ROS_INFO("alpha 2 :: %.3f", alpha);
-    }
-
     return min_element(cost.begin(), cost.end()) - cost.begin();  
 }
 
@@ -329,6 +342,20 @@ double rolloutPlanner::calculate_dist_cost(const hmcl_msgs::Lane& ref, const hmc
 
     double sum = 0;
     for (int i=(int)N/2; i<N ; i++){
+        x_ = lane.waypoints[i].pose.pose.position.x;
+        y_ = lane.waypoints[i].pose.pose.position.y;
+        sum = sum + calculate_min(ref,x_,y_); //*pow(0.9,i);
+    }
+    return sum;
+}
+
+double rolloutPlanner::calculate_dist_cost_short(const hmcl_msgs::Lane& ref, const hmcl_msgs::Lane& lane){
+    int idx=0;
+    double dis =100;
+    double x_, y_;
+
+    double sum = 0;
+    for (int i=0; i<N_pre+5; i++){
         x_ = lane.waypoints[i].pose.pose.position.x;
         y_ = lane.waypoints[i].pose.pose.position.y;
         sum = sum + calculate_min(ref,x_,y_); //*pow(0.9,i);

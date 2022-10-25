@@ -355,4 +355,3 @@ void v2xMissionCallback(const v2x_msgs::Mission1& msg);
 
 };
 
-

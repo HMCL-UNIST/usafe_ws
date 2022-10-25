@@ -96,7 +96,7 @@ class BehaviorPlanner
         // ros::Timer behavior_timer;
         // std::mutex
         double runRate;
-        float wLane, lenEgo, frontlenEgo, dFront,thresFrontStop, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn,thresMinTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
+        float wLane, lenEgo, frontlenEgo, dFront,thresFrontStop, thresTurnStop, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn,thresMinTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
         geometry_msgs::Pose egoPose;
         double egoSpeed, prev_object_x, prev_object_y;
         float xObstacle, yObstacle, xSBsign, ySBsign, lightPrev;
@@ -116,7 +116,7 @@ class BehaviorPlanner
         bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck, startChecker;
         short front_id, prevLaneID, unknown_id;
         int nStore, countFront, countStationary, countSB, countLuggage, countObs;
-        bool stop_line_stop, localRet;
+        bool stop_line_stop, localRet, TLstopCheck, firstCWcheck;
         bool getGlobal, getPose, getSpeed, getObject, getPedObj, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3,getRet, getMob;
         bool inCW, frontPrev, stationaryPrev, sbPrev, luggagePrev;
         hmcl_msgs::BehaviorFactor behaviorFactor;
