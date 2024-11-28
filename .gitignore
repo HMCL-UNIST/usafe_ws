@@ -2,5 +2,5 @@
 build/
 install/
 log/
-.bag
+*.bag
 
