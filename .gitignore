@@ -2,4 +2,5 @@
 build/
 install/
 log/
-tools/maps/bigmap06.pcd
+.bag
+
