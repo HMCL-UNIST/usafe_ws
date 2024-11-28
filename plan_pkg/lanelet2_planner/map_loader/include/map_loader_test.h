@@ -1,0 +1,447 @@
+
+//   Copyright (c) 2022 Ulsan National Institute of Science and Technology (UNIST)
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+
+//     http://www.apache.org/licenses/LICENSE-2.0
+
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
+
+//   Authour : Hyeonbin Lee, bin2915@unist.ac.kr
+
+#include <sstream>
+#include <string>
+#include <list>
+#include <mutex>
+#include <iostream>
+#include <fstream>
+#include <queue>
+#include <boost/filesystem.hpp>
+#include <boost/thread/thread.hpp>
+#include <math.h>
+
+#include <chrono>
+#include <ros/ros.h>
+#include <ros/time.h>
+#include <ros/package.h>
+
+#include <std_msgs/Float64.h>
+#include <std_msgs/Int8.h>
+#include <std_msgs/Int16.h>
+#include <std_msgs/Int32MultiArray.h>
+#include <std_msgs/Bool.h>
+#include <std_msgs/String.h>
+
+#include <sensor_msgs/NavSatFix.h>
+#include <hmcl_msgs/Lane.h>
+#include <hmcl_msgs/LaneArray.h>
+#include <hmcl_msgs/LaneArrays.h>
+#include <hmcl_msgs/Waypoint.h>
+#include <hmcl_msgs/Trafficlight.h>
+
+#include <mobileye_msgs/MobileyeInfo.h>
+
+#include <nav_msgs/Odometry.h>
+#include <sensor_msgs/NavSatFix.h>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Point.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <autoware_msgs/Lane.h>
+#include <autoware_msgs/Waypoint.h>
+
+
+#include <GeographicLib/LocalCartesian.hpp>
+#include "BlockingQueue.h"
+#include <eigen3/Eigen/Geometry>
+#include <mutex> 
+#include <thread>
+#include <boost/thread/thread.hpp>
+
+
+#include <tf/tf.h>
+#include <tf/transform_broadcaster.h>
+#include <tf/transform_datatypes.h>
+#include <tf/transform_listener.h>
+#include <tf2/utils.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
+#include <vector>
+// #include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/geometry/LaneletMap.h>
+#include <lanelet2_core/geometry/impl/Area.h>
+#include "lanelet2_core/geometry/Area.h"
+#include "lanelet2_core/geometry/BoundingBox.h"
+#include "lanelet2_core/geometry/LaneletMap.h"
+#include <lanelet2_io/Io.h>
+#include <lanelet2_io/io_handlers/Factory.h>
+#include <lanelet2_io/io_handlers/Writer.h>
+#include <lanelet2_projection/UTM.h>
+
+#include <lanelet2_routing/Route.h>
+#include <lanelet2_routing/RoutingCost.h>
+#include <lanelet2_routing/RoutingGraph.h>
+#include <lanelet2_routing/RoutingGraphContainer.h>
+#include <lanelet2_traffic_rules/TrafficRulesFactory.h>
+
+#include <map_loader_utils.h>
+#include <amathutils.hpp>
+#include <route_planner.h>
+#include <kalman_filter.h>
+#include <autoware_lanelet2_msgs/MapBin.h>
+#include <autoware_msgs/DetectedObjectArray.h>
+#include <hmcl_msgs/VehicleStatus.h>
+#include <hmcl_msgs/MissionWaypoint.h>
+#include <hmcl_msgs/PolygonFlag.h>
+#include <v2x_msgs/Mission1.h>
+#include <v2x_msgs/Mission1state.h>
+
+#include <boost/geometry.hpp>
+#include <boost/geometry/geometries/point_xy.hpp>
+#include <boost/geometry/geometries/polygon.hpp>
+
+
+// #include <lanelet2_extension/utility/message_conversion.h>
+#include <polyfit.h>
+
+// #include <lanelet2_extension/utility/query.h>
+// #include <lanelet2_extension/visualization/visualization.h>
+// #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
+
+
+
+enum struct LaneChangeState {LeftChange = 0, Follow = 1, RightChange = 2, LeftPending = 3,RightPending = 4}; 
+
+
+typedef enum{MissionInit, VehicleReady, StartFromPitStop, Lap1, Lap2, Lap3, Lap4, Lap5, MissionComplete, PitStop, MissionSlowOn, MissionStop} MissionState;
+
+
+
+const char* stateToStringMission(MissionState state) {
+    switch (state) {
+        case MissionInit:         return "MissionInit";
+        case VehicleReady:        return "VehicleReady";
+        case StartFromPitStop:    return "StartFromPitStop";
+        case Lap1:                return "Lap1";
+        case Lap2:                return "Lap2";
+        case Lap3:                return "Lap3";
+        case Lap4:                return "Lap4";
+        case Lap5:                return "Lap5";
+        case MissionComplete:     return "MissionComplete";
+        case PitStop:             return "PitStop";
+        case MissionSlowOn:       return "MissionSlowOn";
+        case MissionStop:         return "MissionStop";
+        default:                  return "[Unknown MissionState]";
+    }
+}
+
+
+inline const char* stateToString(LaneChangeState v)
+{
+    switch (v)
+    {
+        case LaneChangeState::LeftChange:   return "LeftChange";
+        case LaneChangeState::Follow:   return "Follow";
+        case LaneChangeState::RightChange: return "RightChange";
+        case LaneChangeState::LeftPending: return "LeftPending";
+        case LaneChangeState::RightPending: return "RightPending";
+        default:      return "[Unknown LaneChangeState]";
+    }
+}
+// typedef enum{LeftChange, Follow, RightChange} LaneChangeState;
+
+#define PI 3.14159265358979323846264338
+
+Eigen::MatrixXd A_curv(3, 3); // System dynamics matrix
+Eigen::MatrixXd B_curv(3, 3); // Input control matrix
+Eigen::MatrixXd C_curv(3, 3); // Output matrix
+Eigen::MatrixXd Q_curv(3, 3); // Process noise covariance
+Eigen::MatrixXd R_curv(3, 3); // Measurement noise covariance
+Eigen::MatrixXd P_curv(3, 3); // Estimate error covariance
+
+// A_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// C_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// Q_curv << 0.01, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.01;
+// R_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+// P_curv << 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0;
+
+
+
+class MapLoader 
+{
+  
+private:
+ros::NodeHandle nh_, nh_p_, nh_local_path_;
+
+ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, checkpoint_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub, ped_cw_pub, optimal_checkpoint_pub, opt_traj_viz_pub, o_map_pub, opt_traj_lanelet_viz_pub;
+ros::Publisher lir_pub;
+ros::Publisher way_pub;
+ros::Publisher optimal_pub;
+ros::Publisher mission_pub, mission_pt_pub, mission_pts_pub, ped_pts_pub, map_ver_pub;
+ros::Publisher subtype_pub;
+ros::Publisher entire_traj_pub, entire_traj_viz_pub, entire_joker_pub, entire_joker_viz_pub;
+ros::Subscriber mission_sub, ped_sub;
+ros::Subscriber pose_sub, goal_sub, vehicle_status_sub, odom_sub;
+
+mobileye_msgs::MobileyeInfo mobileye_data;
+ros::Timer viz_timer, g_traj_timer, lir_timer, l_traj_timer, subtype_timer;
+visualization_msgs::MarkerArray map_marker_array,traj_marker_array,traj_lanelet_marker_array, local_traj_marker_array, lir_marker_array, o_map_marker_array;
+visualization_msgs::MarkerArray global_marker_array, optimal_marker_array, entire_traj_marker_array, entire_joker_traj_marker_array;
+visualization_msgs::Marker mission_pt_mark;
+std::vector<std::vector<std::pair<double,double>>> checkpoints, j_checkpoints, n_checkpoints, previous_checkpoints, o_checkpoints, previous_optimal_checkpoints, optimal_checkpoints, End_checkpoints;
+double test_direction;
+bool visualize_path, continuious_global_replan;
+visualization_msgs::MarkerArray mission1_marker_array, ped_marker_array;
+
+autoware_msgs::DetectedObjectArray objects, prev_objects, ped_array; 
+
+std::vector<std::pair<int,int>> nodes;
+std::pair<int,int> target_node;
+std::vector<int> id_array;
+std::mutex mu_mtx;
+RoutePlanner rp_, entire_rp, entire_j_rp;
+lanelet::LaneletMapPtr map, j_map, o_map;
+lanelet::routing::RoutingGraphUPtr routingGraph, j_routingGraph, o_routingGraph;
+lanelet::ConstLineString3d target_ctl;
+lanelet::ConstLanelet target_lane;
+std::vector<lanelet::ConstLanelet> target_lanes;
+std::vector<lanelet::ConstLanelet> lanes;
+std::vector<lanelet::ConstLanelet> lir;
+std::vector<hmcl_msgs::Lane> traj_ll;
+std::vector<std::pair<double,double>> xyz, xyz_End;
+
+// MissionState currentMission;
+std::string currentMission;
+
+std_msgs::Bool ped_cw;
+int map_ver;
+bool map_loaded;
+bool getMission;
+bool getSubType;
+float local_path_length;
+double origin_lat;
+double origin_lon;
+double origin_att;
+double origin_easting;
+double origin_northing;
+int origin_zone;
+bool origin_northp;
+double max_dist, max_dist_vel;
+bool global_traj_available;
+bool optimal_traj_available;
+bool entire_traj_available;
+bool entire_joker_availble;
+bool local_traj_available;
+bool goal_available;
+bool lir_available = false;
+bool ped_available = false, ped_in=false, ped_tmp=false;
+
+// bool isinJunction = false;
+// bool isinExit = false;
+// bool isinBank = false;
+// bool isinFreespace = false;
+// bool isinStraight1 = false;
+
+hmcl_msgs::LaneArrays candidate_lane_arrays, n_candidate_lane_arrays, j_candidate_lane_arrays, previous_lane_arrays, optimal_candidate_lane_arrays, o_candidate_lane_arrays, previous_optimal_lane_arrays, entire_lane_arrays, entire_joker_arrays, j_o_candidate_lane_arrays;
+hmcl_msgs::LaneArray global_lane_array, lir_array, route_array, optimal_lane_array, entire_lane_array, entire_joker_array;
+hmcl_msgs::Lane local_lane;
+
+hmcl_msgs::PolygonFlag PolygonFlag;
+
+tf::TransformListener transform_listener;
+
+geometry_msgs::Pose pose_a, pose_b, first_node, last_node;;
+
+int mission_status;
+int start_idx, end_idx;
+int cl_lane_idx = 0; 
+int cl_pt_idx = 0, previous_idx = -1;
+std::vector<int> global_index ={};
+int current_id = 0;
+int previous_id = 0;
+bool lir_flag = false;
+bool pass_target = false, find_new_target = false;
+int ped_count;
+int target_id;
+
+std::string osm_file_name, j_osm_file_name, optimal_osm_file_name;
+double map_road_resolution;
+
+// transform from local sensor frame to global sensor frame
+tf::StampedTransform l_sensor_to_g_sensor;
+tf::TransformListener local_transform_listener;
+float weight_decay_rate;
+double pose_x,pose_y,pose_z;
+float odom_x,odom_y,odom_z;
+bool pose_init;
+std::vector<geometry_msgs::Pose> v2x_nodes;
+geometry_msgs::Pose cur_pose, prev_pose;
+geometry_msgs::Pose cur_goal;
+
+lanelet::Lanelets road_lanelets;
+lanelet::ConstLanelets road_lanelets_const, n_road_lanelets_const, j_road_lanelets_const, optimal_road_lanelets_const, o_road_lanelets_const;
+lanelet::Areas areas, j_areas, o_areas;
+lanelet::Areas bank, j_bank, o_bank;
+lanelet::Areas junction, j_junction, o_junction;
+lanelet::Areas freespace, j_freespace, o_freespace;
+lanelet::Areas exit, j_exit, o_exit;
+lanelet::Areas crosswalk, j_crosswalk, o_crosswalk;
+lanelet::Areas stopline, j_stopline, o_stopline;
+lanelet::Areas parking, j_parking, o_parking;
+lanelet::Areas trafficisland, j_trafficisland, o_trafficisland;
+lanelet::Areas building, j_building, o_building;
+lanelet::Areas vegetation, j_vegetation, o_vegetation;
+
+lanelet::Optional<lanelet::routing::Route> route, opt_route, entire_route;
+std::vector<bool> checkers, opt_checkers;
+int total_node_num;
+bool find_check=false;
+bool left_change_signal, right_change_signal;
+
+LaneChangeState lane_change_state, prev_lane_change_state;
+double lane_change_weight;
+double dist_to_target;
+double lane_change_in_sec, lanechange_fsm_period;
+
+geometry_msgs::PoseStamped debug_msg;
+
+double poly_error;
+bool polyfit_error;
+
+double current_speed;
+double local_path_scale;
+double min_local_path_length, max_local_path_length;
+
+
+///////////////////////////////// Filter definition start  /////////////////////////////////
+
+
+
+KalmanFilter cur_filter;
+bool init_cuv_fit;
+///////////////////////////////// END /////////////////////////////////
+
+
+
+
+public:
+
+struct Waypoint
+{
+    int wp_id;
+    geometry_msgs::PoseStamped pose;
+    bool bank_in;
+};
+
+typedef struct
+{
+    int lane_id;
+    bool lane_change_flag;
+    int corner;
+    std::vector<Waypoint> waypoints;
+}Lane;
+
+struct surface_mark
+{
+    int mark_id;
+    int mark_type;
+    double mark_dist;
+    std::vector<geometry_msgs::Pose> points;
+};
+
+MapLoader(const ros::NodeHandle& nh, const ros::NodeHandle& nh_p);
+~MapLoader();
+
+void load_map();
+void construct_lanelets_with_viz();
+void construct_lanelets_with_viz_opt();
+void viz_pub(const ros::TimerEvent& time);
+void global_traj_handler(const ros::TimerEvent& time);
+void local_traj_handler(const ros::TimerEvent& time);
+void lir_handler(const ros::TimerEvent& time);
+void ped_inCw_handler(const ros::TimerEvent& time);
+void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+void llaCallback(const nav_msgs::OdometryConstPtr& msg);
+void PedCallback(const autoware_msgs::DetectedObjectArray& msg);
+void callbackVehicleStatus(const hmcl_msgs::VehicleStatusConstPtr &msg);
+
+void mobileye_based_traj(hmcl_msgs::Lane& local_traj_msg);
+
+void missionCallback(const std_msgs::Int16::ConstPtr& msg);
+void mobileye_follow();
+void leftLancechangeCallback(const std_msgs::BoolConstPtr &msg);
+void rightLancechangeCallback(const std_msgs::BoolConstPtr &msg);
+void objsCallback(const autoware_msgs::DetectedObjectArrayConstPtr& msg);
+
+double get_yaw(const lanelet::ConstPoint3d & _from, const lanelet::ConstPoint3d &_to );
+unsigned int getClosestWaypoint(bool is_start, const lanelet::ConstLineString3d &lstring, geometry_msgs::Pose& point_);
+void findnearest_lane_and_point_idx(const hmcl_msgs::LaneArray &lanes, geometry_msgs::Pose& point_, int &closest_lane_idx, int &closest_point_idx);
+void fix_and_save_osm();
+void mission_state(const std::vector<std::pair<double,double>>  mission_positions);
+void mission1Callback(const v2x_msgs::Mission1& msg, const std::vector<std::pair<double,double>>  mission_positions);
+void ped_state(const autoware_msgs::DetectedObjectArray& pobjects);
+
+PolyFit<double> polyfit(std::vector<double> x, std::vector<double> y);
+void curve_fitting(std::vector<double> speed_lim,std::vector<std::vector<double>>& g_points, hmcl_msgs::Lane& local_traj_msg);
+void publish_global_path();
+void publish_local_path();
+void publish_optimal_path();
+void publish_entire_path();
+float calculate_distance_pose2global(int cur_checkpoint);
+float calculate_distance_pose2optimal(int cur_checkpoint);
+
+void fill_empty_path();
+
+void check_current_pose();
+void check_current_pose_opt();
+void init_kalman_filters();
+double distance(double x1, double y1, double x2, double y2);
+void compute_global_path();
+void compute_local_path();
+void compute_optimal_path();
+void compute_entire_path();
+void current_lanefollow();
+void lane_in_range();
+int check_traffic_light(const int& id);
+void wp_inArea();
+void ped_inCw();
+void ego_in();
+int calculate_distance_pose2local();
+bool calculate_distance(geometry_msgs::Pose &point, hmcl_msgs::Waypoint &wp, double &dist);
+bool calculate_distance_(hmcl_msgs::Waypoint &wp1, hmcl_msgs::Waypoint &wp2, double &dist, double &dist_cum);
+void v2x_goal_nodes();
+visualization_msgs::MarkerArray visualize_global_path(const hmcl_msgs::LaneArray global_lane_array);
+
+visualization_msgs::MarkerArray visualize_optimal_path(const hmcl_msgs::LaneArray optimal_lane_array);
+
+visualization_msgs::MarkerArray visualize_entire_path(const hmcl_msgs::LaneArray entire_lane_array);
+
+visualization_msgs::MarkerArray visualize_entire_joker_path(const hmcl_msgs::LaneArray entire_joker_array);
+
+visualization_msgs::MarkerArray visualize_local_path(const hmcl_msgs::Lane local_lane);
+
+void LaneChangeStateMachine();
+
+void lanelet_ros_convert_loop();
+void SimulatedObj();
+
+void viz_local_path(hmcl_msgs::Lane &lane_);
+void viz_lir(hmcl_msgs::LaneArray &lanes);
+
+void pub_autoware_traj(const hmcl_msgs::Lane& lane);
+// void LocalCallback(geometry_msgs::PoseStampedConstPtr local_pose);
+
+void v2xMissionCallback(const v2x_msgs::Mission1& msg);
+void publishSubtype(const ros::TimerEvent&);
+void performSubtypeCheck(); 
+void initCheckpoints();
+void convertLatLonToLocal(const std::vector<std::pair<double, double>>& latlon_points, std::vector<std::pair<double, double>>& local_points);
+};
+
+

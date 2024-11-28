@@ -10,48 +10,43 @@
 #include <boost/filesystem.hpp>
 #include <boost/thread/thread.hpp>
 #include <math.h>
-
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/Pose.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
 #include <chrono>
 #include <ros/ros.h>
 #include <ros/time.h>
 #include <ros/package.h>
-
-#include <v2x_msgs/Mission1.h>
-#include <v2x_msgs/Request.h>
+#include <hmcl_msgs/VehicleStatus.h>
 #include <std_msgs/Int16.h>
+#include <std_msgs/Int8.h>
+#include <std_msgs/String.h>
+#include <hmcl_msgs/Lane.h>
+#include <hmcl_msgs/PolygonFlag.h>
+#include <GeographicLib/UTMUPS.hpp>
 
 #define PI 3.14159265358979323846264338
-typedef enum{Init = 0, ChooseDifficulty = 1, MissionRequest = 2, DriveToStartPos = 3, StartArrivalRequest = 4, DriveToGoalPos = 5,
-            GoalArrivalRequest = 6, MissionComplete = 7} MissionState;
-typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival} BehaviorState;
+typedef enum{MissionInit, VehicleReady, StartFromPitStop, Lap1, Lap2, Lap3, Lap4, Lap5, MissionComplete, PitStop} MissionState;
+typedef enum{BehaviorInit, BehaviorReady, EmergencyStop, StraightFreeDrive, LeftLaneChange, RightLaneChange, ReadyForBank,
+            BankFreeDrive, BankACC, MissionEndStop, MissionEnd} BehaviorState;
 
 inline const char* stateToStringMission(MissionState v)
 
 {
-
     switch (v)
-
     {
-
-        case MissionState::Init:   return "Init";
-
-        case MissionState::ChooseDifficulty:   return "ChooseDifficulty";
-
-        case MissionState::MissionRequest:   return "MissionRequest";
-
-        case MissionState::DriveToStartPos:   return "DriveToStartPos";
-
-        case MissionState::StartArrivalRequest:   return "StartArrivalRequest";
-
-        case MissionState::DriveToGoalPos:   return "DriveToGoalPos";
-
-        case MissionState::GoalArrivalRequest:   return "GoalArrivalRequest";
-
+        case MissionState::MissionInit:   return "MissionInit";
+        case MissionState::VehicleReady: return "VehicleReady";
+        case MissionState::StartFromPitStop:   return "StartFromPitStop";
+        case MissionState::Lap1:   return "Lap1";
+        case MissionState::Lap2:   return "Lap2";
+        case MissionState::Lap3:   return "Lap3";
+        case MissionState::Lap4:   return "Lap4";
+        case MissionState::Lap5:   return "Lap5";
         case MissionState::MissionComplete:   return "MissionComplete";
-
+        case MissionState::PitStop: return "PitStop";
         default:      return "[Unknown MissionState]";
-
     }
 
 }
@@ -59,17 +54,27 @@ class MissionStateMachine
 {
     private:
         ros::NodeHandle nh_;
-        ros::Subscriber v2x_mission_sub, v2x_rsp_sub, behavior_sub;
-        ros::Publisher mission_pub;
+        ros::Subscriber behavior_sub, pose_sub, vel_sub, signal_sub, map_ver_sub, mission_state_sub, subtype_sub ;
+        ros::Publisher mission_pub, mission_viz_pub, target_viz_pub;
         std_msgs::Int16 mission_msg;
-        // ros::Timer mission_timer;
+        hmcl_msgs::PolygonFlag PolygonFlag;
+
         //transition conditions
-        bool statusWait, statusStart, missionRequestSuccess, arriveAtStartPos,startArrivalSuccess, arriveAtGoalPos, goalArrivalSuccess;
+        bool goalCheck, prevGoalCheck;
+        bool getPose, getSpeed, getBehavior, vizMission, getSignal, getMap_ver, getExternalMission ,getSubType;
+        bool statusWait, statusStart, statusPitStop, checkPitStop, startAfterPitStop, checkMapChangePoint, checkLap2, checkLap3, checkLap4, checkLap5, missionEnd;
+
+
         //callback data
-        int v2xMissionStat;
-        double runRate;
-        int countInit, countChooseDifficulty, countMissionRequest, countDriveToStartPos, countStartArrivalRequest, countDriveToGoalPos, countGoalArrivalRequest;
-        int thresInit, thresChooseDifficulty, thresMissionRequest, thresDriveToStartPos, thresStartArrivalRequest, thresDriveToGoalPos, thresGoalArrivalRequest;
+        double runRate, distToGoal, thresGoal, distToPitStop, thresPitStop, thresMapChangePoint, distToMapChangePoint;
+        int countMissionInit, countVehicleReady, countPitStop, countStartFromPitStop, countLap1, countLap2, countLap3, countLap4, countLap5, countMissionComplete;
+        int thresMissionInit, thresVehicleReady, thresLap1, thresLap2, thresLap3, thresLap4, thresLap5;
+        geometry_msgs::Pose egoPose;
+        int currentSignal = 0;
+        int currentMap_ver = -1;
+        int externalMission = -1;
+        double egoSpeed;
+
         BehaviorState currentBehavior;
         MissionState currentMission;
     public:
@@ -81,9 +86,18 @@ class MissionStateMachine
         void updateFactors();
         void updateMissionState();
         bool getParam(int param_id);
-        void v2xMissionCallback(const v2x_msgs::Mission1& msg);
-        void v2xResponseCallback(const v2x_msgs::Request& msg);
+        void plantStateCallback(const hmcl_msgs::VehicleStatus& state_msg);
         void behaviorCallback(const std_msgs::Int16::ConstPtr& msg);
+        void signalCallback(const std_msgs::Int8::ConstPtr& msg);
+        void mapCallback(const std_msgs::Int8::ConstPtr& msg);
+        void setMissionStateCallback(const std_msgs::Int16::ConstPtr& msg);
+        void viz_mission();
+        void viz_target_points();
+        void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+        void calculateDistToGoal();
+        void calculateDistToPitStop();
+        void calculateDistToMapChangePoint();
+        void subtypeCallback(const hmcl_msgs::PolygonFlag::ConstPtr& msg);
 
 };
 

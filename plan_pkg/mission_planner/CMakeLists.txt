@@ -3,7 +3,6 @@ project(mission_planner)
 
 # find_package(PCL REQUIRED)
 
-
 find_package(catkin REQUIRED COMPONENTS  
   nav_msgs  
   roscpp
@@ -14,6 +13,9 @@ find_package(catkin REQUIRED COMPONENTS
   autoware_msgs
   v2x_msgs
 )
+
+# GeographicLib 라이브러리 찾기
+find_package(GeographicLib REQUIRED)
 
 catkin_package(
   CATKIN_DEPENDS 
@@ -32,21 +34,21 @@ include_directories(
   include
   # ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
   ${catkin_INCLUDE_DIRS}
+  ${GeographicLib_INCLUDE_DIRS}
   # ${EIGEN3_INCLUDE_DIRS}
 )
-
-
 
 #add_executable(dynamic_reconfigure_node src/acc_node.cpp)
 #add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
 #target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 #SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(mission_planner src/mission_planner.cpp)
-target_link_libraries(mission_planner ${catkin_LIBRARIES})
+add_executable(mission_planner src/mission2_planner.cpp)
+target_link_libraries(mission_planner 
+  ${catkin_LIBRARIES}
+  ${GeographicLib_LIBRARIES}
+)
 add_dependencies(mission_planner ${catkin_EXPORTED_TARGETS})
-
-
 
 install(
   TARGETS    
@@ -55,7 +57,6 @@ install(
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-
 
 install(DIRECTORY launch/
   DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch

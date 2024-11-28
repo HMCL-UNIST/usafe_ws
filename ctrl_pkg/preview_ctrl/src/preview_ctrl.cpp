@@ -42,36 +42,38 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   my_steering_ok_(false),
   my_position_ok_(false),
   my_odom_ok_(false),
+  my_vel_ok_(false),
   state_received(false)
 {
-  
-
   // nh_traj.param<std::string>("pose_topic", pose_topic, "/current_pose");
-  nh_traj.param<std::string>("pose_topic", pose_topic, "/pose_estimate");  
-  nh_traj.param<std::string>("simstatus_topic", simstatus_topic, "/carla/ego_vehicle/vehicle_status");
-  nh_traj.param<std::string>("status_topic", status_topic, "/vehicle_status");  
+  nh_traj.param<std::string>("pose_topic", pose_topic, "/current_pose"); 
+  nh_traj.param<std::string>("vel_topic", vel_topic, "/current_velocity");
+  // nh_traj.param<std::string>("simstatus_topic", simstatus_topic, "/carla/ego_vehicle/vehicle_status");
+  nh_traj.param<std::string>("status_topic", status_topic, "/CAN_VehicleStatus");  
   nh_traj.param<std::string>("vehicle_states_topic", vehicle_states_topic, "/ctrl_states");
   nh_traj.param<std::string>("control_topic", control_topic, "/hmcl_ctrl_cmd");
   nh_traj.param<std::string>("waypoint_topic", waypoint_topic, "/local_traj");
   // nh_traj.param<std::string>("odom_topic", odom_topic, "/carla/ego_vehicle/odometry");
-  nh_traj.param<std::string>("odom_topic", odom_topic, "pose_estimate");
+  // nh_traj.param<std::string>("odom_topic", odom_topic, "pose_estimate");
 
-  nh_traj.param<std::string>("steer_cmd_topic", steer_cmd_topic, "/usafe_steer_cmd");
+  nh_traj.param<std::string>("steer_cmd_topic", steer_cmd_topic, "/steering_cmd_topic");
   nh_traj.param<std::string>("vel_cmd_topic", vel_cmd_topic, "/setpoint");
   
   
   
   nh_traj.param<int>("path_smoothing_times_", path_smoothing_times_, 1);
-  nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 35);
-  nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 35);
+  nh_traj.param<int>("curvature_smoothing_num_", curvature_smoothing_num_, 50);
+  nh_traj.param<int>("path_filter_moving_ave_num_", path_filter_moving_ave_num_, 50);
   nh_traj.param<double>("angle_rate_limit", angle_rate_limit, 0.5); // rad/s 
-  nh_traj.param<double>("wheelbase", wheelbase, 2.6);
-  nh_traj.param<double>("lf", lf, 1.35);
-  nh_traj.param<double>("lr", lr, 1.25);
-  nh_traj.param<double>("mass", mass, 1800);    
+  nh_traj.param<double>("wheelbase", wheelbase, 2.72);
+  nh_traj.param<double>("lf", lf, 1.58);
+  nh_traj.param<double>("lr", lr, 1.59);
+  nh_traj.param<double>("mass", mass, 1700);    
   nh_traj.param<double>("dt", dt, 0.04); 
-  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.14); 
-  nh_traj.param<double>("lag_tau", lag_tau, 0.14); 
+  // nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.12); 
+  // nh_traj.param<double>("lag_tau", lag_tau, 0.12);
+  nh_traj.param<double>("delay_in_sec", delay_in_sec, 0.20); 
+  nh_traj.param<double>("lag_tau", lag_tau, 0.20);  
   nh_traj.param<int>("preview_step", preview_step, 50); 
 
   nh_traj.param<double>("Q_ey", Q_ey, 3.0); 
@@ -79,11 +81,14 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   nh_traj.param<double>("Q_epsi", Q_epsi, 7.0); 
   nh_traj.param<double>("Q_epsidot", Q_epsidot, 1.0); 
   nh_traj.param<double>("R_weight", R_weight, 4500); 
-  nh_traj.param<bool>("controller_for_low_speed", controller_for_low_speed, false);
-  controller_for_low_speed = true;
-
-  nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 5); 
   
+
+  nh_traj.param<double>("error_deriv_lpf_curoff_hz", error_deriv_lpf_curoff_hz, 5); //init : 5
+  
+  in_bank = false;
+  getOvertakingFlag = false;
+  behavior_factor_init = false;
+  overtakingFlag = false;
   prev_delta_cmd = 0.0;
   delay_step = (int)(delay_in_sec/dt);
   VehicleModel_.setDelayStep(delay_step);  
@@ -98,11 +103,9 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   lpf_ey.initialize(dt, error_deriv_lpf_curoff_hz);
   lpf_epsi.initialize(dt, error_deriv_lpf_curoff_hz);
   
-  if(controller_for_low_speed){
-    steer_filter.initialize(dt, 1.5); // 5 for high speed , 1.5 for low speed
-  }else{
-    steer_filter.initialize(dt, 5); // 5 for high speed , 1.5 for low speed
-  }
+  
+  steer_filter.initialize(dt, 5); // 5 for high speed , 1.5 for low speed
+  
 
   yaw_filter.initialize(dt, 5.0);
 
@@ -111,24 +114,27 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
   VehicleModel_.reintMatrices();
   VehicleModel_.setWeight(Qweight, R_weight);
   
-  
+  sub_bfac = nh_traj.subscribe("/behavior_factor", 1, &PreviewCtrl::behaviorfactorCallback, this);
+
+  overtaking_flag_sub = nh_traj.subscribe("/overtaking", 1, &PreviewCtrl::overtakingCallback, this);
   waypointSub = nh_traj.subscribe(waypoint_topic, 2, &PreviewCtrl::callbackRefPath, this);
-  // poseSub = nh_traj.subscribe(pose_topic, 2, &PreviewCtrl::callbackPose, this);
-  
-  simStatusSub = nh_traj.subscribe(simstatus_topic, 2, &PreviewCtrl::simstatusCallback, this);
+  poseSub = nh_traj.subscribe(pose_topic, 2, &PreviewCtrl::callbackPose, this);
+  velSub = nh_traj.subscribe(vel_topic, 2, &PreviewCtrl::callbackVel, this);
+  // simStatusSub = nh_traj.subscribe(simstatus_topic, 2, &PreviewCtrl::simstatusCallback, this);
   StatusSub = nh_traj.subscribe(status_topic, 2, &PreviewCtrl::statusCallback, this);
+  subtype_sub = nh_traj.subscribe("/subtype", 1, &PreviewCtrl::subtypeCallback, this);
+
   
-  
-  odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
-  
-  debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("preview_debug", 2);    
+  // odomSub = nh_traj.subscribe(odom_topic, 2, &PreviewCtrl::odomCallback, this);
+
+  debugPub  = nh_ctrl.advertise<geometry_msgs::PoseStamped>("/preview_debug", 2);    
   steerPub  = nh_ctrl.advertise<hmcl_msgs::VehicleSteering>(steer_cmd_topic, 2);   
   // velPub  = nh_ctrl.advertise<std_msgs::Float64>(vel_cmd_topic, 2);   
   
   pub_debug_filtered_traj_ = nh_traj.advertise<visualization_msgs::Marker>("debug/filtered_traj", 1);
-  ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
+  // ackmanPub = nh_ctrl.advertise<ackermann_msgs::AckermannDrive>("/carla/ego_vehicle/ackermann_cmd", 2);    
 
-  AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
+  // AcanPub = nh_ctrl.advertise<can_msgs::Frame>("/a_can_h2l", 5);    
 
   
    
@@ -146,41 +152,91 @@ PreviewCtrl::PreviewCtrl(ros::NodeHandle& nh_ctrl, ros::NodeHandle& nh_traj):
 PreviewCtrl::~PreviewCtrl()
 {}
 
-void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
+// void PreviewCtrl::odomCallback(const nav_msgs::OdometryConstPtr& msg){
     
-    vehicle_status_.header = msg->header;
-    vehicle_status_.pose = msg->pose.pose;
+//     vehicle_status_.header = msg->header;
+//     vehicle_status_.pose = msg->pose.pose;
     
-    // Shift position 
-    double yaw_ = normalizeRadian(tf2::getYaw(msg->pose.pose.orientation));
-    // double shift_local_x = -1.35;
-    // vehicle_status_.pose.position.x += shift_local_x*cos(yaw_);
-    // vehicle_status_.pose.position.y += shift_local_x*sin(yaw_);
+//     // Shift position 
+//     double yaw_ = normalizeRadian(tf2::getYaw(msg->pose.pose.orientation));
+//     // double shift_local_x = -1.35;
+//     // vehicle_status_.pose.position.x += shift_local_x*cos(yaw_);
+//     // vehicle_status_.pose.position.y += shift_local_x*sin(yaw_);
     
     
-    my_position_ok_ = true;
+//     my_position_ok_ = true;
 
             
-    double global_x = msg->twist.twist.linear.x;
-    double global_y = msg->twist.twist.linear.y;
+//     double global_x = msg->twist.twist.linear.x;
+//     double global_y = msg->twist.twist.linear.y;
          
-    vehicle_status_.twist.linear.x = fabs(global_x*cos(-1*yaw_) - global_y*sin(-1*yaw_));
-    vehicle_status_.twist.linear.y = global_x*sin(-1*yaw_) + global_y*cos(-1*yaw_);
-    vehicle_status_.twist.angular.z = msg->twist.twist.angular.z;    
-    my_odom_ok_ = true;
-}
+//     vehicle_status_.twist.linear.x = fabs(global_x*cos(-1*yaw_) - global_y*sin(-1*yaw_));
+//     vehicle_status_.twist.linear.y = global_x*sin(-1*yaw_) + global_y*cos(-1*yaw_);
+//     vehicle_status_.twist.angular.z = msg->twist.twist.angular.z;    
+//     my_odom_ok_ = true;
+// }
 
 
 void PreviewCtrl::reschedule_weight(double speed){
+ROS_INFO("LANEID: %d",current_lane_id);
 
-  
-      if(speed > 30/3.6){
-        // For high speed
-        Q_ey = 3.5;
-        Q_eydot = 5.0;
-        Q_epsi = 25.0;
+  //bank local init zone
+ROS_INFO("AREA : %d", area);
+if(overtakingFlag){
+  ROS_INFO("OVERTAKING");
+  //local init zone bank
+  if(area == 1){
+    if(current_lane_id == 0){
+      if(speed > 108/3.6){
+        Q_ey = 0.8;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.3;
+        Q_epsidot = 0.8;
+        R_weight = 7800.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.5;
+        Q_epsidot = 1;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.0;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =2.5;
+        Q_epsidot = 2.5;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 78/3.6){
+        Q_ey = 4.2;
+        Q_eydot = 2.0; // init 5.0
+        Q_epsi =3.0;
+        Q_epsidot = 3.0;
+        R_weight = 7000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
         Q_epsidot = 1.0;
-        R_weight = 4500.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
         std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
       // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
       // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
@@ -193,7 +249,7 @@ void PreviewCtrl::reschedule_weight(double speed){
       // R_weight = tmp_r;
       VehicleModel_.setWeight( Qweight, R_weight);
       }else if(speed > 20/3.6){
-         Q_ey = 3.0;
+        Q_ey = 3.0;
         Q_eydot = 5.0;
         Q_epsi = 7.0;
         Q_epsidot = 1.0;
@@ -201,13 +257,1098 @@ void PreviewCtrl::reschedule_weight(double speed){
         std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
       VehicleModel_.setWeight( Qweight, R_weight);
       }else{
-        std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
         R_weight = 500;
         VehicleModel_.setWeight( Qweight, R_weight);
       }
-        // For Low speed  
-        // ROS_WARN("low speed tune");       
-      // std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
+    }
+    else{
+      if(speed > 108/3.6){
+        Q_ey = 0.8;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.3;
+        Q_epsidot = 0.8;
+        R_weight = 7800.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.5;
+        Q_epsidot = 1;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.0;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =2.5;
+        Q_epsidot = 2.5;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 78/3.6){
+        Q_ey = 1.5;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =5.0;
+        Q_epsidot = 2.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
+        Q_epsidot = 1.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+    }
+  }
+  //smoke zone bank
+  else if(area == 2){
+    if(current_lane_id == 0){
+      if(speed > 110/3.6){
+        Q_ey = 0.7;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.0;
+        Q_epsidot = 0.7;
+        R_weight = 8000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 108/3.6){
+        Q_ey = 0.8;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.3;
+        Q_epsidot = 0.8;
+        R_weight = 7800.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.5;
+        Q_epsidot = 1;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.0;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =2.5;
+        Q_epsidot = 1.0;
+        R_weight = 8000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 80/3.6){
+        Q_ey = 1.2;
+        Q_eydot = 2.0; // init 5.0
+        Q_epsi =3.0;
+        Q_epsidot = 3.0;
+        R_weight = 7000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
+        Q_epsidot = 1.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+    }
+    else{
+      if(speed > 110/3.6){
+        Q_ey = 0.7;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.0;
+        Q_epsidot = 0.7;
+        R_weight = 8000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 108/3.6){
+        Q_ey = 0.8;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.3;
+        Q_epsidot = 0.8;
+        R_weight = 7800.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.5;
+        Q_epsidot = 1;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.0;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =2.5;
+        Q_epsidot = 2.5;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 78/3.6){
+        Q_ey = 1.5;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =5.0;
+        Q_epsidot = 2.0;
+        R_weight = 2500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
+        Q_epsidot = 1.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+    }
+  }
+  // local init zone curve
+  else if(area == 3){
+    if(speed > 100 / 3.6){
+      Q_ey = 1.0;
+      Q_eydot = 1.0;
+      Q_epsi = 4.0;
+      Q_epsidot = 1.3;
+      R_weight = 7000.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      ROS_INFO("Qweight: %f", Qweight, "R_weight: %f", R_weight);
+    }
+    else if(speed > 90/3.6){
+      Q_ey = 1.0;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 4.0;
+      Q_epsidot = 1.0;
+      R_weight = 7000.0; // init 7000 size is smaller
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 70/3.6){
+      Q_ey = 2.0;
+      Q_eydot = 2.0; // init 5.0
+      Q_epsi = 2.5;
+      Q_epsidot = 1.3;
+      R_weight = 7000.0; // init
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 55/3.6){
+      Q_ey = 2;
+      Q_eydot = 1; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 1.0;
+      R_weight = 6000.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 30/3.6){
+      // For high speed
+      // Q_ey = 3.0;
+      Q_ey = 4;
+      Q_eydot = 3.0; // init 5.0
+      // Q_epsi = 30.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+    // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+    // // double tmp_ydot_q = 0.18*speed+7;
+    // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+    // double tmp_r = 80*speed*3.6 + 500;
+    // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+    // Qweight[0] = tmp_q;
+    // // Qweight[2] = tmp_ydot_q;
+    // R_weight = tmp_r;
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 20/3.6){
+      Q_ey = 3.0;
+      Q_eydot = 5.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 2500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else{
+      // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+      std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+      R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+  }
+  else if(area == 4){
+  // smoke zone curve
+    if(speed > 100 / 3.6){
+      Q_ey = 1.3;
+      Q_eydot = 1.5;
+      Q_epsi = 2.0;
+      Q_epsidot = 1.0;
+      R_weight = 6500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      ROS_INFO("Qweight: %f", Qweight, "R_weight: %f", R_weight);
+    }
+    else if(speed > 90/3.6){
+      Q_ey = 1.5;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 4.0;
+      Q_epsidot = 1.0;
+      R_weight = 6500.0; // init 7000 size is smaller
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 70/3.6){
+      Q_ey = 1.5;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 2.8;
+      Q_epsidot = 1.5;
+      R_weight = 6500.0; // init
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 55/3.6){
+      Q_ey = 2;
+      Q_eydot = 1; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 1.0;
+      R_weight = 6000.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 30/3.6){
+      // For high speed
+      // Q_ey = 3.0;
+      Q_ey = 4;
+      Q_eydot = 3.0; // init 5.0
+      // Q_epsi = 30.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+    // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+    // // double tmp_ydot_q = 0.18*speed+7;
+    // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+    // double tmp_r = 80*speed*3.6 + 500;
+    // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+    // Qweight[0] = tmp_q;
+    // // Qweight[2] = tmp_ydot_q;
+    // R_weight = tmp_r;
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 20/3.6){
+      Q_ey = 3.0;
+      Q_eydot = 5.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 2500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else{
+      // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+      std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+      R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+  }
+  // straight
+  else{
+    if(speed > 100 / 3.6){
+      Q_ey = 1.0;
+      Q_eydot = 1.0;
+      Q_epsi = 2.5;
+      Q_epsidot = 1.0;
+      R_weight = 5500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      ROS_INFO("Qweight: %f", Qweight, "R_weight: %f", R_weight);
+    }
+    else if(speed > 90/3.6){
+      Q_ey = 2.0;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 4.0;
+      Q_epsidot = 1.0;
+      R_weight = 5000.0; // init 7000 size is smaller
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 70/3.6){
+      Q_ey = 2.0;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 5.0;
+      Q_epsidot = 1.0;
+      R_weight = 6000.0; // init
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 55/3.6){
+      Q_ey = 2;
+      Q_eydot = 1; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 1.0;
+      R_weight = 6000.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 30/3.6){
+      // For high speed
+      // Q_ey = 3.0;
+      Q_ey = 4;
+      Q_eydot = 3.0; // init 5.0
+      // Q_epsi = 30.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+    // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+    // // double tmp_ydot_q = 0.18*speed+7;
+    // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+    // double tmp_r = 80*speed*3.6 + 500;
+    // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+    // Qweight[0] = tmp_q;
+    // // Qweight[2] = tmp_ydot_q;
+    // R_weight = tmp_r;
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 20/3.6){
+      Q_ey = 3.0;
+      Q_eydot = 5.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 2500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else{
+      // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+      std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+      R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+  }
+}
+else{
+  ROS_INFO("FREEDRIVE");
+  // local init zone bank
+  if(area == 1){
+    if(current_lane_id == 0){
+      if(speed > 108/3.6){
+        Q_ey = 0.8;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.3;
+        Q_epsidot = 0.8;
+        R_weight = 8500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.5;
+        Q_epsidot = 1;
+        R_weight = 8000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.0;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =2.5;
+        Q_epsidot = 2.5;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 78/3.6){
+        Q_ey = 4.2;
+        Q_eydot = 2.0; // init 5.0
+        Q_epsi =2.3;
+        Q_epsidot = 1.0;
+        R_weight = 7000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
+        Q_epsidot = 1.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+    }
+    else{
+      if(speed > 108/3.6){
+        Q_ey = 0.8;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.3;
+        Q_epsidot = 0.8;
+        R_weight = 8200.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.5;
+        Q_epsidot = 1;
+        R_weight = 8000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.0;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =2.5;
+        Q_epsidot = 2.5;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 78/3.6){
+        Q_ey = 1.8;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =3.0;
+        Q_epsidot = 3.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
+        Q_epsidot = 1.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }      
+    }
+  }
+  //smoke zone bank
+  else if(area == 2){
+    if(current_lane_id == 0){
+      if(speed > 110/3.6){
+        Q_ey = 0.7;
+        Q_eydot = 0.8; // init 5.0
+        Q_epsi =1.1;
+        Q_epsidot = 0.7;
+        R_weight = 8600.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 108/3.6){
+        Q_ey = 1.2;
+        Q_eydot = 1.3; // init 5.0
+        Q_epsi =2.3;
+        Q_epsidot = 1.0;
+        R_weight = 7000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1.2;
+        Q_eydot = 1.3; // init 5.0
+        Q_epsi =2.3;
+        Q_epsidot = 1.0;
+        R_weight = 7000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.2;
+        Q_eydot = 1.3; // init 5.0
+        Q_epsi =2.3;
+        Q_epsidot = 1.0;
+        R_weight = 7000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 78/3.6){
+        Q_ey = 10.2;
+        Q_eydot = 10.5; // init 5.0
+        Q_epsi =3.3;
+        Q_epsidot = 3.0;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
+        Q_epsidot = 1.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+    }
+    else{
+      if(speed > 110/3.6){
+        Q_ey = 0.7;
+        Q_eydot = 0.8; // init 5.0
+        Q_epsi =1.1;
+        Q_epsidot = 0.7;
+        R_weight = 8600.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 108/3.6){
+        Q_ey = 0.8;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =1.3;
+        Q_epsidot = 0.8;
+        R_weight = 8000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+      else if(speed > 100/3.6){
+        Q_ey = 1;
+        Q_eydot = 1; // init 5.0
+        Q_epsi =2.0;
+        Q_epsidot = 2.0;
+        R_weight = 7800.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 85/3.6){
+        Q_ey = 1.0;
+        Q_eydot = 1.5; // init 5.0
+        Q_epsi =2.5;
+        Q_epsidot = 2.5;
+        R_weight = 7500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 70/3.6){
+        Q_ey = 1.2;
+        Q_eydot = 2.0; // init 5.0
+        Q_epsi =3.0;
+        Q_epsidot = 2.0;
+        R_weight = 5600.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 55/3.6){
+        Q_ey = 2;
+        Q_eydot = 1; // init 5.0
+        Q_epsi = 6.0;
+        Q_epsidot = 1.0;
+        R_weight = 6000.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 30/3.6){
+        // For high speed
+        // Q_ey = 3.0;
+        Q_ey = 4;
+        Q_eydot = 3.0; // init 5.0
+        // Q_epsi = 30.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 4500.0; // init 4500
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+      // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+      // // double tmp_ydot_q = 0.18*speed+7;
+      // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+      // double tmp_r = 80*speed*3.6 + 500;
+      // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+      // Qweight[0] = tmp_q;
+      // // Qweight[2] = tmp_ydot_q;
+      // R_weight = tmp_r;
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else if(speed > 20/3.6){
+        Q_ey = 3.0;
+        Q_eydot = 5.0;
+        Q_epsi = 7.0;
+        Q_epsidot = 1.0;
+        R_weight = 2500.0;
+        std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      }else{
+        // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+        std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+        R_weight = 500;
+        VehicleModel_.setWeight( Qweight, R_weight);
+      }
+    }
+  }
+  // local init zone curve
+  else if(area == 3){
+    if(speed > 100 / 3.6){
+      Q_ey = 1.2;
+      Q_eydot = 1.0;
+      Q_epsi = 4.0;
+      Q_epsidot = 1.3;
+      R_weight = 4500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      ROS_INFO("Qweight: %f", Qweight, "R_weight: %f", R_weight);
+    }
+    else if(speed > 90/3.6){
+      Q_ey = 3.8;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 5.0;
+      Q_epsidot = 2.0;
+      R_weight = 4500.0; // init 7000 size is smaller
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 70/3.6){
+      Q_ey = 1.0;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 3.0;
+      R_weight = 4500.0; // init
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 55/3.6){
+      Q_ey = 2;
+      Q_eydot = 1; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 30/3.6){
+      // For high speed
+      // Q_ey = 3.0;
+      Q_ey = 4;
+      Q_eydot = 3.0; // init 5.0
+      // Q_epsi = 30.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+    // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+    // // double tmp_ydot_q = 0.18*speed+7;
+    // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+    // double tmp_r = 80*speed*3.6 + 500;
+    // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+    // Qweight[0] = tmp_q;
+    // // Qweight[2] = tmp_ydot_q;
+    // R_weight = tmp_r;
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 20/3.6){
+      Q_ey = 3.0;
+      Q_eydot = 5.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 2500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else{
+      // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+      std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+      R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+  }
+  else if(area == 4){
+  // smoke zone curve
+    if(speed > 100 / 3.6){
+      Q_ey = 1.0;
+      Q_eydot = 0.5;
+      Q_epsi = 2.5;
+      Q_epsidot = 1.0;
+      R_weight = 6000.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      ROS_INFO("Qweight: %f", Qweight, "R_weight: %f", R_weight);
+    }
+    else if(speed > 90/3.6){
+      Q_ey = 2.0;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 4.0;
+      Q_epsidot = 1.0;
+      R_weight = 5000.0; // init 7000 size is smaller
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 70/3.6){
+      Q_ey = 2.0;
+      Q_eydot = 1.1; // init 5.0
+      Q_epsi = 5.0;
+      Q_epsidot = 2.0;
+      R_weight = 5000.0; // init
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 55/3.6){
+      Q_ey = 2;
+      Q_eydot = 1; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 1.0;
+      R_weight = 6000.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 30/3.6){
+      // For high speed
+      // Q_ey = 3.0;
+      Q_ey = 4;
+      Q_eydot = 3.0; // init 5.0
+      // Q_epsi = 30.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+    // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+    // // double tmp_ydot_q = 0.18*speed+7;
+    // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+    // double tmp_r = 80*speed*3.6 + 500;
+    // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+    // Qweight[0] = tmp_q;
+    // // Qweight[2] = tmp_ydot_q;
+    // R_weight = tmp_r;
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 20/3.6){
+      Q_ey = 3.0;
+      Q_eydot = 5.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 2500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else{
+      // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+      std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+      R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+  }
+  // straight
+  else{
+    if(speed > 100 / 3.6){
+      Q_ey = 1.0;
+      Q_eydot = 1.0;
+      Q_epsi = 4.0;
+      Q_epsidot = 1.0;
+      R_weight = 5500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+      ROS_INFO("Qweight: %f", Qweight, "R_weight: %f", R_weight);
+    }
+    else if(speed > 90/3.6){
+      Q_ey = 2.0;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 4.0;
+      Q_epsidot = 1.0;
+      R_weight = 5000.0; // init 7000 size is smaller
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 70/3.6){
+      Q_ey = 1.0;
+      Q_eydot = 1.0; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+    else if(speed > 55/3.6){
+      Q_ey = 2;
+      Q_eydot = 1; // init 5.0
+      Q_epsi = 6.0;
+      Q_epsidot = 1.0;
+      R_weight = 6000.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 30/3.6){
+      // For high speed
+      // Q_ey = 3.0;
+      Q_ey = 4;
+      Q_eydot = 3.0; // init 5.0
+      // Q_epsi = 30.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 4500.0; // init 4500
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+    // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+    // // double tmp_ydot_q = 0.18*speed+7;
+    // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+    // double tmp_r = 80*speed*3.6 + 500;
+    // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+    // Qweight[0] = tmp_q;
+    // // Qweight[2] = tmp_ydot_q;
+    // R_weight = tmp_r;
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else if(speed > 20/3.6){
+      Q_ey = 3.0;
+      Q_eydot = 5.0;
+      Q_epsi = 7.0;
+      Q_epsidot = 1.0;
+      R_weight = 2500.0;
+      std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+    VehicleModel_.setWeight( Qweight, R_weight);
+    }else{
+      // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+      std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+      R_weight = 500;
+      VehicleModel_.setWeight( Qweight, R_weight);
+    }
+  }
+  // }
+  // smoke zone
+  // else{
+  //   if(speed > 70/3.6){
+  //     Q_ey = 1;
+  //     Q_eydot = 1; // init 5.0
+  //     Q_epsi = 8.0;
+  //     Q_epsidot = 2.0;
+  //     R_weight = 4500.0; // init 4500
+  //     std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  //     VehicleModel_.setWeight( Qweight, R_weight);
+  //   }
+  //   if(speed > 55/3.6){
+  //     Q_ey = 2;
+  //     Q_eydot = 1; // init 5.0
+  //     Q_epsi = 6.0;
+  //     Q_epsidot = 1.0;
+  //     R_weight = 4500.0; // init 4500
+  //     std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  //     VehicleModel_.setWeight( Qweight, R_weight);
+  //   }else if(speed > 30/3.6){
+  //     // For high speed
+  //     // Q_ey = 3.0;
+  //     Q_ey = 4;
+  //     Q_eydot = 3.0; // init 5.0
+  //     // Q_epsi = 30.0;
+  //     Q_epsi = 7.0;
+  //     Q_epsidot = 1.0;
+  //     R_weight = 4500.0; // init 4500
+  //     std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  //   // double tmp_q = -0.18*speed+7 ; // -0.1*speed*3.6 + 7;      
+  //   // tmp_q = std::min(std::max(tmp_q,3.5),7.0);
+  //   // // double tmp_ydot_q = 0.18*speed+7;
+  //   // // tmp_ydot_q = std::min(std::max(tmp_ydot_q,7.0),11.0);
+  //   // double tmp_r = 80*speed*3.6 + 500;
+  //   // tmp_r = std::min(std::max(tmp_r,1000.0),4500.0);
+  //   // Qweight[0] = tmp_q;
+  //   // // Qweight[2] = tmp_ydot_q;
+  //   // R_weight = tmp_r;
+  //   VehicleModel_.setWeight( Qweight, R_weight);
+  //   }else if(speed > 20/3.6){
+  //     Q_ey = 3.0;
+  //     Q_eydot = 5.0;
+  //     Q_epsi = 7.0;
+  //     Q_epsidot = 1.0;
+  //     R_weight = 2500.0;
+  //     std::vector<double> Qweight = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  //   VehicleModel_.setWeight( Qweight, R_weight);
+  //   }else{
+  //     // std::vector<double> Qweight = {20.0, 20.0, 10.0, 1.0};
+  //     std::vector<double> Qweight = {10.0, 15.0, 7.0, 1.0};
+  //     R_weight = 500;
+  //     VehicleModel_.setWeight( Qweight, R_weight);
+  //   }
+  // }
+}
+
+  // For Low speed  
+  // ROS_INFO("low speed tune");       
+// std::vector<double> Qweight = {20.0, 30.0, 2.0, 1.0};
 
       
       
@@ -244,18 +1385,57 @@ void PreviewCtrl::steering_rate_reset(double speed){
       // angle_rate_limit = std::min(std::max(angle_rate_limit,0.1),0.5);
         angle_rate_limit = 0.1;
     }else if(speed > 30/3.6 && speed <= 40/3.6){
-      angle_rate_limit = 0.2;
+      angle_rate_limit = 0.1;
     }else{
         angle_rate_limit = 20;
     }
     
     
 }
-// void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
-//   vehicle_status_.header = msg->header;
-//   vehicle_status_.pose = msg->pose;
-//   my_position_ok_ = true;
-// }
+void PreviewCtrl::subtypeCallback(const hmcl_msgs::PolygonFlag::ConstPtr& msg) {
+    area = 0;
+    if(my_position_ok_){
+      if(msg->isinBank){
+        if(vehicle_status_.pose.position.x > 500) area = 1;
+        else area = 2;
+      }
+      else if(msg->isinCrosswalk){
+        area = 0;
+        ROS_INFO("Crosswalk");
+      }
+      else if(msg->isinTrafficIsland){
+        if(msg->isinBuilding){
+          if(vehicle_status_.pose.position.x > 500) area = 3;
+          else area = 4;
+        }
+        else{
+          area = 0;
+        }
+      }
+      else if(msg->isinBuilding){
+          if(vehicle_status_.pose.position.x > 500) area = 3;
+          else area = 4;
+      }
+    }
+}
+void PreviewCtrl::callbackPose(const geometry_msgs::PoseStampedConstPtr &msg){
+  vehicle_status_.header = msg->header;
+  vehicle_status_.pose = msg->pose;
+  yaw_ = normalizeRadian(tf::getYaw(msg->pose.orientation));
+  my_position_ok_ = true;
+}
+
+void PreviewCtrl::callbackVel(const geometry_msgs::TwistStampedConstPtr & msg){
+  
+  double global_x = msg->twist.linear.x;
+  double global_y = msg->twist.linear.y;
+
+  vehicle_status_.twist.linear.x = fabs(global_x*cos(-1*yaw_) - global_y*sin(-1*yaw_));
+  vehicle_status_.twist.linear.y = global_x*sin(-1*yaw_) + global_y*cos(-1*yaw_);
+  vehicle_status_.twist.angular.z = msg->twist.angular.z;
+  my_vel_ok_ = true; 
+}
+
 void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
   // recieve longitudinal velocity and steering 
    
@@ -277,13 +1457,13 @@ void PreviewCtrl::statusCallback(const hmcl_msgs::VehicleStatusConstPtr& msg){
   
 }
 
-void PreviewCtrl::simstatusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr &msg){
-  // recieve longitudinal velocity and steering 
-  vehicle_status_.twist.linear.x = msg->velocity;
-  vehicle_status_.tire_angle_rad = -1*msg->control.steer;  
-  my_steering_ok_ = true;
+// void PreviewCtrl::simstatusCallback(const carla_msgs::CarlaEgoVehicleStatusConstPtr &msg){
+//   // recieve longitudinal velocity and steering 
+//   vehicle_status_.twist.linear.x = msg->velocity;
+//   vehicle_status_.tire_angle_rad = -1*msg->control.steer;  
+//   my_steering_ok_ = true;
   
-}
+// }
 
 void PreviewCtrl::ControlLoop()
 {
@@ -293,11 +1473,23 @@ void PreviewCtrl::ControlLoop()
         auto start = std::chrono::steady_clock::now();        
         
         ///////////////////////////////////////////////////////
-
+        debugPub.publish(debug_msg);
         // Prepare current State for state feedback control 
         if(!stateSetup()){
-          ROS_WARN("Path is not close to the current position");
+          ROS_INFO("Path is not close to the current position");
+          debug_msg.header.stamp = ros::Time::now();    
+          
            loop_rate.sleep();
+          continue;
+        }
+        if(!behavior_factor_init){
+          ROS_INFO("behavior factor wasn't initialized!!");
+          loop_rate.sleep();
+          continue;
+        }
+        if(!getOvertakingFlag){
+          ROS_INFO("cannot receive overtaking flag");
+          loop_rate.sleep();
           continue;
         }
         VehicleModel_.setState(Xk,Cr);
@@ -314,12 +1506,13 @@ void PreviewCtrl::ControlLoop()
         
         bool riccati_solved = VehicleModel_.solveRiccati();
         if(!riccati_solved){
-          ROS_WARN("solution not found ~~~!!!!!!! control lost"); 
+          ROS_INFO("solution not found ~~~!!!!!!! control lost"); 
            loop_rate.sleep();
           continue;
         }
         double delta_cmd = VehicleModel_.computeGain(); 
         
+        // ROS_INFO("%f", delta_cmd);
         
         // if(fabs(delta_cmd) > 0.5){
         //    loop_rate.sleep();
@@ -333,7 +1526,7 @@ void PreviewCtrl::ControlLoop()
         
         
         if( fabs(diff_delta)/dt > angle_rate_limit ){
-          ROS_WARN("rate limit reached!!! angle_rate_limit = %f",angle_rate_limit);
+          ROS_INFO("rate limit reached!!! angle_rate_limit = %f",angle_rate_limit);
           if(diff_delta>0){
               delta_cmd = prev_delta_cmd + angle_rate_limit*dt;
           }else{
@@ -365,7 +1558,7 @@ void PreviewCtrl::ControlLoop()
         std_msgs::Float64 vel_msg;
         vel_msg.data = target_speed;
         // velPub.publish(vel_msg);
-        debug_msg.pose.position.x = delta_cmd;    
+        debug_msg.pose.position.x = Xk(2)*180/PI;    
         delta_cmd = steer_filter.filter(delta_cmd);            
         debug_msg.pose.position.y = delta_cmd;    
         
@@ -376,22 +1569,25 @@ void PreviewCtrl::ControlLoop()
         
         ctrl_msg.steering_angle = delta_cmd;
         
-        ackmanPub.publish(ctrl_msg);
+        // ackmanPub.publish(ctrl_msg);
         
         //////////////////
-        can_msgs::Frame steering_frame;
-        steering_frame.header.stamp = ros::Time::now();
-        steering_frame.id = 0x300;
-        steering_frame.dlc = 3;
-        steering_frame.is_error = false;
-        steering_frame.is_extended = false;
-        steering_frame.is_rtr = false;        
-        short steer_value = (short)(delta_cmd*15.0*180/PI*10+steering_offset);
+        // can_msgs::Frame steering_frame;
+        // steering_frame.header.stamp = ros::Time::now();
+        // steering_frame.id = 0x300;
+        // steering_frame.dlc = 3;
+        // steering_frame.is_error = false;
+        // steering_frame.is_extended = false;
+        // steering_frame.is_rtr = false;        
+        // short steer_value = (short)(delta_cmd*15.0*180/PI*10+steering_offset);
         // ROS_INFO("delta_cmd = %f", delta_cmd);
-        prev_delta_cmd = delta_cmd;
-        steering_frame.data[0] = (steer_value & 0b11111111);
-	      steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
-        steering_frame.data[2] = (unsigned int)1 & 0b11111111;
+        if (!isnan(delta_cmd)){
+          prev_delta_cmd = delta_cmd;
+        }
+        // prev_delta_cmd = delta_cmd;
+        // steering_frame.data[0] = (steer_value & 0b11111111);
+	      // steering_frame.data[1] = ((steer_value >> 8)&0b11111111);
+        // steering_frame.data[2] = (unsigned int)1 & 0b11111111;
         // AcanPub.publish(steering_frame);
           
 
@@ -402,9 +1598,18 @@ void PreviewCtrl::ControlLoop()
         hmcl_msgs::VehicleSteering steer_msg;
         
         steer_msg.header.stamp = ros::Time::now();
-        steer_msg.steering_angle = delta_cmd;        
+        if(traj_.size() >0){
+          // steer_msg.steering_angle = (delta_cmd * 180 / PI) * 14;
+          steer_msg.steering_angle = (delta_cmd * 180 / PI) * 14 + steering_offset;
+
+          // steer_msg.steering_angle = (delta_cmd * 180 / PI + 0.7) * 14; //Lidar      
+        } 
+        else{
+          steer_msg.steering_angle = 0.0;
+        }
 
         steerPub.publish(steer_msg);
+        // debugPub.publish(debug_msg);
         ///////////////////////////////////////////////////////
         // record control inputs 
         delta_buffer.push_back(delta_cmd);
@@ -417,8 +1622,8 @@ void PreviewCtrl::ControlLoop()
      loop_rate.sleep();
      std::chrono::duration<double> elapsed_seconds = end-start;
      if ( elapsed_seconds.count() > dt){
-       ROS_ERROR("computing control gain takes too much time");
-       std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
+       ROS_INFO("computing control gain takes too much time");
+      //  std::cout << "elapsed time: " << elapsed_seconds.count() << "s\n";
      }
       
     }
@@ -428,9 +1633,9 @@ void PreviewCtrl::ControlLoop()
 bool PreviewCtrl::stateSetup(){
 
   current_yaw = tf2::getYaw(vehicle_status_.pose.orientation);
-  debug_msg.pose.orientation.x = current_yaw;        
+  // debug_msg.pose.orientation.x = current_yaw;        
   yaw_filter.filter(current_yaw);
-  debug_msg.pose.orientation.y = current_yaw; 
+  // debug_msg.pose.orientation.y = current_yaw; 
   debug_yaw = current_yaw;
   /* calculate nearest point on reference trajectory (used as initial state) */
   unsigned int nearest_index = 0;
@@ -438,7 +1643,7 @@ bool PreviewCtrl::stateSetup(){
   geometry_msgs::Pose nearest_pose;
   if (!calcNearestPoseInterp(traj_, vehicle_status_.pose, nearest_pose, nearest_index, dist_err, yaw_err, nearest_traj_time))
   {
-    ROS_WARN("error in calculating nearest pose. stop mpc.");
+    ROS_INFO("error in calculating nearest pose. stop mpc.");
     return false;
   };
 
@@ -487,6 +1692,7 @@ bool PreviewCtrl::stateSetup(){
       }
 
       debug_msg.header.stamp = ros::Time::now();    
+      // debugPub.publish(debug_msg);
       // debug_msg.pose.orientation.x = err_lat;  
       // debug_msg.pose.orientation.y = eydot;  
       // debug_msg.pose.orientation.z = yaw_err*180.0/3.14195;    
@@ -496,7 +1702,7 @@ bool PreviewCtrl::stateSetup(){
       // debug_msg.pose.orientation.y = Xk(0); // ;        
       // debug_msg.pose.orientation.z = Xk(2)*180/PI;
       // debug_msg.pose.orientation.w = VehicleModel_.debug_state_feedback;
-      debugPub.publish(debug_msg);
+      // debugPub.publish(debug_msg);
 
 
   }
@@ -508,20 +1714,28 @@ bool PreviewCtrl::stateSetup(){
  
 }
 
-
+void PreviewCtrl::overtakingCallback(const std_msgs::Int8::ConstPtr& msg){
+    getOvertakingFlag = true;
+    if(msg->data == 0){
+        overtakingFlag = false;
+    }
+    else{
+        overtakingFlag = true;
+    }
+}
 
 void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 {
   return ;
-  ROS_INFO("Dynamiconfigure updated");
-  config_switch = config.config_switch;
-  if(config_switch){
-  Q_ey = config.Q_ey;
-  Q_eydot = config.Q_eydot;
-  Q_epsi = config.Q_epsi ;
-  Q_epsidot = config.Q_epsidot;
-  R_weight = config.R_weight;  
-  angle_rate_limit = config.angle_rate_limit;
+  // ROS_INFO("Dynamiconfigure updated");
+  // config_switch = config.config_switch;
+  // if(config_switch){
+  // Q_ey = config.Q_ey;
+  // Q_eydot = config.Q_eydot;
+  // Q_epsi = config.Q_epsi ;
+  // Q_epsidot = config.Q_epsidot;
+  // R_weight = config.R_weight;  
+  // angle_rate_limit = config.angle_rate_limit;
   // lag_tau = config.lag_tau;
   // delay_in_sec = config.delay_in_sec;
   // delay_step = (int)(delay_in_sec/dt);
@@ -537,25 +1751,28 @@ void PreviewCtrl::dyn_callback(preview_ctrl::testConfig &config, uint32_t level)
 
 
   
-  std::vector<double> Qweight_ = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
-  VehicleModel_.setWeight( Qweight_, R_weight);
+  // std::vector<double> Qweight_ = {Q_ey, Q_eydot, Q_epsi, Q_epsidot};
+  // VehicleModel_.setWeight( Qweight_, R_weight);
   // VehicleModel_.setDelayStep(delay_step);  
   // VehicleModel_.setLagTau(lag_tau);
-  }
+  // }
 
   
 }
 
 
 
-
+void PreviewCtrl::behaviorfactorCallback(const hmcl_msgs::BehaviorFactor& factor_msg){
+    behavior_factor_init = true;
+    current_lane_id = factor_msg.current_lane_id;
+}
 
 
 void PreviewCtrl::callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg)
 {
   current_waypoints_ = *msg;  
- 
-         
+  if(current_waypoints_.waypoints[0].bank) in_bank = true;       
+  else in_bank = false;       
 
 
   Trajectory traj;
@@ -578,7 +1795,7 @@ void PreviewCtrl::callbackRefPath(const hmcl_msgs::Lane::ConstPtr &msg)
           !MoveAverageFilter::filt_vector(path_filter_moving_ave_num_, traj.yaw) ||
           !MoveAverageFilter::filt_vector(path_filter_moving_ave_num_, traj.vx))
       {
-        ROS_WARN("path callback: filtering error. stop filtering");
+        ROS_INFO("path callback: filtering error. stop filtering");
         return;
       }
     }
@@ -640,7 +1857,7 @@ void PreviewCtrl::convertTrajToMarker(const Trajectory &traj, visualization_msgs
 
 int main (int argc, char** argv)
 {
-  ros::init(argc, argv, "PreviewCtrl");
+  ros::init(argc, argv, "highspeed_ctrl");
   
   ros::NodeHandle nh_ctrl, nh_traj;
   PreviewCtrl PreviewCtrl_(nh_ctrl, nh_traj);

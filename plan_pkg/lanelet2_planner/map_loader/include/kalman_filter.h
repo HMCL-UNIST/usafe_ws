@@ -12,7 +12,7 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-//   Authour : Hojin Lee, hojinlee@unist.ac.kr
+//   Authour : Hyeonbin Lee, bin2915@unist.ac.kr
 
 
 #include <eigen3/Eigen/Geometry>

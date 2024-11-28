@@ -47,17 +47,21 @@ include_directories(
 
 
 add_executable(dynamic_reconfigure_node src/acc_test.cpp)
-add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
+#add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg)
+add_dependencies(dynamic_reconfigure_node ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
+
 target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
 add_executable(velocity_planner src/velocity_planner.cpp)
 target_link_libraries(velocity_planner ${catkin_LIBRARIES})
-add_dependencies(velocity_planner ${catkin_EXPORTED_TARGETS})
+#add_dependencies(velocity_planner ${catkin_EXPORTED_TARGETS})
+add_dependencies(velocity_planner ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 add_executable(acc_test src src/acc_test.cpp)
 target_link_libraries(acc_test ${catkin_LIBRARIES})
-add_dependencies(acc_test ${catkin_EXPORTED_TARGETS})
+#add_dependencies(acc_test ${catkin_EXPORTED_TARGETS})
+add_dependencies(acc_test ${PROJECT_NAME}_gencfg ${catkin_EXPORTED_TARGETS})
 
 
 include_directories(

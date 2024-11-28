@@ -24,7 +24,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf  
   hmcl_msgs  
-  carla_msgs
   dynamic_reconfigure
   can_msgs
 )
@@ -34,7 +33,7 @@ generate_dynamic_reconfigure_options(
 )
 
 catkin_package(
-  CATKIN_DEPENDS nav_msgs roscpp can_msgs sensor_msgs geometry_msgs std_msgs hmcl_msgs tf carla_msgs visualization_msgs dynamic_reconfigure
+  CATKIN_DEPENDS nav_msgs roscpp can_msgs sensor_msgs geometry_msgs std_msgs hmcl_msgs tf visualization_msgs dynamic_reconfigure
   LIBRARIES
 )
 

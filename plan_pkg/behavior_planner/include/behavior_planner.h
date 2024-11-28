@@ -14,72 +14,47 @@
 #include <ros/time.h>
 #include <ros/package.h>
 
+#include <std_msgs/Int8.h>
 #include <std_msgs/Int16.h>
 #include <std_msgs/Float64.h>
 #include <std_msgs/Bool.h>
 #include <hmcl_msgs/Lane.h>
 #include <hmcl_msgs/LaneArray.h>
-#include <hmcl_msgs/MissionWaypoint.h>
 #include <hmcl_msgs/BehaviorFactor.h>
-#include <hmcl_msgs/TransitionCondition.h>
 #include <autoware_msgs/DetectedObjectArray.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Point.h>
 #include <hmcl_msgs/VehicleStatus.h>
-#include <v2x_msgs/SPAT.h>
+#include <visualization_msgs/Marker.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <GeographicLib/UTMUPS.hpp>
 
 #define PI 3.14159265358979323846264338
-typedef enum{Init, ChooseDifficulty, MissionRequest, DriveToStartPos, StartArrivalRequest, DriveToGoalPos,
-            GoalArrivalRequest, MissionComplete} MissionState;
-typedef enum{Init2, Forward, Follow, StopAtStartPos, StartArrival, TrafficLightStop, LeftTurn, RightTurn, Crosswalk,
-            Pedestrian, FrontLuggage, FrontCarStop, LaneChange, SpeedBump, StopAtGoalPos, GoalArrival, ObstacleLaneChange} BehaviorState;
+typedef enum{MissionInit, VehicleReady, StartFromPitStop, Lap1, Lap2, Lap3, Lap4, Lap5, MissionComplete, PitStop, SlowOn} MissionState;
+typedef enum{BehaviorInit, BehaviorReady, EmergencyStop, StraightFreeDrive, LeftLaneChange, RightLaneChange, ReadyForBank,
+            BankFreeDrive, BankACC, MissionEndStop, MissionEnd} BehaviorState;
 
-inline const char* stateToStringBehavior(BehaviorState v)
+
+
+inline const char* stateToStringBehavior(BehaviorState v) // it can be defined cause it is inline fuction
 
 {
-
     switch (v)
-
     {
-
-        case BehaviorState::Init2:   return "Init2";
-
-        case BehaviorState::Forward:   return "Forward";
-
-        case BehaviorState::Follow:   return "Follow";
-
-        case BehaviorState::StopAtStartPos:   return "StopAtStartPos";
-
-        case BehaviorState::StartArrival:   return "StartArrival";
-
-        case BehaviorState::TrafficLightStop:   return "TrafficLightStop";
-
-        case BehaviorState::LeftTurn:   return "LeftTurn";
-
-        case BehaviorState::RightTurn:   return "RightTurn";
-
-        case BehaviorState::Crosswalk:   return "Crosswalk";
-
-        case BehaviorState::Pedestrian:   return "Pedestrian";
-
-        case BehaviorState::FrontLuggage:   return "FrontLuggage";
-
-        case BehaviorState::FrontCarStop:   return "FrontCarStop";
-
-        case BehaviorState::LaneChange:   return "LaneChange";
-
-        case BehaviorState::SpeedBump:   return "SpeedBump";
-
-        case BehaviorState::StopAtGoalPos:   return "StopAtGoalPos";
-
-        case BehaviorState::GoalArrival:   return "GoalArrival";
-
-        case BehaviorState::ObstacleLaneChange: return "ObstacleLaneChange";
-
+        case BehaviorState::BehaviorInit:   return "BehaviorInit";
+        case BehaviorState::BehaviorReady:   return "BehaviorReady";
+        case BehaviorState::EmergencyStop: return "EmergencyStop";
+        case BehaviorState::StraightFreeDrive:   return "StraightFreeDrive";
+        case BehaviorState::LeftLaneChange:   return "LeftLaneChange";
+        case BehaviorState::RightLaneChange:   return "RightLaneChange";
+        case BehaviorState::ReadyForBank: return "ReadyForBank";
+        case BehaviorState::BankFreeDrive:   return "BankFreeDrive";
+        case BehaviorState::BankACC:   return "BankACC";
+        case BehaviorState::MissionEndStop:   return "MissionEndStop";
+        case BehaviorState::MissionEnd:   return "MissionEnd";
         default:      return "[Unknown BehaviorState]";
-
     }
 
 }
@@ -88,41 +63,54 @@ class BehaviorPlanner
 {
     private:
         ros::NodeHandle nh_;
-        ros::Subscriber pose_sub, vel_sub, objs_sub, sb_sub, lug_sub, start_goal_sub, v2x_spat_sub, route_sub, mission_sub, ped_sub;
-        // ros::Subscriber pose_sub, vel_sub, objs_sub, route_sub, mission_sub;
-        ros::Publisher b_factor_pub, b_state_pub, light_pub;
+        ros::Subscriber pose_sub, map_ver_sub, vel_sub, objs_sub, route_sub, mission_sub, external_mission_sub;
+        ros::Publisher b_factor_pub, b_state_pub, light_pub, behavior_viz_pub,obs_pub, stopline_viz_pub;
         // ros::Timer behavior_timer;
         double runRate;
-        float wLane, lenEgo, frontlenEgo, dFront, front_dist, front_vel, dLuggage, thresObs, thresLC, thresStop, thresCW, thresSB, thresTurn, thresTL, thresTLtime, thresDistSG, successDistSG;
+        bool vizBehavior;
+        float wLane, lenEgo, frontlenEgo, dFront, front_dist, front_vel, thresObs, thresLC, thresStop;
         geometry_msgs::Pose egoPose;
         double egoSpeed;
-        float xObstacle, yObstacle, xSBsign, ySBsign;
-        autoware_msgs::DetectedObjectArray detectedObjects, sb, luggage;
-        double startX, startY, startID, goalX, goalY, goalID;
+        float xObstacle, yObstacle;
+        float dGlobal;
+        float thresPit;
+        autoware_msgs::DetectedObjectArray detectedObjects;
         int targetID;
-        //startpos info 
-        //goalpos
+        int lane_id, wpt_id, prev_lane_id;
+        int prefer_lane_id;
+
+        double origin_lat;
+        double origin_lon;
+        double origin_att;
+        double origin_easting;
+        double origin_northing;
+        int origin_zone;
+        bool origin_northp;
+
         //traffic_signal
         hmcl_msgs::LaneArray globalLaneArray;
-        v2x_msgs::SPAT junc1Signal, junc2Signal, junc3Signal;
         MissionState currentMission;
         BehaviorState currentBehavior;
-        bool missionStart, approachToStartPos, startArrivalCheck, startArrivalSuccess, frontCar, stationaryFrontCar, approachToCrosswalk, crosswalkPass;
-        bool pedestrian, pedestrianOnCrosswalk, leftTurn, rightTurn, turn, trafficLightStop, stopCheck, luggageDrop, brokenFrontCar, laneChangeDone, checkObstacle;
-        bool essentialLaneChange, speedBumpSign, speedBumpPass, approachToGoalPos, goalArrivalCheck;
-        short front_id, prevLaneID, unknown_id;
-        int nStore, countFront, countStationary, countSB, countLuggage, countObs;
-        bool stop_line_stop;
-        bool getGlobal, getPose, getSpeed, getObject, getSB, getLuggage, getPedestrian, getSGpos, getMission, getSPAT1,getSPAT2,getSPAT3;
-        bool inCW, frontPrev, stationaryPrev, sbPrev, luggagePrev;
+        bool vehicleReady, missionStart, missionEnd, frontOpponent, leftOpponent, rightOpponent, stationaryFrontOpponent;
+        bool stopCheck, laneChangeDone, checkObstacle;
+        bool isEmergency, needLeftLaneChange, needRightLaneChange;
+        bool isInBank, isInStraight, isBankClose;
+        short front_id, left_id, right_id, prevLaneID, unknown_id;
+        int nStore, countFront, countStationary, countObs;
+        bool getGlobal, getPose, getSpeed, getOpponent, getMission, getMapver, getExternalMission;
+        bool frontOpponentPrev, stationaryFrontOpponentPrev;
+        bool goToStraight, goToBank;
         hmcl_msgs::BehaviorFactor behaviorFactor;
         std_msgs::Int16 behavior_msg;
         std_msgs::Float64 light_msg;
-        bool NormalDrive, LaneFollowing, Turn;
-        int countInit2, countStopAtStartPos, countStartArrival;
-        int countPedestrian, countFrontLuggage, countFrontCarStop, countSpeedBump, countStopAtGoalPos;
-        int thresInit2, thresStopAtStartPos, thresStartArrival;
-        int thresPedestrian, thresFrontLuggage, thresFrontCarStop, thresSpeedBump, thresStopAtGoalPos;
+        bool prevStraight, prevBank;
+        int countBehaviorReady, countMissionEndStop;
+        int thresBehaviorReady;
+        int map_ver;
+        int externalMission = 0;
+
+        bool goToSecondLane; // External Mission Flag
+        double distToStopLine;
 
     public:
         BehaviorPlanner(); 
@@ -130,22 +118,24 @@ class BehaviorPlanner
         ~BehaviorPlanner();
         void calculateLon(int n, float* psarr, hmcl_msgs::Lane &lane);
         void calculateFrenet(int n, float* psarr, float px, float py, float vx, float vy, float* psl, hmcl_msgs::Lane &lane);
-        void calculateSafeDistance(float vFront, float vRear, float &dSafe);
+        void getCurrentLaneWpt();
+        void updatePreferLaneID();
         void updateFactors();
         void updateBehaviorState();
+        void publishMsgs();
+        void viz_behavior();
+        double distance(double x1, double y1, double x2, double y2);
         BehaviorState getCurrentBehavior();
-        bool calculateDistObjs(geometry_msgs::Point& pos);
-        // void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
-        void odometryCallback(const nav_msgs::Odometry& msg);
-        void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);
-        // void twistCallback(const geometry_msgs::TwistStampedConstPtr& msg);
+        void poseCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+        // void odometryCallback(const nav_msgs::Odometry& msg);
+        // void vehicleStatusCallback(const hmcl_msgs::VehicleStatusConstPtr &msg);
+        void twistCallback(const geometry_msgs::TwistStampedConstPtr& msg);
         void objsCallback(const autoware_msgs::DetectedObjectArray& msg);
-        void sbCallback(const autoware_msgs::DetectedObjectArray& msg);
-        void luggageCallback(const autoware_msgs::DetectedObjectArray& msg);
-        void v2xStartGoalCallback(const hmcl_msgs::MissionWaypoint& msg);
-        void v2xSPATCallback(const v2x_msgs::SPAT& msg);
         void routeCallback(const hmcl_msgs::LaneArray &msg);
         void missionCallback(const std_msgs::Int16::ConstPtr& msg);
-        void pedestrianCallback(const std_msgs::Bool::ConstPtr& msg);
+        void mapverCallback(const std_msgs::Int8::ConstPtr& msg);
+        void setMissionStateCallback(const std_msgs::Int16::ConstPtr& msg);
+        void calculateDistToStopLine();
+        void stopline_viz();
 
 };

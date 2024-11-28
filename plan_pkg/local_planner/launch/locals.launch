@@ -1,5 +1,6 @@
 <?xml version="1.0"?>
 <launch>
     <node pkg="local_planner" type="local_planners" name="local_planners" output="screen">
+        <param name = "Q_vel" value = "1000.0"/> 
     </node>
 </launch>

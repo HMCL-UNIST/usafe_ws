@@ -1,0 +1,10 @@
+<launch>
+    <node pkg="socketcan_bridge" type="socketcan_bridge_node" name="socketcan_bridge_node" output="screen">
+        <!-- <param name="can_device" type="string" value="can1" /> -->
+        <param name="can_device" type="string" value="can5" />
+        <rosparam param="can_ids">[1808, 1809, 1810, 1811, 342, 343, 292, 293, 294]</rosparam>
+    </node>
+
+    <node pkg="low_ctrl" type="low_ctrl_node" name="low_ctrl_node" output="screen">
+    </node>
+</launch>

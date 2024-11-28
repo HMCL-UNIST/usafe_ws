@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+
+<launch>
+
+
+  <!-- <node name="mobileye" pkg="mobileye" type="mobileye_node.py" output="screen">      
+  </node> -->
+
+  <node name="mobileye" pkg="mobileye" type="mobileye_node_global.py" output="screen">      
+  </node>
+
+</launch>

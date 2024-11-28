@@ -4,7 +4,7 @@
 #include <ros/time.h>
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/LaneletMap.h>
-#include <lanelet2_core/Attribute.h>
+#include "lanelet2_core/Attribute.h"
 #include <lanelet2_core/primitives/Primitive.h>
 #include <lanelet2_io/Io.h>
 #include <lanelet2_io/io_handlers/Factory.h>
@@ -177,23 +177,46 @@ lanelet::ConstLanelets roadLaneletsConst(lanelet::ConstLanelets lls)
   return (subtypeLanelets(lls, lanelet::AttributeValueString::Road));
 }
 
+lanelet::Areas bankAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Bank));
+}
 lanelet::Areas junctionAreas(lanelet::Areas areas)
 {
   return (subtypeAreas(areas, lanelet::AttributeValueString::Junction));
 }
-
+lanelet::Areas freespaceAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Freespace));
+}
+lanelet::Areas exitAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Exit));
+}
 lanelet::Areas crosswalkAreas(lanelet::Areas areas)
 {
   return (subtypeAreas(areas, lanelet::AttributeValueString::Crosswalk));
 }
-
 lanelet::Areas stoplineAreas(lanelet::Areas areas)
 {
   return (subtypeAreas(areas, lanelet::AttributeValueString::Stopline));
 }
-
-
-
+lanelet::Areas parkingAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Parking));
+}
+lanelet::Areas trafficislandAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::TrafficIsland));
+}
+lanelet::Areas buildingAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Building));
+}
+lanelet::Areas vegetationAreas(lanelet::Areas areas)
+{
+  return (subtypeAreas(areas, lanelet::AttributeValueString::Vegetation));
+}
 std::vector<std::shared_ptr<const lanelet::TrafficLight>> get_trafficLights(lanelet::Lanelets lanelets)
 { 
   std::vector<std::shared_ptr<const lanelet::TrafficLight>> tl_reg_elems;

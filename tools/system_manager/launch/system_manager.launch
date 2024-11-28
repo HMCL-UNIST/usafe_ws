@@ -1,9 +1,0 @@
-<?xml version="1.0"?>
-
-<launch>
-
-
-  <node name="system_manager" pkg="system_manager" type="system_manager.py" output="screen">      
-  </node>
-
-</launch>

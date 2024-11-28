@@ -244,6 +244,7 @@ constexpr const char AttributeValueString::Exit[];
 constexpr const char AttributeValueString::Junction[];
 constexpr const char AttributeValueString::Crosswalk[];
 constexpr const char AttributeValueString::Stopline[];
+constexpr const char AttributeValueString::Bank[];
 
 // Regulatory elements
 constexpr const char AttributeValueString::TrafficLight[];

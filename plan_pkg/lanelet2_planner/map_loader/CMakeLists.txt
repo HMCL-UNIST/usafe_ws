@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(map_loader)
 
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
 
 find_package(GeographicLib REQUIRED)
 
@@ -72,16 +73,24 @@ include_directories(
 
 SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(map_loader src/Amathutils.cpp src/map_loader.cpp src/kalman_filter.cpp src/route_planner.cpp)
+add_executable(map_loader src/Amathutils.cpp src/map_loader_test_final.cpp src/kalman_filter.cpp src/route_planner.cpp)
+
+# target_include_directories(map_loader PRIVATE
+#     ../../mission_planner/include
+# )
+
+add_executable(get_points src/get_points.cpp)
 target_link_libraries(map_loader ${catkin_LIBRARIES} ${GeographicLib_LIBRARY_DIRS}/libGeographic.so)
+target_link_libraries(get_points ${catkin_LIBRARIES})
 add_dependencies(map_loader ${catkin_EXPORTED_TARGETS})
+add_dependencies(get_points ${catkin_EXPORTED_TARGETS})
 
 
 
 
 install(
   TARGETS
-  map_loader  
+  map_loader get_points
   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

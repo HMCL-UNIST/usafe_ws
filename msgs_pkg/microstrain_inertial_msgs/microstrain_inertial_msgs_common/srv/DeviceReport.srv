@@ -1,7 +1,0 @@
----
-string model_name
-string model_number
-string serial_number
-string options
-string firmware_version
-bool success

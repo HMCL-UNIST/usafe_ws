@@ -1,5 +1,0 @@
-<?xml version="1.0"?>
-<launch>
-    <node pkg="hmcl_v2x" type="pvd_pubs" name="pvd_pubs" output="screen">
-    </node>
-</launch>

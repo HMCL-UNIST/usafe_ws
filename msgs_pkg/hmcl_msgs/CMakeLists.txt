@@ -17,6 +17,7 @@ add_message_files(
     DTLane.msg
     Lane.msg
     LaneArray.msg
+    LaneArrays.msg
     Waypoint.msg    
     WaypointArray.msg    
     WaypointState.msg    
@@ -30,6 +31,7 @@ add_message_files(
     VehicleSteering.msg
     VehicleWheelSpeed.msg
     CtrlVehicleStates.msg    
+    PolygonFlag.msg
 )
 
 # add_service_files(

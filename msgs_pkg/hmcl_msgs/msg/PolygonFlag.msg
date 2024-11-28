@@ -1,0 +1,11 @@
+Header header
+bool isinJunction
+bool isinExit
+bool isinBank
+bool isinFreespace
+bool isinCrosswalk
+bool isinStopline
+bool isinParking
+bool isinTrafficIsland
+bool isinBuilding
+bool isinVegetation

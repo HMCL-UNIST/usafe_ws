@@ -12,7 +12,7 @@
 //   See the License for the specific language governing permissions and
 //   limitations under the License.
 
-//   Authour : Hojin Lee, hojinlee@unist.ac.kr
+//   Authour : Hyeonbin Lee, bin2915@unist.ac.kr
 
 #include <sstream>
 #include <string>
@@ -103,26 +103,7 @@
 // #include <lanelet2_extension/visualization/visualization.h>
 // #include <lanelet2_extension/regulatory_elements/autoware_traffic_light.h>
 
-enum struct LaneChangeState {LeftChange = 0, Follow = 1, RightChange = 2, LeftPending = 3,RightPending = 4}; 
 
-
-
-
-
-
-
-inline const char* stateToString(LaneChangeState v)
-{
-    switch (v)
-    {
-        case LaneChangeState::LeftChange:   return "LeftChange";
-        case LaneChangeState::Follow:   return "Follow";
-        case LaneChangeState::RightChange: return "RightChange";
-        case LaneChangeState::LeftPending: return "LeftPending";
-        case LaneChangeState::RightPending: return "RightPending";
-        default:      return "[Unknown LaneChangeState]";
-    }
-}
 // typedef enum{LeftChange, Follow, RightChange} LaneChangeState;
 
 #define PI 3.14159265358979323846264338
@@ -146,7 +127,7 @@ class MapLoader
 {
   
 private:
-ros::NodeHandle nh_, nh_p_, nh_local_path_;
+ros::NodeHandle nh_, nh_p_;
 
 ros::Publisher debug_pub, map_bin_pub, autoware_lane_pub, g_map_pub, g_traj_lanelet_viz_pub, g_traj_viz_pub, local_traj_pub, l_traj_viz_pub, lir_viz_pub, ped_cw_pub;
 ros::Publisher lir_pub;

@@ -14,6 +14,9 @@ find_package(catkin REQUIRED COMPONENTS
   autoware_msgs
   v2x_msgs
 )
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
+
+find_package(GeographicLib REQUIRED)
 
 catkin_package(
   CATKIN_DEPENDS 
@@ -33,6 +36,7 @@ include_directories(
   include
   # ${dynamic_reconfigure_PACKAGE_PATH}/cmake/cfgbuild.cmake
   ${catkin_INCLUDE_DIRS}
+  ${GeographicLib_INCLUDE_DIRS}
   # ${EIGEN3_INCLUDE_DIRS}
 )
 
@@ -43,8 +47,12 @@ include_directories(
 #target_link_libraries(dynamic_reconfigure_node ${catkin_LIBRARIES})
 #SET(CMAKE_CXX_FLAGS "-O2 -g -Wall ${CMAKE_CXX_FLAGS}")
 
-add_executable(behavior_planner src/behavior_planner.cpp)
-target_link_libraries(behavior_planner ${catkin_LIBRARIES})
+add_executable(behavior_planner src/behavior2_planner.cpp)
+target_link_libraries(behavior_planner 
+  ${catkin_LIBRARIES}
+  ${GeographicLib_LIBRARIES}
+)
+
 add_dependencies(behavior_planner ${catkin_EXPORTED_TARGETS})
 
 

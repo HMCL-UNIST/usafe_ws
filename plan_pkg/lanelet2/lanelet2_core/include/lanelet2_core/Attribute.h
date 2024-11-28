@@ -360,6 +360,7 @@ struct AttributeValueString {
   static constexpr const char Junction[] = "Junction";
   static constexpr const char Crosswalk[] = "Crosswalk";
   static constexpr const char Stopline[] = "Stopline";
+  static constexpr const char Bank[] = "Bank";
 
   // Regulatory elements
   static constexpr const char TrafficLight[] = "traffic_light";
