@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 # GeographicLib 라이브러리 찾기
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};/usr/share/cmake/geographiclib")
+
 find_package(GeographicLib REQUIRED)
 
 catkin_package(
