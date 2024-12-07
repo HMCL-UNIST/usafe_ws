@@ -1,0 +1,14 @@
+string multi_lane_csv
+bool replanning_mode
+bool use_decision_maker
+float32 velocity_max
+float32 velocity_min
+float32 accel_limit
+float32 decel_limit
+float32 lateral_accel_limit
+float32 radius_min
+bool resample_mode
+float32 resample_interval
+bool replan_curve_mode
+bool replan_endpoint_mode
+bool realtime_tuning_mode

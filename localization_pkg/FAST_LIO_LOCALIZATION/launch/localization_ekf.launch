@@ -1,0 +1,9 @@
+<launch>
+<!-- Launch file for ouster OS2-64 LiDAR -->
+
+
+    <node pkg="fast_lio_localization" type="transform_fusion_lidar_ekf.py" name="transform_fusion_ekf" output="screen" />
+
+
+
+</launch>

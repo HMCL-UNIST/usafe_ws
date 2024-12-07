@@ -1,0 +1,74 @@
+<!-- -->
+<launch>
+  <arg name="namespace" default="tracking"/>
+  <!-- <arg name="tracker_input_topic" default="/detection/l_shaped/objects" /> -->
+  <arg name="tracker_input_topic" default="/detection/front/detected_object_array" />
+  <!-- <arg name="tracker_input_topic" default="/detection/side/detected_object_array" /> -->
+  
+  <arg name="tracker_output_topic" default="car" />
+
+  <!-- General Args -->
+  <arg name="detection_probability" default="0.9" />
+  <arg name="gate_probability" default="0.99" />
+  <!-- <arg name="gating_threshold" default="120" /> -->
+  <arg name="gating_threshold" default="120" />
+  <arg name="life_time_threshold" default="8" />
+  <arg name="merge_distance_threshold" default="3.0"/>
+  <!-- <arg name="prevent_explosion_threshold" default="1000" /> -->
+  <arg name="prevent_explosion_threshold" default="6000" />
+  <arg name="vel_stable_threshold_" default="3.0" />
+  <arg name="yaw_stable_threshold_" default="0.01" />
+  
+  <arg name="static_num_history_threshold" default="3" /> <!-- 3 -->
+  <arg name="static_velocity_threshold" default="1.5" />  <!-- 0.5 -->
+  <!-- <arg name="tracking_frame" default="livox_frame" /> -->
+  <arg name="tracking_frame" default="map" />
+  <arg name="use_sukf" default="false" />
+  <arg name="tracker_hz" default="10.0" />
+
+  <!-- Map Args -->
+  <arg name="use_map_info" default="false"/>
+  <arg name="map_frame" default="map" />
+  <arg name="lane_direction_chi_threshold" default="2.71" />
+  <arg name="nearest_lane_distance_threshold" default="1.0" />
+
+<!-- front -->
+  <!-- <group ns="tracking_front"> -->
+  <group ns="tracking">
+    <!-- <remap from="objects_in" to="/detection/l_shaped/objects/car" /> -->
+    <remap from="objects_in_front" to="/detection/front/detected_object_array" />
+    <remap from="objects_in_front_cam" to="/detection/f/detected_object_array" />
+    <remap from="objects_in_rlb_cam" to="/detection/rlb/detected_object_array" />
+    <remap from="objects_in_right_cam" to="/detection/mob/detected_object_array" />
+    <!-- <remap from="objects_in_back" to="/detection/b/detected_object_array" /> -->
+    <remap from="objects_in_simul" to="/detection/simul/detected_object_array" />
+    <!-- <remap from="objects_in_side" to="/detection/side/detected_object_array" /> -->
+    <!-- <remap from="objects_in_back" to="/detection/back/detected_object_array" /> -->
+
+    <remap from="objects_marker_out" to="car_marker" />
+    <remap from="objects_out" to="car" />
+
+    <node pkg="imm_ukf_pda_track" type="imm_ukf_pda" name="imm_ukf_pda_track" output="screen">
+      <param name="detection_probability" value="$(arg detection_probability)" />
+      <param name="gate_probability" value="$(arg gate_probability)" />
+      <param name="gating_threshold" value="$(arg gating_threshold)" />
+      <param name="life_time_threshold" value="$(arg life_time_threshold)" />
+      <param name="merge_distance_threshold" value="$(arg merge_distance_threshold)" />
+      <param name="prevent_explosion_threshold" value="$(arg prevent_explosion_threshold)" />
+      <param name="vel_stable_threshold_" value="$(arg vel_stable_threshold_)" />
+      <param name="yaw_stable_threshold_" value="$(arg yaw_stable_threshold_)" />
+      <param name="static_num_history_threshold" value="$(arg static_num_history_threshold)" />
+      <param name="static_velocity_threshold" value="$(arg static_velocity_threshold)" />
+      <param name="tracking_frame" value="$(arg tracking_frame)" />
+      <param name="use_sukf" value="$(arg use_sukf)" />
+      <param name="tracker_hz" value="$(arg tracker_hz)" />
+
+      <param name="use_map_info" value="$(arg use_map_info)" />
+      <param name="map_frame" value="$(arg map_frame)" />
+      <param name="lane_direction_chi_threshold" value="$(arg lane_direction_chi_threshold)" />
+      <param name="nearest_lane_distance_threshold" value="$(arg nearest_lane_distance_threshold)" />
+    </node>
+
+  </group>
+
+</launch>
