@@ -2,3 +2,6 @@
 	path = ctrl_pkg/AD_MPC
 	url = https://github.com/HMCL-UNIST/AD_MPC.git
 	branch = HM-73-nonlinear-dynamical-model-in-global-coordinate-framework
+[submodule "tools/rviz_obstacle_generator"]
+	path = tools/rviz_obstacle_generator
+	url = https://github.com/jsryu118/rviz_obstacle_generator.git

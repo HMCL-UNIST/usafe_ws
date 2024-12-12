@@ -56,6 +56,21 @@ catkin_make
 source devel/setup.bash
 ```
 
+Build Localization Workspace
+
+```bash
+cd ~/usafe_ws/localization_pkg/
+catkin_make
+source devel/setup.bash
+```
+
+Build Detection Workspace
+
+```bash
+cd ~/usafe_ws/detection_pkg/
+catkin_make
+source devel/setup.bash
+```
 
 Launch CAN Bridge
 ```bash
@@ -88,5 +103,21 @@ cd ~/usafe_ws/ctrl_ws/
 source devel/setup.bash
 roslaunch pid servo_sim.launch 
 roslaunch preview_ctrl preview_ctrl.launch 
+```
+Launch Localization Modules
+```bash
+cd ~/usafe_ws/localization_ws/
+source devel/setup.bash
+roslaunch fast_lio_localization localization_ouster64.launch 
+```
+
+Launch Detection Modules
+```bash
+cd ~/usafe_ws/detection_ws/
+source devel/setup.bash
+python3 test_ros.py --pt ../pt/livox_model_1.pt
+roslaunch ultralytics_ros tracker.launch 
+roslaunch yolo_lidar_fusion yolo_lidar_fusion.launch 
+roslaunch imm_ukf_pda_track imm_ukf_pda_track.launch 
 ```
 
