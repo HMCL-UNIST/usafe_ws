@@ -1,0 +1,29 @@
+<package>
+  <name>cam_node</name>
+  <version>0.0.1</version>
+  <description>Cameras</description>
+
+ 
+  <maintainer email="aaa@aa.com">aaa</maintainer>
+  <author>aaa</author>
+
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>image_transport</build_depend> 
+  <build_depend>roscpp</build_depend> 
+  <build_depend>std_msgs</build_depend> 
+  <build_depend>sensor_msgs</build_depend> 
+  <build_depend>cv_bridge</build_depend> 
+  <build_depend>camera_info_manager</build_depend>
+
+  <run_depend>image_transport</run_depend> 
+  <run_depend>roscpp</run_depend> 
+  <run_depend>std_msgs</run_depend> 
+  <run_depend>sensor_msgs</run_depend> 
+  <run_depend>cv_bridge</run_depend> 
+  <run_depend>camera_info_manager</run_depend>
+  <run_depend>v4l-utils</run_depend>
+  
+</package>

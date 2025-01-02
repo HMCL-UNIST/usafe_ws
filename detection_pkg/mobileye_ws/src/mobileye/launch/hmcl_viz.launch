@@ -1,0 +1,14 @@
+<?xml version="1.0"?>
+
+<launch>
+
+
+
+    <node name="hmcl_viz" pkg="mobileye" type="hmcl_viz.py" output="screen">    
+  </node>
+
+<node pkg="rviz" type="rviz" name="rviz"
+        output="screen"
+        args="-d /home/hmcl/usafe/src/tools/configs/gui_viz.rviz"/>  
+
+</launch>

@@ -4,7 +4,16 @@
 """
 Some codes are modified from the OpenPCDet.
 """
- 
+import sys
+from pathlib import Path
+
+# Get the parent directory (where 'livoxdetection' is located)
+root_dir = Path(__file__).resolve().parent.parent
+
+# Only add the directory to sys.path if it isn't already included
+if str(root_dir) not in sys.path:
+    sys.path.append(str(root_dir))
+
 import os
 import glob
 import datetime
@@ -170,7 +179,7 @@ class ros_demo():
         current_time_start = rospy.get_rostime()
         delay = (current_time_start - msg.header.stamp).to_sec() * 1000
         if delay > 200:  # If delay is greater than 200ms, skip the processing
-            print(f"Skipping frame with delay: {delay} milliseconds")
+            # print(f"Skipping frame with delay: {delay} milliseconds")
             return
         
         data_dict = self.receive_from_ros(msg)
@@ -180,12 +189,12 @@ class ros_demo():
         self.model.eval()
         with torch.no_grad():
             torch.cuda.synchronize()
-            self.starter.record()
+            # self.starter.record()
             pred_dicts = self.model.forward(data_infer) # goes through ld_base - boolmap - resfpn - centerhead
             # pred_dicts includes spatial_features, spatial_features_2d, final_box_dicts key.
-            self.ender.record()
+            # self.ender.record()
             torch.cuda.synchronize()
-            curr_latency = self.starter.elapsed_time(self.ender)
+            # curr_latency = self.starter.elapsed_time(self.ender)
         # print('det_time(ms): ', curr_latency) # about 100ms(0.1s)
         
         data_infer, pred_dicts = ROS_MODULE.gpu2cpu(data_infer, pred_dicts)
@@ -194,8 +203,8 @@ class ros_demo():
         # last_box_num, _ = ros_vis.ros_print(data_dict['points_rviz'][:, 0:4], pred_dicts=pred_dicts, last_box_num=last_box_num)
         last_box_num, _ = ros_vis.ros_print(data_dict['points'][:, 0:4], pred_dicts=pred_dicts, last_box_num=last_box_num)
         current_time_end = rospy.get_rostime()
-        total_time =  current_time_end - current_time_start
-        print('total_time(ms): ', total_time) # about 100ms(0.1s)
+        # total_time =  (current_time_end - current_time_start).to_sec() * 1000
+        # print('total_time(ms): ', total_time) # about 100ms(0.1s)
 
 if __name__ == '__main__':
     args = parse_config()

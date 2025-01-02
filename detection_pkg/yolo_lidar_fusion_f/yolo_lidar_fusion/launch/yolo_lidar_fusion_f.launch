@@ -1,0 +1,74 @@
+<launch>
+    <arg name="points_src" default="/livox/lidar_192_168_20_170" /> 
+    <!-- <arg name="points_src" default="/ouster/points" />                           -->
+    <arg name="camera_info_src_l" default="/camera/front_l/camera/camera_info" />   <!-- CameraInfo source topic-->
+    <arg name="camera_info_src_r" default="/camera/front_r/camera/camera_info" />   <!-- CameraInfo source topic-->
+    <arg name="camera_info_src_b" default="/camera/back/camera/camera_info" />   <!-- CameraInfo source topic-->
+    <arg name="camera_info_src_f" default="/camera/front_60/camera/camera_info" />   <!-- CameraInfo source topic-->
+    <arg name="mask_src_l" default="/detection/yolo_l_result" />                    <!-- yolo_segmentation_result source topic-->
+    <arg name="mask_src_r" default="/detection/yolo_r_result" />                    <!-- yolo_segmentation_result source topic-->
+    <arg name="mask_src_b" default="/detection/yolo_b_result" />                    <!-- yolo_segmentation_result source topic-->
+    <arg name="mask_src_f" default="/detection/yolo_60_result" />                    <!-- yolo_segmentation_result source topic-->
+    <arg name="intensity_threshold" default="10.0" />                               <!-- CameraInfo source topic-->
+
+
+    <node name="yolo_lidar_fusion_f" pkg="yolo_lidar_fusion" type="yolo_lidar_fusion_f" output="log">
+        <param name="autoware_objects_topic" value="/detection/f/detected_object_array" />
+
+        <param name="points_src" value="$(arg points_src)" />
+        <param name="camera_info_src_l" value="$(arg camera_info_src_l)" />
+        <param name="camera_info_src_r" value="$(arg camera_info_src_r)" />
+        <param name="camera_info_src_b" value="$(arg camera_info_src_b)" />
+        <param name="camera_info_src_f" value="$(arg camera_info_src_f)" />
+        <param name="mask_src_l" value="$(arg mask_src_l)" />
+        <param name="mask_src_r" value="$(arg mask_src_r)" />
+        <param name="mask_src_b" value="$(arg mask_src_b)" />
+        <param name="mask_src_f" value="$(arg mask_src_f)" />
+        <param name="intensity_threshold" value="$(arg intensity_threshold)" />
+
+
+        <param name="use_voxel_filter" value="true" />
+        <param name="voxel_size" value="0.15" />
+
+        <param name="use_ground_filter" value="true" />
+        <param name="num_iterations" value="150" />
+        <param name="distance_threshold" value="0.3" />
+
+        <param name="use_polygon_resize" value="true" />
+        <param name="min_width" value="40" />
+        <param name="min_height" value="40" />
+        <param name="scale_w" value="0.8" />
+        <param name="scale_h" value="0.8" />
+
+        <param name="x_roi_threshold" value="40.0" />
+
+        <param name="cluster_tolerance" value="0.5" />
+        <param name="cluster_min_size" value="3" />
+        <param name="cluster_max_size" value="200000" />
+
+        <param name="marker_topic" value="/detection/f/marker" />
+
+        <param name="pub_filtered_cloud" value="true" />
+        <param name="point_filtered_topic" value="/detection/f/point_filterd" />
+        <param name="pub_fused_cloud" value="true" />
+        <param name="fused_topic" value="/detection/f/point_fused" />
+        <param name="pub_fused_clustered_cloud" value="true" />
+        <param name="fused_clustered_topic" value="/detection/f/point_fused_clustered" />
+    </node>
+<!-- 
+    <node name="pixel_cloud_fusion_fb" pkg="pixel_cloud_fusion" type="pixel_cloud_fusion" output="screen">
+
+        <param name="points_src" value="$(arg points_src)" />
+        <param name="camera_info_src_l" value="/camera/front_60/camera/camera_info" />
+        <param name="camera_info_src_r" value="/camera/back/camera/camera_info" />
+        <param name="mask_src_l" value="/detection/yolo_60_result" />
+        <param name="mask_src_r" value="/detection/yolo_b_result" />
+        <param name="fused_topic" value="/fb/points_fused" />
+        <param name="intensity_threshold" value="$(arg intensity_threshold)" />
+
+    </node> -->
+
+    <!-- <node name="rviz_f" pkg="rviz" type="rviz" args="-d $(find yolo_lidar_fusion)/src/test_f.rviz" output="screen"/> -->
+
+</launch>
+

@@ -1,0 +1,92 @@
+<launch>
+  <!-- This launchfile should bring up a node that broadcasts a ros image
+       transport on /webcam/image_raw -->
+
+  <arg name="FPS" default="15/1"/>
+  <arg name="PUBLISH_FRAME" default="false"/>
+
+
+  <arg name="GST10" default="false"/>
+
+<!-- FRONT CAM -->
+  <!-- <node ns="camera/front" name="front_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="front"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/front_cam_parameters_new.ini"/>
+    <param name="gscam_config" value="v4l2src device=/dev/video1 ! video/x-raw,framerate=30/1,width=1920, height=1080,format=(string)UYVY !  videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="front_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node> -->
+ 
+
+<!-- FRONT_60_ CAM -->
+  <node ns="camera/front_60" name="front_60_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="front_60"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/front_60_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video5 ! video/x-raw,width=1920, height=1080,format=(string)UYVY ! videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="front_60_cam"/>
+    <param name="sync_sink" value="true"/>
+
+  </node>
+
+<!-- RIGHT CAM -->
+  <!-- <node ns="camera/right" name="right_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="right"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/right_cam_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video3 ! video/x-raw,width=1920, height=1080,format=(string)UYVY !  videoconvert ! video/x-raw,framerate=15/1 format=BGR "/>
+    
+    <param name="frame_id" value="right_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node> -->
+<!-- LEFT_CAM -->
+  <!-- <node ns="camera/left" name="left_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="left"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/left_cam_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video2 ! video/x-raw,width=1920, height=1080,format=(string)UYVY !  videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="left_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node> -->
+
+<!-- FRONT_L_CAM -->
+  <node ns="camera/front_l" name="front_l_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="front_l"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/front_l_120_cam_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video3 ! video/x-raw,width=1920, height=1080,format=(string)UYVY !  videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="front_l_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node>
+
+<!-- FRONT_R_CAM -->
+  <node ns="camera/front_r" name="front_r_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="front_r"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/front_r_120_cam_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video5 ! video/x-raw,width=1920, height=1080,format=(string)UYVY !  videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="front_r_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node>
+
+ <!-- <node pkg="tf" type="static_transform_publisher" name="front_60_ouster_tf" args="0.11232314 -0.09628353 -0.52229192 -1.93538158 -1.48192275 -2.77453184 /front_60_cam /os_sensor 10"/>
+
+ <node pkg="tf" type="static_transform_publisher" name="front_r_ouster_tf" args="-0.31345641 -0.02585409 -0.27862514 -3.116607101034343 -0.7632123450284336 -1.6208381334864768 /front_r_cam /os_sensor 10"/>
+
+ <node pkg="tf" type="static_transform_publisher" name="front_l_ouster_tf" args="0.06896265 -0.23920856 -0.47021808 -0.037992716227151974 -0.7629368220329628 1.6242064312773319 /front_l_cam /os_sensor 10"/>  -->
+
+<!-- <node name="image_proc" pkg="image_proc" type="image_proc" output="screen" ns="/camera/front/camera/" /> -->
+<node name="image_proc" pkg="image_proc" type="image_proc" output="screen" ns="/camera/front_60/camera/" />
+<!-- <node name="image_proc" pkg="image_proc" type="image_proc" output="screen" ns="/camera/right/camera/" />
+<node name="image_proc" pkg="image_proc" type="image_proc" output="screen" ns="/camera/left/camera/" /> -->
+<node name="image_proc" pkg="image_proc" type="image_proc" output="screen" ns="/camera/front_l/camera/" />
+<node name="image_proc" pkg="image_proc" type="image_proc" output="screen" ns="/camera/front_r/camera/" />
+
+
+  <!-- <node if="$(arg PUBLISH_FRAME)" name="v4l_transform" pkg="tf" type="static_transform_publisher" args="1 2 3 0 -3.141 0 /world /v4l_frame 10"/> -->
+</launch>

@@ -54,6 +54,7 @@ find_package(catkin REQUIRED COMPONENTS
   livox_ros_driver
   message_generation
   eigen_conversions
+  # hmcl_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -87,3 +88,13 @@ catkin_package(
 add_executable(fastlio_mapping src/laserMapping.cpp include/ikd-Tree/ikd_Tree.cpp src/preprocess.cpp)
 target_link_libraries(fastlio_mapping ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${PYTHON_LIBRARIES})
 target_include_directories(fastlio_mapping PRIVATE ${PYTHON_INCLUDE_DIRS})
+
+
+
+add_executable(global_localization src/global_localization.cpp include/ikd-Tree/ikd_Tree.cpp)
+target_link_libraries(global_localization ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} )
+target_include_directories(global_localization PRIVATE ${PYTHON_INCLUDE_DIRS} )
+
+add_executable(global_localization_pcd src/global_localization_pcd.cpp include/ikd-Tree/ikd_Tree.cpp)
+target_link_libraries(global_localization_pcd ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${PYTHON_LIBRARIES} )
+target_include_directories(global_localization_pcd PRIVATE ${PYTHON_INCLUDE_DIRS} )

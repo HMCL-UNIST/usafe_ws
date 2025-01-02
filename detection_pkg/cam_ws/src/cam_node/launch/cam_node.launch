@@ -1,0 +1,27 @@
+<launch>
+
+  <node name="front_cam" pkg="cam_node" type="cam_node" output="screen" >
+    <param name="frame_id" value="front"/>
+    <param name="video_device" value="/dev/video1"/>
+    <param name="framerate" value="30"/>
+  </node>
+
+  <!-- <node name="back_cam" pkg="cam_node" type="cam_node" output="screen" >
+    <param name="frame_id" value="back"/>
+    <param name="video_device" value="/dev/video2"/>
+    <param name="framerate" value="30"/>
+  </node>
+
+  <node name="right_cam" pkg="cam_node" type="cam_node" output="screen" >
+    <param name="frame_id" value="right"/>
+    <param name="video_device" value="/dev/video3"/>
+    <param name="framerate" value="30"/>
+  </node>
+
+  <node name="left_cam" pkg="cam_node" type="cam_node" output="screen" >
+    <param name="frame_id" value="left"/>
+    <param name="video_device" value="/dev/video4"/>
+    <param name="framerate" value="30"/>
+  </node> -->
+  
+</launch>

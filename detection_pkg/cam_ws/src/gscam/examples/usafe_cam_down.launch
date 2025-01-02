@@ -1,0 +1,54 @@
+<launch>
+  <!-- This launchfile should bring up a node that broadcasts a ros image
+       transport on /webcam/image_raw -->
+
+  <arg name="FPS" default="30/1"/>
+  <arg name="PUBLISH_FRAME" default="false"/>
+
+
+  <arg name="GST10" default="false"/>
+
+<!-- FRONT CAM -->
+  <node ns="camera/front" name="front_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="front"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/front_cam_down_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video1 ! video/x-raw,width=1920, height=1080,format=(string)UYVY ! videoscale ! video/x-raw, width=640, height=360 !  videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="front_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node>
+
+<!-- BACK CAM -->
+  <node ns="camera/back" name="back_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="default"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/back_cam_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video2 ! video/x-raw,width=1920, height=1080,format=(string)UYVY ! videoscale ! video/x-raw, width=640, height=360 ! videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="back_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node>
+<!-- RIGHT CAM -->
+  <node ns="camera/right" name="right_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="default"/>
+    <param name="camera_info_url" value="package://gscam/cali_params/right_cam_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video3 ! video/x-raw,width=1920, height=1080,format=(string)UYVY ! videoscale ! video/x-raw, width=640, height=360 !  videoconvert ! video/x-raw, format=BGR "/>
+    
+    <param name="frame_id" value="right_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node>
+<!-- LEFT_CAM -->
+  <node ns="camera/left" name="left_cam_node" pkg="gscam" type="gscam" output="screen">
+    <param name="camera_name" value="default"/>
+    <param name="camera_info_url" value="package://gscam/ecali_params/left_cam_parameters.ini"/>
+   
+    <param name="gscam_config" value="v4l2src device=/dev/video4 ! video/x-raw,width=1920, height=1080,format=(string)UYVY ! videoscale ! video/x-raw, width=640, height=360 !  videoconvert ! video/x-raw, format=BGR"/>
+    
+    <param name="frame_id" value="left_cam"/>
+    <param name="sync_sink" value="true"/>
+  </node>
+
+  <node if="$(arg PUBLISH_FRAME)" name="v4l_transform" pkg="tf" type="static_transform_publisher" args="1 2 3 0 -3.141 0 /world /v4l_frame 10"/>
+</launch>

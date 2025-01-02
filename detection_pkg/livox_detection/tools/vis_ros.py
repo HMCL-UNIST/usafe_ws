@@ -22,10 +22,10 @@ import ros_numpy
  
 # ros marker
  
-detected_object_array = DetectedObjectArray()
-gtbox_array = MarkerArray()
-marker_array = MarkerArray()
-marker_array_text = MarkerArray()
+# detected_object_array = DetectedObjectArray()
+# # gtbox_array = MarkerArray()
+# marker_array = MarkerArray()
+# marker_array_text = MarkerArray()
  
 """
         7 -------- 4
@@ -157,12 +157,12 @@ class ROS_MODULE:
                 "/ouster/imu", Imu, queue_size=3, callback=self.imu_callback)
 
         # create Publisher for visualization.
-        self.pointcloud_pub = rospy.Publisher(
-                '/detection/front/pointcloud', PointCloud2, queue_size=10
-                )
-        self.gtbox_array_pub = rospy.Publisher(
-                '/detection/front/detect_gtbox', MarkerArray, queue_size=10
-                )
+        # self.pointcloud_pub = rospy.Publisher(
+        #         '/detection/front/pointcloud', PointCloud2, queue_size=10
+        #         )
+        # self.gtbox_array_pub = rospy.Publisher(
+        #         '/detection/front/detect_gtbox', MarkerArray, queue_size=10
+        #         )
         self.marker_pub = rospy.Publisher(
                 '/detection/front/detect_box3d', MarkerArray, queue_size=10
                 )
@@ -180,7 +180,7 @@ class ROS_MODULE:
         current_time = rospy.get_rostime()
         if self.is_timestamp_received == False:
             self.time_diff = self.received_timestamp - current_time
-            print("Master's timestamp received.")
+            # print("Master's timestamp received.")
 
         self.is_timestamp_received = True
         # self.sub_for_timestamp.unregister()
@@ -227,8 +227,8 @@ class ROS_MODULE:
         #pts_des = pd.DataFrame(pts, columns=['batch_id', 'x', 'y', 'z', 'intensity'])
         #print(pts_des.describe(include='all'))
         
-        pointcloud_msg = xyzr_to_pc2(pts, header.stamp, header.frame_id)
-        self.pointcloud_pub.publish(pointcloud_msg)
+        # pointcloud_msg = xyzr_to_pc2(pts, header.stamp, header.frame_id)
+        # self.pointcloud_pub.publish(pointcloud_msg)
         
         # print(pointcloud_msg)
         # input()
@@ -238,64 +238,68 @@ class ROS_MODULE:
         # print("format of labels = ", pred_dicts[0]['pred_labels'][0])
  
                 
-        if gt_boxes is not None:
-            gtbox_array.markers.clear()
-            gt_boxes = boxes_to_corners_3d(gt_boxes)
-            for obid in range(gt_boxes.shape[0]):
-                ob = gt_boxes[obid]
+        # if gt_boxes is not None:
+        #     gtbox_array.markers.clear()
+        #     gt_boxes = boxes_to_corners_3d(gt_boxes)
+        #     for obid in range(gt_boxes.shape[0]):
+        #         ob = gt_boxes[obid]
  
-                # boxes
-                marker = Marker()
-                marker.header.frame_id = header.frame_id
-                marker.header.stamp = header.stamp
-                marker.id = obid
-                marker.action = Marker.ADD
-                marker.type = Marker.LINE_LIST
-                marker.lifetime = rospy.Duration(0)
+        #         # boxes
+        #         marker = Marker()
+        #         marker.header.frame_id = header.frame_id
+        #         marker.header.stamp = header.stamp
+        #         marker.id = obid
+        #         marker.action = Marker.ADD
+        #         marker.type = Marker.LINE_LIST
+        #         marker.lifetime = rospy.Duration(0)
  
-                # print(labs)
-                # print(ob)
-                marker.color.r = 1
-                marker.color.g = 1
-                marker.color.b = 1
-                marker.color.a = 1
-                marker.scale.x = 0.05
+        #         # print(labs)
+        #         # print(ob)
+        #         marker.color.r = 1
+        #         marker.color.g = 1
+        #         marker.color.b = 1
+        #         marker.color.a = 1
+        #         marker.scale.x = 0.05
                 
-                marker.points = []
-                for line in lines:
-                    ptu = gt_boxes[obid][line[0]]
-                    ptv = gt_boxes[obid][line[1]]
-                    marker.points.append(Point(ptu[0], ptu[1], ptu[2]))
-                    marker.points.append(Point(ptv[0], ptv[1], ptv[2]))
+        #         marker.points = []
+        #         for line in lines:
+        #             ptu = gt_boxes[obid][line[0]]
+        #             ptv = gt_boxes[obid][line[1]]
+        #             marker.points.append(Point(ptu[0], ptu[1], ptu[2]))
+        #             marker.points.append(Point(ptv[0], ptv[1], ptv[2]))
                 
-                gtbox_array.markers.append(marker)
+        #         gtbox_array.markers.append(marker)
  
-            # clear ros cache   
-            if last_gtbox_num > gt_boxes.shape[0]:
-                for i in range(gt_boxes.shape[0], last_gtbox_num):
-                    marker = Marker()
-                    marker.header.frame_id = header.frame_id
-                    marker.header.stamp = header.stamp
-                    marker.id = i
-                    marker.action = Marker.ADD
-                    marker.type = Marker.LINE_LIST
-                    marker.lifetime = rospy.Duration(0.01)
-                    marker.color.a = 0
-                    gtbox_array.markers.append(marker)
+        #     # clear ros cache   
+        #     if last_gtbox_num > gt_boxes.shape[0]:
+        #         for i in range(gt_boxes.shape[0], last_gtbox_num):
+        #             marker = Marker()
+        #             marker.header.frame_id = header.frame_id
+        #             marker.header.stamp = header.stamp
+        #             marker.id = i
+        #             marker.action = Marker.ADD
+        #             marker.type = Marker.LINE_LIST
+        #             marker.lifetime = rospy.Duration(0.01)
+        #             marker.color.a = 0
+        #             gtbox_array.markers.append(marker)
  
-            self.gtbox_array_pub.publish(gtbox_array)
+        #     self.gtbox_array_pub.publish(gtbox_array)
  
         if pred_dicts is not None:
             boxes = boxes_to_corners_3d(pred_dicts[0]['pred_boxes'])
             score = pred_dicts[0]['pred_scores']
             label = pred_dicts[0]['pred_labels']
             obj_pose, obj_dim, obj_heading = boxes_to_autoware_msg(pred_dicts[0]['pred_boxes'])
-            detected_object_array.objects.clear()
+            # detected_object_array.objects.clear()
+            detected_object_array = DetectedObjectArray()
+
             detected_object_array.header.frame_id = header.frame_id
             detected_object_array.header.stamp = header.stamp
 
-            marker_array.markers.clear()
-            marker_array_text.markers.clear()
+            # marker_array.markers.clear()
+            # marker_array_text.markers.clear()
+            marker_array = MarkerArray()
+            marker_array_text = MarkerArray()
             for obid in range(boxes.shape[0]):
                 # if self.class_names[np.int(label[obid])-1] != str('car') and np.floor(score[obid] * 100)/100 < 0.4:
                 # if np.floor(score[obid] * 100)/100 < 0.3:
@@ -360,7 +364,7 @@ class ROS_MODULE:
                     marker.id = obid * 2
                     marker.action = Marker.ADD
                     marker.type = Marker.LINE_LIST
-                    marker.lifetime = rospy.Duration(0)
+                    marker.lifetime = rospy.Duration(0.1)
     
                     # print(labs)
                     color = color_maps[self.class_names[np.int(label[obid])-1]]
@@ -386,7 +390,7 @@ class ROS_MODULE:
                     markert.id = obid * 2 + 1
                     markert.action = Marker.ADD
                     markert.type = Marker.TEXT_VIEW_FACING
-                    markert.lifetime = rospy.Duration(0)
+                    markert.lifetime = rospy.Duration(0.1)
  
                     # print(labs)
                     color = color_maps[self.class_names[np.int(label[obid])-1]]
@@ -416,7 +420,7 @@ class ROS_MODULE:
                     marker.id = i * 2
                     marker.action = Marker.ADD
                     marker.type = Marker.LINE_LIST
-                    marker.lifetime = rospy.Duration(0.01)
+                    marker.lifetime = rospy.Duration(0.1)
                     marker.color.a = 0
                     marker_array.markers.append(marker)
  
@@ -426,7 +430,7 @@ class ROS_MODULE:
                     markert.id = i * 2 + 1
                     markert.action = Marker.ADD
                     markert.type = Marker.TEXT_VIEW_FACING
-                    markert.lifetime = rospy.Duration(0.01)
+                    markert.lifetime = rospy.Duration(0.1)
                     markert.color.a = 0
                     marker_array_text.markers.append(markert)
  
@@ -440,10 +444,13 @@ class ROS_MODULE:
             self.detected_object_array_pub.publish(detected_object_array)
             self.marker_pub.publish(marker_array)
             self.marker_text_pub.publish(marker_array_text)
-        
+
+            detected_object_array.objects.clear()
+            marker_array.markers.clear()
+            marker_array_text.markers.clear()
+            
         box_size = 0 if pred_dicts is None else boxes.shape[0]
         gtbox_size = 0 if gt_boxes is None else gt_boxes.shape[0]
  
         return box_size, gtbox_size
         # input()
-
